@@ -33,6 +33,7 @@
 \usepackage[utf8x]{inputenc}
 \usepackage{autofe}
 \usepackage{fixltx2e}
+\usepackage{hyphenat}
 
 \DeclareUnicodeCharacter{8988}{\ensuremath{\ulcorner}}
 \DeclareUnicodeCharacter{8989}{\ensuremath{\urcorner}}
@@ -214,6 +215,8 @@ A higher inductive type extends normal inductive type by providing constructors 
 \endgroup
 \end{center}
 
+\normalsize
+
 In Agda and Coq, we don't have built-in primitives to support the definition of {\tt Circle}. However, the higher inductive types including {\tt Circle} can be specified using Dan Licata's method \cite{Licata-2011}. According to this method, a higher inductive type is defined using type abstraction. For example, {\tt Circle} is defined using Dan Licata's method as follows. 
 
 \begin{center}
@@ -239,6 +242,8 @@ In Agda and Coq, we don't have built-in primitives to support the definition of 
 \endgroup
 \end{center}
 
+\normalsize
+
 Inside the module {\tt Circle}, the type {\tt S} is defined using a private type {\tt S*}. The constructor {\tt base} is defined using {\tt base*} and the path {\tt loop} is given as a propositional equality. The recursion and the induction principles are defined to pattern match on the constructor {\tt base*} of the type {\tt S*}. The clients of {\tt Circle} will not have access to the constructor {\tt base*} of the private type {\tt S*} as it is not visible outside the module. The clients only way of access to the constructor is through the elimination rules {\tt recS} and {\tt indS} defined as follows. 
 
 \begin{center}
@@ -262,6 +267,8 @@ Inside the module {\tt Circle}, the type {\tt S} is defined using a private type
 \endgroup
 \end{center}
 
+\normalsize
+
 {\tt recS} and {\tt indS} ignores the path argument and simply computes to the appropriate answer for the point constructor. The computational behavior for the path constructor loop is postulated using reduction rules {\tt βrecS} and {\tt βindS} defined as follows.
 
 \begin{center}
@@ -283,6 +290,8 @@ Inside the module {\tt Circle}, the type {\tt S} is defined using a private type
 \end{Verbatim}
 \endgroup
 \end{center}
+
+\normalsize
 
 \subsection{Agda Reflection}
 \label{sec:sec2.2}
@@ -307,6 +316,8 @@ In Agda, macros are used to construct a metaprogram that executes in a {\tt Term
 \end{Verbatim}
 \endgroup
 \end{center}
+
+\normalsize
 
 The value of {\tt sampleTerm} is as follows: 
 %\begin{Verbatim}[fontsize=\relsize{-0.5},commandchars=\\\{\}]
@@ -337,6 +348,8 @@ The {\tt unquoteTC} primitive converts the abstract syntax tree representation o
 \endgroup
 \end{center}
 
+\normalsize
+
 Macro {\tt mc2} converts the abstract representation of the identity function given by (1) to its concrete syntax. We also have a type {\tt Name}, an internal identifier mapped to a built-in type {\tt QName}. In Agda, {\tt Name} literals are created using {\tt quote} primitive.
 
 Metaprograms to create top-level definitions are brought into scope and executed using {\tt unquoteDecl} or {\tt unquoteDef} primitive. A function of a given type is declared using {\tt declareDef}, and is later defined by {\tt defineFun}. A postulate of a given type is defined using {\tt declarePostulate}. Newly defined functions and postulates are brought into scope and executed by {\tt unquoteDecl}. The usage of {\tt declareDef}, {\tt defineFun} and {\tt unquoteDecl} is best illustrated with the following example:
@@ -353,6 +366,9 @@ Metaprograms to create top-level definitions are brought into scope and executed
 \end{Verbatim}
 \endgroup
 \end{center}
+
+\normalsize
+
 The above function computes addition of two natural numbers. It can be defined using Agda reflection primitives as follows: 
 
 \begin{center}
@@ -382,6 +398,8 @@ The above function computes addition of two natural numbers. It can be defined u
 \end{Verbatim}
 \endgroup
 \end{center}
+
+\normalsize
 
 In the above code, {\tt declareDef} declares the type of {\tt plus} using the constructor {\tt pi}, and {\tt defineFun} uses the declared type information to define the clauses for {\tt plus} using constructors {\tt con} and {\tt def}. Finally, the function {\tt plus} is brought into scope by {\tt unquoteDecl}. Terms use the de-bruijn index to refer to the declared variables. For example, the variable {\tt y} declared at line 10 is referenced using a de-bruijn index {\tt 0} at line 11. {\tt vArg} encodes the visibility and relevance informations of the arguments to the reflection constructs.
 
@@ -427,6 +445,8 @@ The function \emph{f} will map the constructor $g$ to $d$. To construct the type
 \label{fig:ast-g}
 \end{figure}
 
+\normalsize
+
 During the traversal of the abstract syntax tree of $g$, when we identify a function {\tt f1} with codomain \emph{W}, we add a new function {\tt f2}, with the same arguments as {\tt f1} and codomain \emph{P}, to the tree. For example, in figure~\ref{fig:ast-g}, a new function is built from the first argument $A \rightarrow W$ by modifying the codomain \emph{W} to \emph{P}. The new function of type $A \rightarrow P$ is added after the function $A \rightarrow W$ as in figure~\ref{fig:ast-d}. Constant types require no modifications. Therefore, we copy \emph{B} into the new type without any changes. When the type \emph{W} occurs directly in a non-codomain position, we add the type \emph{P} next to it. Finally, we change the codomain \emph{W} of $g$ to \emph{P} resulting in an abstract syntax tree representation of $d$ (fig.~\ref{fig:ast-d}). We repeat this process for all the constructors of a given type. In the case of {\tt Nat}, we construct the output types for {\tt zero} and {\tt (suc x)} for {\tt x : Nat} using the above method.
 
 
@@ -452,14 +472,16 @@ During the traversal of the abstract syntax tree of $g$, when we identify a func
 \label{fig:ast-d}
 \end{figure}
 
+\normalsize
+
 The parameter and the index of \emph{W}, if present, should be encoded as part of the type of function \emph{f}. We can retrieve information about the parameter and the index of \emph{W} from its type. The constructors refer to the parameter and the index using de-bruijn indices. During the construction of the output type $d$, we should update the de-bruijn indices accordingly. The constructor {\tt data-type} contains the count \emph{cp} of parameters occurring in a defined type. It also encodes the constructors of the type as a list of {\tt Name}. We can retrieve the index count by finding the difference between \emph{cp} and length of the constructor list. The parameters are common to all the constructors of a type. But the index values are different for each constructor. So we have to encode unique indices for each constructor. Also, some constructors might not take the same number of indices as the parent type. For example, in the case of {\tt Vec}, the constructor {\tt []} excludes the index {\tt Nat} from its type. We do not have any reflection primitive to retrieve the index count from a constructor name. A workaround is to pass the index count of each constructor explicitly to the automation tool.
 
 Once we have the type of $d$, we can build the type of the recursion rule for \emph{W}. To encode the mapping $W \rightarrow P$ in the recursion type we need to declare \emph{P}. We can use the constructor {\tt agda-sort} to introduce the type \emph{(P : Set)}. The type of the recursion rule \emph{f} is given as follows.
-\begin{multline}
-f : (P : Set) \rightarrow  \\
-    \, \, \,  \, \, \,   (d : (A \rightarrow W) \rightarrow (A \rightarrow P) \rightarrow B \rightarrow W \rightarrow P \rightarrow P)
-  \rightarrow \\ \, \, \,  \, \, \, W \rightarrow P
-\end{multline}
+\begin{align}
+& f : (P : Set) \rightarrow  \nonumber \\
+& \hspace {0.5cm} (d : (A \rightarrow W) \rightarrow (A \rightarrow P) \rightarrow B \rightarrow W \rightarrow P \rightarrow P) \rightarrow \nonumber \\  
+& \hspace {0.5cm} W \rightarrow P \nonumber \\
+\end{align}
  
 The above type is declared using {\tt declareDef}. We can build the computation rule representing the action of function \emph{f} on $d$ using {\tt clause} (fig.~\ref{fig:ast-cdef}). The first argument to {\tt clause} encodes variables corresponding to the above type, and it also includes the abstract representation of $g$ on which the pattern matching should occur. The second argument to clause, which is of type {\tt Term}, refers to the variables in the first argument using de-bruijn indices, and it encodes the output of the action of function \emph{f} on $d$. The constructor {\tt var} in {\tt Pattern} is used to introduce new variables in the {\tt clause} definition. The type {\tt Pattern} also has another constructor {\tt con} used to represent the pattern matching term $g$. The type {\tt Term} has similar constructors {\tt var} and {\tt con}, but with different types, used to encode the output of the recursion rule. Given $\alpha : A \rightarrow W$, $\beta : B$ and $\omega : W$, the computation rule corresponding to the above type is given as follows.
 \begin{equation}
@@ -496,6 +518,8 @@ f (P, d, g (\alpha, \beta, \omega)) \equiv d (\alpha, f \circ \alpha, \beta, \om
 \label{fig:ast-cdef}
 \end{figure}
 
+\normalsize
+
 The second argument $(f \circ \alpha)$ to $d$ is the composite of function $f$ and $\alpha$. We can build a composite function inside a lambda using the constructor {\tt lam}. The arguments to {\tt lam} are referenced using de-bruijn indices inside the lambda body. So, the de-bruijn indices for referring variables outside the lambda body are updated accordingly. The clause definition, which evaluates to the above computation rule of \emph{W}, is given in figure~\ref{fig:ast-cdef}. The de-bruijn index reference increments right to left starting from the last argument $\omega$. Inside the lambda body, the reference {\tt 0} refers to the lambda argument {\tt a}, and the index references to the variables outside the lambda body starts from 1 and increments towards the left. The above clause definition is defined using {\tt defineFun} primitive, and the function \emph{f} is brought into scope by {\tt unquotedecl}. 
 
 In the automation tool, {\tt generateRec} interface is used to generate the resursion rule $f$ for the type $W$. The implementation of {\tt generateRec} is given as follows.
@@ -519,6 +543,8 @@ In the automation tool, {\tt generateRec} interface is used to generate the resu
 \endgroup
 \end{center}
 
+\normalsize
+
 {\tt generateRec} uses {\tt getClause} and {\tt getRtype} to build the computation and elimination rules respectively. It takes three arguments which consists of the function name to be defined as an element of type {\tt Arg Name}, the quoted {\tt Name} of the type \emph{W} and a list containing the index count of the individual constructors. {\tt generateRec} can be used to automate the generation of recursion rules for the inductive types with point constructors. It can be used with the constructors of inductive types that takes no arguments (eg. {\tt Bool}), one or multiple arguments (eg. coproduct, cartesian product) and the constructors that takes argument from the inductive type being defined (eg. {\tt Nat}, {\tt List}, {\tt Vec}). The recursion rule generated by {\tt generateRec} is brought into scope using {\tt unquoteDecl} as follows.
 
 \begin{center}
@@ -529,6 +555,8 @@ In the automation tool, {\tt generateRec} interface is used to generate the resu
 \end{Verbatim}
 \endgroup
 \end{center}
+
+\normalsize
 
 The third argument to {\tt generateRec} is a list consisting of the index count for the constructors. Since the constructor $g$ does not have any index, the count is given as 0. It is required to pass the index count for each constructor explicitly as the Agda reflection library does not have built-in primitives to retrieve the index value.
 
@@ -574,12 +602,15 @@ To build the dependent eliminator, we need the type of the function $d'$. We can
 \label{fig:ast-d'}
 \end{figure}
 
+\normalsize
+
 We can construct the type of the induction principle $f'$ using $d'$ . The type \emph{P} in the mapping $f'$ depends on the element of the input type \emph{W}. The following equation gives the type of the induction principle $f'$.
-\begin{multline}
-f' : (P : W \rightarrow Set) \rightarrow \\
-(d' : \prod_{\alpha : A \rightarrow W} (\prod_{a : A} P(\alpha (a))) \rightarrow \prod_{\beta : B} \prod_{\omega : W} P(\omega) \rightarrow \\ P (g(\alpha, \beta, \omega)))
-  \rightarrow \\ (w : W) \rightarrow P (w)
-\end{multline}
+\begin{align}
+& f' : (P : W \rightarrow Set) \rightarrow \nonumber \\
+& \hspace {0.6cm} (d' : \prod_{\alpha : A \rightarrow W} (\prod_{a : A} P(\alpha (a))) \rightarrow \prod_{\beta : B} \prod_{\omega : W} P(\omega) \rightarrow \nonumber \\ 
+& \hspace {1.6cm} P (g(\alpha, \beta, \omega))) \rightarrow \nonumber \\
+& \hspace {0.6cm} (w : W) \rightarrow P (w) \nonumber \\
+\end{align}
 
 The computation rule for the above type is the same as the computation rule of the recursion principle of \emph{W} except that the function \emph{f} and $d$ are changed to \emph{f'} and $d'$ respectively. It is constructed using {\tt clause} definitions using the same approach as the recursion principle. The computation rule corresponding to \emph{f'} is given as follows.
 \begin{equation}
@@ -595,7 +626,7 @@ We can automate the generation of the induction rule $f'$ for the type \emph{W} 
 
   generateInd : Arg Name → Name → List Nat → TC ⊤
   generateInd (arg i f) t indLs =
-    bindTC (getIndex’ t indLs) λ indLs' →
+    bindTC (getIndex t indLs) λ indLs' →
     bindTC (getConstructors t) λ cns →
     bindTC (getLength cns) λ lcons →
     bindTC (getClauseDep lcons zero t f indLs' cns) λ cls →
@@ -608,8 +639,9 @@ We can automate the generation of the induction rule $f'$ for the type \emph{W} 
 \endgroup
 \end{center}
 
-{\tt generateInd} uses {\tt getClauseDep} to generate the {\tt clause} definitions representing the computation rule of the type \emph{W}. The abstract representation of the type of \emph{W} is provided by {\tt getRtypeInd}. $f'$ generated by {\tt generateInd} is brought into scope by {\tt unquoteDecl} as follows.
+\normalsize
 
+{\tt generateInd} uses {\tt getClauseDep} to generate the {\tt clause} definitions representing the computation rule of the type \emph{W}. The abstract representation of the type of \emph{W} is provided by {\tt getRtypeInd}. $f'$ generated by {\tt generateInd} is brought into scope by {\tt unquoteDecl} as follows.
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
@@ -621,7 +653,120 @@ We can automate the generation of the induction rule $f'$ for the type \emph{W} 
 \endgroup
 \end{center}
 
+\normalsize
+
 We pass an empty list to {\tt generateInd} as the type \emph{W} has no index. We can also pass an empty list if all the constructors of a type has the same number of index as the parent type. But if any one constructor has an index count different from the index count of the parent type, then we have to explicitly pass the index count of all the constructors.
+
+\section{Code Generation for Higher Inductive Type}
+
+In Agda, there are no built-in primitives to support the definition of higher inductive types. However, we can still define a higher inductive type with a base type using Dan Licata's \citep{Licata-2011} method as discussed in section 2.1. In this section, we discuss the automation of code generation for the boiler-plate code segments defining the higher inductive type. We also describe how to automate the code generation for the elimination and the computation rules of the higher inductive type using static type information obtained from the base type.
+
+
+\subsection{Higher Inductive Type Definition}
+
+In Agda, we define an inductive type using {\tt data} keyword. The {\tt data} literal characterize a data type by declaring its type and specifying its constructors. Consider the following generic form for the definition of an inductive type \emph{W} with constructors $g_1 \ldots g_n$. 
+
+\begin{center}
+\begingroup
+\fontsize{7.9pt}{9pt}\selectfont
+\begin{multline}
+data \, \, W^* \, \, (x_1:P_1)\ldots(x_n:P_n) : Q_1 \rightarrow\ldots\rightarrow Q_n \rightarrow Set \, \ell \, \, where \\
+\, \, \, g_1^* : \{i_1 : Q_1\} \ldots \{i_n : Q_n\} \rightarrow Type_1\rightarrow W^* x_1 \ldots x_n \, i_1 \ldots i_n \\
+\vdots \\ 
+\, \, \, g_n^* : \{j_1 : Q_1\} \ldots \{j_n : Q_n\} \rightarrow Type_n\rightarrow W^* x_1 \dots x_n \, j_1 \ldots j_n \\ \nonumber
+\end{multline}
+\endgroup
+\end{center}
+\normalsize
+
+The parameters $(x_1:P_1)\ldots(x_n:P_n)$ are common to all the constructors, and the type of each constructor implicitly encodes the parameter references. However, the indices are different for each constructor. So, the type of each constructor explicitly exhibits the index declaration. During the construction of a higher inductive type, we have to represent the parameters and the indices as explicit arguments in the type of the constructors. We define a higher inductive type $W$ as a top-level definition using a base type $W^*$ similar to the module {\tt Circle} in section 2.1. The reflection type {\tt Definition} provides us the type and the constructors of the base type $W^*$. We copy the type of $W^*$ to $W$ and for the constructors $g_1 \ldots g_n$ of $W$, we traverse the abstract representation of the type of $g_1^* \ldots g_n^*$ respectively replacing the occurrence of $W^*$ to $W$ in every strict positive position. Consider a constructor $g_i^*$ having the following type.
+\begin{equation}
+g_i^* : (A \rightarrow W^*) \rightarrow (B \rightarrow W^*) \rightarrow C \rightarrow W^* \rightarrow W^*
+\end{equation}
+
+We built the type of $g_i$ by traversing the abstract syntax tree of $g_i^*$ and replacing the base type $W^*$ with the higher inductive type $W$. The abstract syntax tree of $g_i^*$ incorporates the type of the parameters and the indices if present. We have to retain the parameters and the indices explicitly during the construction of $g_i$. The following equation represents the type of the constructor $g_i$.
+\begin{equation}
+g_i : (A \rightarrow W) \rightarrow (B \rightarrow W) \rightarrow C \rightarrow W \rightarrow W
+\end{equation}
+
+We explicitly pass the type of the path constructors to the automation tool. The higher inductive type definition of {\tt Circle} in section 2.1 represents the path constructors as propositional equalities. The automation tool takes the path types as input and declares them as propositional equalities using the reflection primitive {\tt declarePostulate}. We introduce a new data type {\tt ArgPath} to input the path types to the automation tool. 
+
+\begin{center}
+\begingroup
+\fontsize{7.9pt}{9pt}\selectfont
+\begin{align}
+& data \hspace {0.1cm} ArgPath \hspace {0.1cm} \{\ell_1\} : Set \hspace {0.1cm} (lsuc \hspace {0.1cm} \ell_1) \hspace {0.1cm} where \nonumber \\
+& \hspace {0.4cm} argPath : Set \hspace {0.1cm} \ell_1 \rightarrow ArgPath \nonumber \\ \nonumber
+\end{align}
+\endgroup
+\end{center}
+\normalsize
+
+The constructor $argPath$ takes the type of a path constructor as input. We define the generic form of a higher inductive type as follows.
+
+\begin{center}
+\begingroup
+\fontsize{7.9pt}{9pt}\selectfont
+\begin{align}
+& data{\text -}hit \hspace {0.1cm} (quote \hspace {0.1cm} W^*) \hspace {0.1cm} W \nonumber \\
+  & \hspace {0.3cm} Wpoints \hspace {0.2cm} (g_1 ::  \ldots :: g_n :: []) \nonumber \\
+  & \hspace {0.3cm} Wpaths  \hspace {0.2cm} (p_1 :: \ldots :: p_n :: []) \nonumber \\
+  & \hspace {0.3cm} (argPath \nonumber \\ 
+  & \hspace {0.6cm} (\{x_1:P_1\} \rightarrow \ldots \rightarrow \{x_n:P_n\} \rightarrow \nonumber \\ 
+  & \hspace {0.7cm} \{i_1:Q_1\} \rightarrow \ldots \rightarrow \{i_n:Q_n\} \rightarrow Type_1 \rightarrow \nonumber \\ 
+  & \hspace {0.7cm} (g_i \{x_1\} \ldots \{x_n\} \{i_1\} \ldots \{i_n\} \ldots) \equiv (g_j \ldots)) :: \nonumber \\
+  & \hspace {3cm} \vdots \nonumber \\
+  & \hspace {0.4cm} argPath \nonumber \\ 
+  & \hspace {0.6cm} (\{x_1:P_1\} \rightarrow \ldots \rightarrow \{x_n:P_n\} \rightarrow \nonumber \\ 
+  & \hspace {0.7cm} \{j_1:Q_1\} \rightarrow \ldots \rightarrow \{j_n:Q_n\} \rightarrow Type_n \rightarrow \nonumber \\ 
+  & \hspace {0.7cm} (g_i \{x_1\} \ldots \{x_n\} \{j_1\} \ldots \{j_n\} \ldots) \equiv (g_j \ldots)) :: [])\nonumber \\ \nonumber
+\end{align}
+\endgroup
+\end{center}
+\normalsize
+
+We define holders $Wpoints$ for point constructors and $Wpaths$ for path constructors as part of the higher inductive type definition of $W$. We cannot retrieve the constructors of the higher inductive type $W$ using {\tt Definition}. Therefore, $Wpoints$ and $Wpaths$ act as the only references for the constructors of $W$. The elements of the $argPath$ list represent the type of the path constructors $p_1 \ldots p_n$ respectively. We explicitly include the parameter references $\{x_1 : P_1\} \ldots \{x_n : P_n\}$ and the index references $\{k_1 : Q_1\} \ldots \{k_n : Q_n\}$ in the type of the arguments to $argPath$. The points $g_1 \ldots g_n$ are not in scope when used in the identity type passed to $argPath$. The automation tool uses the base type constructors $g_1^* \ldots g_n^*$ as dummy arguments in the place of $g_1 \ldots g_n$ respectively. The automation tool implements the interface {\tt data-hit} as follows.
+
+\begin{center}
+\begingroup
+\fontsize{7pt}{9pt}\selectfont
+\begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
+
+  data-hit : ∀{ℓ₁} (baseType : Name) → (indType : Name) → 
+    (pointHolder : Name) → (lcons : List Name) → 
+    (pathHolder : Name) → (lpaths : List Name) →
+    (lpathTypes : (List (ArgPath {ℓ₁}))) → TC ⊤
+  data-hit base ind pointH lcons pathH lpaths lpathTypes =
+    bindTC (defineHindType base ind) λ _ → 
+    bindTC (getConstructors base) λ lcons'  →
+    bindTC (defineHitCons base ind lcons' lcons) λ _ →
+    bindTC (getPathTypes base ind lcons' lcons lpathTypes) λ lp →
+    bindTC (defineHitPathCons lpaths lp) λ _ →
+    bindTC (definePointHolder pointHolder lcons) λ _ →
+    definePathHolder pathHolder lpaths
+
+\end{Verbatim}
+\endgroup
+\end{center}
+
+The higher inductive type $W$, the points $g_1 \ldots g_n$, the paths $p_1 \ldots p_n$, and the holders $Wpoints$ and $Wpaths$ are brought into scope by {\tt unquoteDecl}. In the above implementation of {\tt data-hit}, {\tt defineHindType} defines the higher inductive type as a top-level definition using the base type. {\tt defineHitCons} specifies the point constructors of the higher inductive type using the type information obtained from the constructors of the base type, and {\tt defineHitPathCons} builds the paths constructors of the higher inductive type using the {\tt argPath} list. The following code automates the generation of the higher inductive type definition for {\tt Circle} given in section 2.1.
+
+\begin{center}
+\begingroup
+\fontsize{7pt}{9pt}\selectfont
+\begin{Verbatim}
+
+  unquoteDecl S Spoints base Spaths loop = 
+    data-hit (quote S*) S
+      Spoints (base :: []) -- point constructors
+      Spaths (loop :: [])  -- path constructors
+      (argPath (base* ≡ base*) :: []) -- base replaces base*
+
+\end{Verbatim}
+\endgroup
+\end{center}
+
+The identity type input {\tt (base* ≡ base*)} to argPath represents the type of the path {\tt loop}, and it uses the inductive type constructor {\tt base*} as a dummy argument in the place of the higher inductive type constructor {\tt base}. The constructor {\tt base} comes into scope only during the execution of {\tt unquoteDecl}, and so cannot be used in the identity type reference in {\tt argPath}. We use the constructor {\tt base*} of type {\tt S*} as dummy argument because the type of {\tt base*} is similar to {\tt base}, and has the same references for the common arguments. The automation tool traverses the abstract syntax tree of {\tt loop} and replaces the occurrences of {\tt base*} with {\tt base}. 
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{sigproc} 
