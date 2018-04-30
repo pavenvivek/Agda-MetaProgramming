@@ -4,8 +4,6 @@
 -- {-# OPTIONS --verbose tc.sample.debug:12 #-}
 -- {-# OPTIONS --type-in-type #-}
 
-open import CryptDB_HoTT.agda_lib.Utils
-
 open import Agda.Builtin.Reflection
 open import Agda.Primitive
 open import Data.List
@@ -81,20 +79,33 @@ getPathTypes base ind ctrs ictrs (x ∷ xs) = bindTC (getPathTypes base ind ctrs
                                                    (λ xs' → bindTC (addArgPath base ind ctrs ictrs x)
                                                    (λ x' → returnTC (x' ∷ xs')))
 
+defineHindType : (baseType : Name) → (indType : Name) → TC ⊤
+defineHindType baseType indType =
+  bindTC (getType baseType) λ ty →
+  bindTC (declareDef (vArg indType) ty) λ _ →
+  (defineFun indType (clause [] (def baseType []) ∷ []))
+
+definePointHolder : (pointHolder : Name) → (lcons : List Name) → TC ⊤
+definePointHolder pointHolder lcons =
+  bindTC (quoteTC (List Name)) λ LQName →
+  bindTC (declareDef (vArg pointHolder) LQName) λ _ →
+  bindTC (quoteTC lcons) λ lconsQ →
+  (defineFun pointHolder (clause [] lconsQ ∷ []))
+
+definePathHolder : (pathHolder : Name) → (lpaths : List Name) → TC ⊤
+definePathHolder pathHolder lpaths =
+  bindTC (quoteTC (List Name)) λ LQName →
+  bindTC (declareDef (vArg pathHolder) LQName) λ _ →
+  bindTC (quoteTC lpaths) λ lpathsQ →
+  (defineFun pathHolder (clause [] lpathsQ ∷ []))
+
 data-hit : ∀{ℓ₁} (baseType : Name) → (indType : Name) → (pointHolder : Name) → (lcons : List Name) → (pathHolder : Name) → (lpaths : List Name) →
                   (lpathTypes : (List (ArgPath {ℓ₁}))) → TC ⊤
 data-hit baseType indType pointHolder lcons pathHolder lpaths lpathTypes =
-  bindTC (getType baseType) λ ty →
-  bindTC (declareDef (vArg indType) ty) λ _ →
-  bindTC (defineFun indType (clause [] (def baseType []) ∷ [])) λ _ →
+  bindTC (defineHindType baseType indType) λ _ → 
   bindTC (getConstructors baseType) λ lcons'  →
   bindTC (defineHitCons baseType indType lcons' lcons) λ _ →
   bindTC (getPathTypes baseType indType lcons' lcons lpathTypes) λ lpathTypes' →
   bindTC (defineHitPathCons lpaths lpathTypes') λ _ →
-  bindTC (quoteTC (List Name)) λ LQName →
-  bindTC (declareDef (vArg pointHolder) LQName) λ _ →
-  bindTC (quoteTC lcons) λ lconsQ →
-  bindTC (defineFun pointHolder (clause [] lconsQ ∷ [])) λ _ →
-  bindTC (declareDef (vArg pathHolder) LQName) λ _ →
-  bindTC (quoteTC lpaths) λ lpathsQ →
-  (defineFun pathHolder (clause [] lpathsQ ∷ []))
+  bindTC (definePointHolder pointHolder lcons) λ _ →
+  definePathHolder pathHolder lpaths
