@@ -1,8 +1,7 @@
 -- {-# OPTIONS --verbose tc.unquote.decl:20 #-}
 -- {-# OPTIONS --verbose tc.unquote.def:10 #-}
 -- {-# OPTIONS --verbose tc.term.expr.top:5 #-}
-{-# OPTIONS --verbose tc.sample.debug:20 #-}
-{-# OPTIONS --type-in-type #-}
+-- {-# OPTIONS --verbose tc.sample.debug:20 #-}
 
 open import Agda.Builtin.Reflection
 open import Agda.Builtin.Nat
@@ -15,15 +14,34 @@ open import Agda.Builtin.Equality
 
 module Automation.generateRec where
 
+
+getRecArgs2 : (args : List Nat) → (inds : List Nat) → (irefs : List (List Bool)) → TC (List (Arg Term))
+getRecArgs2 args inds irefs = bindTC (dropTC 1 args) -- drop C
+                                    (λ args' → bindTC (takeTC 1 args) -- take C
+                                    (λ argC → bindTC (generateRefTerm argC)
+                                    (λ argC' → bindTC (generateIndexRef inds irefs args')
+                                    (λ argsR → returnTC (argC' ++L argsR)))))
+
+generateMapRefRec2 : (f : Nat) → (fargs : List (Arg Term)) → (g : Name) → (args : List Nat) → (inds : List Nat) → (irefs : List (List Bool)) → Nat → TC Term
+generateMapRefRec2 f fargs g args inds irefs 0 =  bindTC (debugPrint "tc.sample.debug" 20 (strErr "issue :  generateMapRefRec2 -->" ∷ [])) λ _ →
+                                                        bindTC (printList args) λ _ →
+                                                        bindTC (generateRefTerm args)
+                                                        (λ largs →
+                                                        bindTC (debugPrint "tc.sample.debug" 20 (strErr "issue :  generateMapRefRec2 largs -->" ∷ [])) λ _ →
+                                                        bindTC (printArgs largs) λ _ →
+                                                        returnTC (def g (vArg (var f fargs) ∷ largs)))
+generateMapRefRec2 f fargs g args inds irefs (suc x) = bindTC (generateMapRefRec2 f fargs g args inds irefs x)
+                                                             (λ y → returnTC (lam visible (abs "lx" y)))
+                                                             
 getTermRec : (g : Name) → (inds : List Nat) → (irefs : List (List Bool)) → (f : Nat) → (ref : Nat) → (args : List Nat) → Type → TC Term
-getTermRec g inds irefs f 0 args (def ty y) = bindTC (getRecArgs args inds irefs)
+getTermRec g inds irefs f 0 args (def ty y) = bindTC (generateRefTerm args)
                                                      (λ largs → returnTC (def g (vArg (var f []) ∷ largs)))
 getTermRec g inds irefs f ref args (def ty y) = bindTC (generateRef ref)
                                             (λ ls → bindTC (generateRefTerm ls)
                                             (λ fargs → bindTC (getLength fargs)
-                                            (λ len → bindTC (returnTC (map (λ z → z + len) inds)) -- (addToList len args) 
-                                            (λ inds' → bindTC (returnTC (map (λ z → z + len) args)) -- (addToList len args) 
-                                            (λ args' → bindTC (generateMapRefRec (f + len) fargs g args' inds' irefs len)
+                                            (λ len → bindTC (returnTC (map (λ z → z + len) inds))
+                                            (λ inds' → bindTC (returnTC (map (λ z → z + len) args))
+                                            (λ args' → bindTC (generateMapRefRec2 (f + len) fargs g args' inds' irefs len)
                                             (λ tm → returnTC tm))))))
 getTermRec g inds irefs f ref args (pi (arg info dom) (abs s cdom)) = bindTC (getTermRec g inds irefs f (suc ref) args cdom)
                                                                   (λ cdom' → returnTC cdom')
@@ -65,14 +83,12 @@ getClause' l ref R ty irefs (i ∷ is) (x ∷ xs) = bindTC (getType x)
                                                           (λ ltm → returnTC ((clause (vArg (con x laP) ∷ vArg (var (showNat lenlfarg)) ∷ vars) (var Ccon ltm)) ∷ xs')) ;
                                             false → bindTC (rmIndex i y')
                                                            (λ y'' → bindTC (getTerm R ty inds irefs zero lcarg (lenlfarg ∷ lfarg) y'')
-                                                           (λ ltm → {-- bindTC (quoteTC ltm)
-                                                           (λ debug' → bindTC (debugPrint "tc.sample.debug" 20 (strErr "issue : getClause' false -->" ∷ termErr debug' ∷ []))
-                                                           (λ _ → --} returnTC ((clause (vArg (con x laP) ∷ vArg (var (showNat lenlfarg)) ∷ vars) (var Ccon ltm)) ∷ xs'))) } )))))))))))))))))))
+                                                           (λ ltm → returnTC ((clause (vArg (con x laP) ∷ vArg (var (showNat lenlfarg)) ∷ vars) (var Ccon ltm)) ∷ xs'))) } )))))))))))))))))))
 getClause' l ref R ty irefs x y = returnTC [] -- Invalid case
 
 getClause : Nat → Nat → (R : Name) → (ty : Name) → (indList : List Nat) → (lcons : List Name) → TC (List Clause)
 getClause l ref R ty indList lcons = bindTC (getIndexRefInfo R indList lcons)
-                                            (λ lbs → bindTC (getIndex2 R indList)
+                                            (λ lbs → bindTC (getIndex R indList)
                                             (λ indLs → (getClause' l ref R ty lbs indLs lcons)))
 
 
@@ -81,7 +97,7 @@ getMapConstructorType : (Cref : Nat) → (pars : List Nat) → (R : Name) → (m
 getMapConstructorType Cref pars R mapTy (pi (arg info t1) (abs s t2)) = bindTC (checkCdm (def R []) t1) λ
                                                                          { true → bindTC (returnTC (map (λ z → z + 2) pars)) -- +1 for Rcons and +1 for Ccons
                                                                                          (λ pars' → bindTC (returnTC (map (λ z → z + 1) pars))
-                                                                                         (λ pars'' → bindTC (returnTC ((pars' ∷L 1) ∷L 0)) -- 1 for Rcons and 0 for Ccons
+                                                                                         (λ pars'' → bindTC (returnTC (pars' ∷L 1)) -- 1 for Rcons and 0 for Ccons -- ((pars' ∷L 1) ∷L 0))
                                                                                          (λ pars''' → bindTC (getMapConstructorType (suc (suc Cref)) pars''' R mapTy t2)
                                                                                          (λ t2' → bindTC (getMapConstructorType Cref pars R false t1)
                                                                                          (λ t1' → bindTC (getMapConstructorType (suc Cref) pars'' R false t1)
@@ -99,13 +115,15 @@ getMapConstructorType Cref pars R mapTy (def x lsargs) = bindTC (returnTC (_and_
                                                                                       false → bindTC (map' (λ { (arg i term) → bindTC (getMapConstructorType Cref pars R mapTy term)
                                                                                                                                        (λ term' → returnTC (arg i term')) }) lsargs)
                                                                                                       (λ lsargs' → returnTC (def x lsargs')) }}
-getMapConstructorType Cref pars R mapTy (var ref lsargs) = bindTC (reverseTC pars)
+getMapConstructorType Cref pars R mapTy (var ref lsargs) = bindTC (debugPrint "tc.sample.debug" 20 (strErr "issue : printing pars -->" ∷ strErr (showNat ref) ∷ []))
+                                                                  (λ _ → bindTC (printList pars)
+                                                                  (λ _ → bindTC (reverseTC pars)
                                                                   (λ pars' → bindTC (getListElement ref pars')
                                                                   (λ x → bindTC (returnTC (null lsargs)) λ
                                                                                 { true → returnTC (var x []) ;
                                                                                   false → bindTC (map' (λ { (arg i term) → bindTC (getMapConstructorType Cref pars R mapTy term)
                                                                                                                                    (λ term' → returnTC (arg i term')) }) lsargs)
-                                                                                                  (λ lsargs' → returnTC (var x lsargs')) }))
+                                                                                                  (λ lsargs' → returnTC (var x lsargs')) }))))
 getMapConstructorType Cref pars R mapTy (lam vis (abs s term)) = bindTC (returnTC (map (λ z → z + 1) pars))
                                                                         (λ pars' → bindTC (returnTC (pars' ∷L 0))
                                                                         (λ pars'' → bindTC (getMapConstructorType Cref pars'' R mapTy term)
@@ -128,8 +146,10 @@ getMapConstructorType Cref pars R mapTy (pat-lam cs lsargs) = bindTC (returnTC (
 getMapConstructorType Cref pars R mapTy x = returnTC x
 
 
+-- getRefTypes : 
+
 getMapConsTypeList : Name → (Cref : Nat) → (Crefbase : Nat) → (pars : List Nat) → (indexList : List Nat) → (lcons : List Name) → TC Type
-getMapConsTypeList R Cref Crefbase pars i [] = returnTC (var Crefbase [])
+getMapConsTypeList R Cref Crefbase pars [] [] = returnTC (var Crefbase [])
 getMapConsTypeList R Cref Crefbase pars (i ∷ is) (x ∷ xs) = bindTC (getParameters R)
                                                           (λ d → bindTC (getType x)
                                                           (λ ty → bindTC (rmPars d ty)
@@ -164,12 +184,11 @@ getRtype R indLs ref x = returnTC unknown
 
 generateRec : Arg Name → Name → (indexList : List Nat) → TC ⊤
 generateRec (arg i f) t indLs =
+  bindTC (getIndex t indLs) λ indLs' →
   bindTC (getConstructors t) λ cns →
   bindTC (getLength cns) λ lcons →
   bindTC (getClause lcons zero t f indLs cns) λ cls →
   bindTC (getType t) λ RTy → 
-  bindTC (getRtype t indLs zero RTy) λ funType →
-  -- bindTC (debugPrint "tc.sample.debug" 20 (strErr "issue : generateRec1 -->" ∷ termErr funType ∷ [])) λ _ → 
+  bindTC (getRtype t indLs' zero RTy) λ funType →
   bindTC (declareDef (arg i f) funType) λ _ →
   (defineFun f cls) -- λ _ →
-

@@ -255,14 +255,14 @@ getIndexValue ref par (agda-sort Level) = bindTC (getDiff ref par)
                                             (λ i → returnTC i)
 getIndexValue ref par x = returnTC ref
 
-getIndex : Name → TC Nat
-getIndex x = bindTC (getType x)
+getIndex' : Name → TC Nat
+getIndex' x = bindTC (getType x)
                     (λ t → bindTC (getParameters x)
                     (λ d → bindTC (getIndexValue zero d t)
                     (λ n → returnTC n)))
 
-getIndex2 : Name → List Nat → TC (List Nat)
-getIndex2 x indLs = bindTC (returnTC (null indLs)) λ
+getIndex : Name → List Nat → TC (List Nat)
+getIndex x indLs = bindTC (returnTC (null indLs)) λ
                            { true →  bindTC (getType x)
                                             (λ t → bindTC (getParameters x)
                                             (λ d → bindTC (getConstructors x)

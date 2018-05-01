@@ -89,7 +89,7 @@ getβIndPaths baseRec mapPath ref pars cons baseTyp indTyp (x ∷ xs) = bindTC (
                                                         (λ cns → bindTC (getLength cns)
                                                         (λ lcons → bindTC (rmPars d ty)
                                                         (λ ty' → bindTC (debugPrint "tc.sample.debug" 10 (strErr "issue : getPaths" ∷ []))
-                                                        (λ _ → bindTC (getIndex baseTyp) -- baseRec CRefBase x pars cons [] indTyp index ty')
+                                                        (λ _ → bindTC (getIndex' baseTyp) -- baseRec CRefBase x pars cons [] indTyp index ty')
                                                         (λ index → bindTC (getMapConstructorPathTypeDep baseRec (lcons + ref) x pars cons [] indTyp index ty') 
                                                         (λ x' → returnTC (pi (vArg x') (abs "_" xs')))))))))))))
 
@@ -112,7 +112,7 @@ getβIndRtypePath Rpath baseTyp indTyp pathInd baseRec indRec points pathList re
                                                           (λ consPath' → bindTC (generateRef ((suc ref) + lcons)) -- +1 for "C"
                                                           (λ refls' → bindTC (takeTC d refls')
                                                           (λ parsPath → bindTC (returnTC (map (λ z → z + lpaths) parsPath))
-                                                          (λ parsPath' → bindTC (getIndex baseTyp)
+                                                          (λ parsPath' → bindTC (getIndex' baseTyp)
                                                           (λ index → bindTC (getType baseTyp)
                                                           (λ RTyp → bindTC (getType Rpath)
                                                           (λ pathTyp → bindTC (rmPars d pathTyp)
@@ -143,6 +143,6 @@ generateβIndHit'' n p pathInd baseType baseRec indType indRec indLs points path
 generateβIndHit : List (Arg Name) → (baseType : Name) → (indexList : List Nat) → (baseRec : Name) →
                   (indType : Name) → (indRec : Name) → (points : List Name) → (paths : List Name) → TC ⊤
 generateβIndHit argD baseType indLs baseRec indType indRec points paths =
-  bindTC (getIndex2 baseType indLs) λ indLs' →
+  bindTC (getIndex baseType indLs) λ indLs' →
   bindTC (getLength argD) λ argL → 
   (generateβIndHit'' argD paths argL baseType baseRec indType indRec indLs' points paths)

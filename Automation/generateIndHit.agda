@@ -133,7 +133,7 @@ getMapConsTypeListInd' R Cref paths pars x y [] = returnTC paths
 getMapConsTypeListInd' R Cref paths pars (i ∷ is) (p ∷ ps) (cn ∷ xs) = bindTC (getParameters R)
                                                           (λ d → bindTC (getType cn)
                                                           (λ x → bindTC (rmPars d x)
-                                                          (λ x' → bindTC (getIndex R)
+                                                          (λ x' → bindTC (getIndex' R)
                                                           (λ indL → bindTC (getMapConstructorTypeInd2' Cref p pars [] R cn i x')
                                                           (λ t → bindTC (returnTC (map (λ z → z + 1) pars))
                                                           (λ pars' → bindTC (getMapConsTypeListInd' R (suc Cref) paths pars' is ps xs)
@@ -221,7 +221,7 @@ getPathsDep baseRec CRefBase pars cons baseTyp indTyp (x ∷ xs) = bindTC (retur
                                                         (λ ty → bindTC (getParameters baseTyp)
                                                         (λ d → bindTC (rmPars d ty)
                                                         (λ ty' → bindTC (debugPrint "tc.sample.debug" 10 (strErr "issue : getPaths" ∷ []))
-                                                        (λ _ → bindTC (getIndex baseTyp)
+                                                        (λ _ → bindTC (getIndex' baseTyp)
                                                         (λ index → bindTC (getMapConstructorPathTypeDep baseRec CRefBase x pars cons [] indTyp index ty')
                                                         (λ x' → returnTC (pi (vArg x') (abs "_" xs')))))))))))
 
@@ -253,7 +253,7 @@ getRtypePathDep baseTyp indType baseRec points pathList ref indLs x = returnTC u
 
 generateIndHit : Arg Name → (baseType : Name) → (indLs : List Nat) → (baseRec : Name) → (indType : Name) → (points : List Name) → (paths : List Name) → TC ⊤
 generateIndHit (arg i f) baseType indLs baseRec indType points paths =
-  bindTC (getIndex2 baseType indLs) λ indLs' →
+  bindTC (getIndex baseType indLs) λ indLs' →
   bindTC (getConstructors baseType) λ lcons → 
   bindTC (getLength points) λ lpoints →
   bindTC (getLength paths) λ lpaths →

@@ -1,7 +1,7 @@
 -- {-# OPTIONS --verbose tc.unquote.decl:20 #-}
 -- {-# OPTIONS --verbose tc.unquote.def:10 #-}
 -- {-# OPTIONS --verbose tc.term.expr.top:5 #-}
-{-# OPTIONS --verbose tc.sample.debug:20 #-}
+-- {-# OPTIONS --verbose tc.sample.debug:20 #-}
 
 open import Agda.Builtin.Reflection
 open import Agda.Primitive
@@ -16,7 +16,6 @@ open import Automation.generateHit
 open import Agda.Builtin.Equality
 open import CryptDB_HoTT.agda_lib.Utils
 open import CryptDB_HoTT.agda_lib.Vector
--- open import CryptDB_HoTT.agda_lib.Equiv
 
 open import CryptDB_HoTT.cryptography.Paillier-Cryptosystem
 open import CryptDB_HoTT.cryptography.RSA-Cryptosystem
@@ -35,7 +34,7 @@ getTermRecDep g ils irefs f 0 args (def ty y) = bindTC (generateRefTerm args)
 getTermRecDep g ils irefs f ref args (def ty y) = bindTC (generateRef ref)
                                             (λ ls → bindTC (generateRefTerm ls)
                                             (λ fargs → bindTC (getLength fargs)
-                                            (λ len → bindTC (returnTC (map (λ z → z + len) args)) -- (addToList len args) 
+                                            (λ len → bindTC (returnTC (map (λ z → z + len) args))
                                             (λ gargs' → bindTC (generateRefTerm gargs')
                                             (λ gargs → bindTC (generateMapRef (f + len) fargs g gargs len)
                                             (λ tm → returnTC tm))))))
@@ -85,7 +84,7 @@ getClauseDep l ref R ty indList lcons = bindTC (getIndexRefInfo R indList lcons)
 getMapConstructorTypeInd : (Cref : Nat) → (pars : List Nat) → (inds : List Nat) → (args : List Nat) → (R : Name) → (mapTy : Bool) → (ctype : Type) → (cns : Name) → Type → TC Type
 getMapConstructorTypeInd Cref pars inds args R mapTy ctype cns (pi (arg info t1) (abs s t2)) = bindTC (checkCdm (def R []) t1) λ
                                                                          { true → bindTC (returnTC (map (λ z → z + 2) pars)) -- +1 for Rcons (t1') and +1 for Ccons (cdom')
-                                                                                         (λ pars' → bindTC (returnTC ((pars' ∷L 1) ∷L 0)) -- 1 for t1' and 0 for cdom'
+                                                                                         (λ pars' → bindTC (returnTC (pars' ∷L 1)) -- 1 for t1' and 0 for cdom' -- ((pars' ∷L 1) ∷L 0)
                                                                                          (λ pars'' → bindTC (returnTC (map (λ z → z + 1) pars)) -- +1 for Rcons (t1')
                                                                                          (λ pars''' → bindTC (returnTC (map (λ z → z + 1) inds)) -- +1 for Rcons (t1') and +1 for Ccons (cdom')
                                                                                          (λ inds' → bindTC (returnTC (map (λ z → z + 2) inds)) -- +1 for Rcons (t1') and +1 for Ccons (cdom')
@@ -215,13 +214,11 @@ getRtypeInd R ref indLs x = returnTC unknown
 
 generateInd : Arg Name → Name → (indexList : List Nat) → TC ⊤
 generateInd (arg i f) t indLs =
-  bindTC (getIndex2 t indLs) λ indLs' →
+  bindTC (getIndex t indLs) λ indLs' →
   bindTC (getConstructors t) λ cns →
   bindTC (getLength cns) λ lcons →
   bindTC (getClauseDep lcons zero t f indLs' cns) λ cls →
   bindTC (getType t) λ RTy →
   bindTC (getRtypeInd t zero indLs' RTy) λ funType → 
-  bindTC (debugPrint "tc.sample.debug" 20 (strErr "issue : $generateInd1 -->" ∷ termErr funType ∷ [])) λ _ → 
   bindTC (declareDef (arg i f) funType) λ _ →
-  bindTC (debugPrint "tc.sample.debug" 20 (strErr "issue : $generateInd2 -->" ∷ termErr funType ∷ [])) λ _ → 
   (defineFun f cls)

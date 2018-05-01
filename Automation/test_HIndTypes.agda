@@ -2,7 +2,6 @@
 -- {-# OPTIONS --verbose tc.unquote.def:10 #-}
 -- {-# OPTIONS --verbose tc.term.expr.top:5 #-}
 -- {-# OPTIONS --verbose tc.sample.debug:12 #-}
--- {-# OPTIONS --type-in-type #-}
 
 open import Agda.Builtin.Reflection
 open import Agda.Primitive

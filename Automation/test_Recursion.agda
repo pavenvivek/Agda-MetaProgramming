@@ -94,10 +94,10 @@ data Fin : Nat → Set where
 unquoteDecl recFin = generateRec (vArg recFin)
                                  (quote Fin) []
 
-recFin' : {n : Nat} → (xs : Fin n) → (C : Set) → (cnil : {n : Nat} → C) →
+recFin' : {n : Nat} → (xs : Fin n) → (C : Set) → (cnil : C) → -- (cnil : {n : Nat} → C) →
          (csuc : {n : Nat} → (x : Fin n) → C → C) → C
-recFin' (Fin.zero {n}) C cnil csuc = cnil {n}
-recFin' (Fin.suc {n} x) C cnil csuc = csuc {n} x (recFin' x C (cnil {n}) csuc)
+recFin' (Fin.zero {n}) C cnil csuc = cnil
+recFin' (Fin.suc {n} x) C cnil csuc = csuc {n} x (recFin' x C cnil csuc)
 
 thm4 : thm-prv recFin' ≡ thm-prv recFin
 thm4 = refl

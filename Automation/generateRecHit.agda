@@ -107,7 +107,7 @@ getPaths baseRec CRefBase pars cons baseTyp indTyp (x ∷ xs) = bindTC (returnTC
                                                         (λ ty → bindTC (getParameters baseTyp)
                                                         (λ d → bindTC (rmPars d ty)
                                                         (λ ty' → bindTC (debugPrint "tc.sample.debug" 10 (strErr "issue : getPaths" ∷ []))
-                                                        (λ _ → bindTC (getIndex baseTyp)
+                                                        (λ _ → bindTC (getIndex' baseTyp)
                                                         (λ index → bindTC (getMapConstructorPathType baseRec pars cons [] indTyp index ty')
                                                         (λ x' → returnTC (pi (vArg x') (abs "_" xs')))))))))))
 
