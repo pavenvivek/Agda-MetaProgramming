@@ -23,8 +23,6 @@ open import Automation.generateInd
 open import Automation.generateHit
 open import Automation.generateRecHit
 open import Automation.generateIndHit
-open import Automation.generateBetaRec
-open import Automation.generateBetaInd
 open import Automation.reflectionUtils
 open import Automation.pathUtils
 
@@ -71,28 +69,18 @@ module History_hit where
                                         (quote #History) (1 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ [])
 
 
-  unquoteDecl recHistory = generateRecHit (vArg recHistory)
-                                          (quote #History) (1 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ [])
-                                          (quote recHistory*)
-                                          (quote History) Recpoints Recpaths
-
-  unquoteDecl βrecHistory-paiHom = generateβRecHit ((vArg βrecHistory-paiHom) ∷ [])
-                                            (quote #History) (1 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ [])
-                                            (quote recHistory*)
-                                            (quote History) (quote recHistory) Recpoints Recpaths
+  unquoteDecl recHistory βrecHistory-paiHom = generateRecHit (vArg recHistory) ((vArg βrecHistory-paiHom) ∷ [])
+                                                             (quote #History) (1 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ [])
+                                                             (quote recHistory*)
+                                                             (quote History) Recpoints Recpaths
 
   unquoteDecl indHistory* = generateInd (vArg indHistory*)
                                         (quote #History) (1 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ [])
 
-  unquoteDecl indHistory = generateIndHit (vArg indHistory)
-                                          (quote #History) (1 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ [])
-                                          (quote indHistory*)
-                                          (quote History) Recpoints Recpaths
-
-  unquoteDecl βindHistory-paiHom = generateβIndHit ((vArg βindHistory-paiHom) ∷ [])
-                                            (quote #History) (1 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ [])
-                                            (quote indHistory*)
-                                            (quote History) (quote indHistory) Recpoints Recpaths
+  unquoteDecl indHistory βindHistory-paiHom = generateIndHit (vArg indHistory) ((vArg βindHistory-paiHom) ∷ [])
+                                                             (quote #History) (1 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ [])
+                                                             (quote indHistory*)
+                                                             (quote History) Recpoints Recpaths
 
 
   postulate
@@ -207,39 +195,32 @@ module Document_hit where
                                        (quote #cryptR) (0 ∷ 0 ∷ 0 ∷ 0 ∷ 0 ∷ [])
 
 
-  unquoteDecl reccryptR = generateRecHit (vArg reccryptR)
-                                         (quote #cryptR) (0 ∷ 0 ∷ 0 ∷ 0 ∷ 0 ∷ [])
-                                         (quote reccryptR*)
-                                         (quote cryptR) cryptRpoints cryptRpaths
-
-  unquoteDecl βreccryptR-insertQ βreccryptR-deleteQ βreccryptR-rsaE βreccryptR-rsaD βreccryptR-paillierE βreccryptR-paillierD
+  unquoteDecl reccryptR βreccryptR-insertQ βreccryptR-deleteQ βreccryptR-rsaE βreccryptR-rsaD βreccryptR-paillierE βreccryptR-paillierD
               βreccryptR-OPEE βreccryptR-OPED βreccryptR-ElgRSAE βreccryptR-ElgRSAD βreccryptR-ElgOPEE βreccryptR-ElgOPED
-              βreccryptR-increment100 βreccryptR-crypt-inc βreccryptR-id = generateβRecHit ((vArg βreccryptR-insertQ) ∷ (vArg βreccryptR-deleteQ) ∷ (vArg βreccryptR-rsaE) ∷ (vArg βreccryptR-rsaD) ∷
-                                                                                            (vArg βreccryptR-paillierE) ∷ (vArg βreccryptR-paillierD) ∷ (vArg βreccryptR-OPEE) ∷ (vArg βreccryptR-OPED) ∷
-                                                                                            (vArg βreccryptR-ElgRSAE) ∷ (vArg βreccryptR-ElgRSAD) ∷ (vArg βreccryptR-ElgOPEE) ∷ (vArg βreccryptR-ElgOPED) 
-                                                                                            ∷ (vArg βreccryptR-increment100) ∷ (vArg βreccryptR-crypt-inc) ∷ (vArg βreccryptR-id) ∷ [])
-                                                                                           (quote #cryptR) (0 ∷ 0 ∷ 0 ∷ 0 ∷ 0 ∷ [])
-                                                                                           (quote reccryptR*)
-                                                                                           (quote cryptR) (quote reccryptR) cryptRpoints cryptRpaths
-
+              βreccryptR-increment100 βreccryptR-crypt-inc βreccryptR-id
+              = generateRecHit (vArg reccryptR)
+                               ((vArg βreccryptR-insertQ) ∷ (vArg βreccryptR-deleteQ) ∷ (vArg βreccryptR-rsaE) ∷ (vArg βreccryptR-rsaD) ∷
+                                (vArg βreccryptR-paillierE) ∷ (vArg βreccryptR-paillierD) ∷ (vArg βreccryptR-OPEE) ∷ (vArg βreccryptR-OPED) ∷
+                                (vArg βreccryptR-ElgRSAE) ∷ (vArg βreccryptR-ElgRSAD) ∷ (vArg βreccryptR-ElgOPEE) ∷ (vArg βreccryptR-ElgOPED) ∷
+                                (vArg βreccryptR-increment100) ∷ (vArg βreccryptR-crypt-inc) ∷ (vArg βreccryptR-id) ∷ [])
+                               (quote #cryptR) (0 ∷ 0 ∷ 0 ∷ 0 ∷ 0 ∷ [])
+                               (quote reccryptR*)
+                               (quote cryptR) cryptRpoints cryptRpaths
 
   unquoteDecl indcryptR* = generateInd (vArg indcryptR*)
                                        (quote #cryptR) (0 ∷ 0 ∷ 0 ∷ 0 ∷ 0 ∷ [])
 
-  unquoteDecl indcryptR = generateIndHit (vArg indcryptR)
-                                         (quote #cryptR) (0 ∷ 0 ∷ 0 ∷ 0 ∷ 0 ∷ [])
-                                         (quote indcryptR*)
-                                         (quote cryptR) cryptRpoints cryptRpaths
-
-  unquoteDecl βindcryptR-insertQ βindcryptR-deleteQ βindcryptR-rsaE βindcryptR-rsaD βindcryptR-paillierE βindcryptR-paillierD
+  unquoteDecl indcryptR βindcryptR-insertQ βindcryptR-deleteQ βindcryptR-rsaE βindcryptR-rsaD βindcryptR-paillierE βindcryptR-paillierD
               βindcryptR-OPEE βindcryptR-OPED βindcryptR-ElgRSAE βindcryptR-ElgRSAD βindcryptR-ElgOPEE βindcryptR-ElgOPED
-              βindcryptR-increment100 βindcryptR-crypt-inc βindcryptR-id = generateβIndHit ((vArg βindcryptR-insertQ) ∷ (vArg βindcryptR-deleteQ) ∷ (vArg βindcryptR-rsaE) ∷ (vArg βindcryptR-rsaD) ∷
-                                                                                            (vArg βindcryptR-paillierE) ∷ (vArg βindcryptR-paillierD) ∷ (vArg βindcryptR-OPEE) ∷ (vArg βindcryptR-OPED) ∷
-                                                                                            (vArg βindcryptR-ElgRSAE) ∷ (vArg βindcryptR-ElgRSAD) ∷ (vArg βindcryptR-ElgOPEE) ∷ (vArg βindcryptR-ElgOPED)
-                                                                                            ∷ (vArg βindcryptR-increment100) ∷ (vArg βindcryptR-crypt-inc) ∷ (vArg βindcryptR-id) ∷ [])
-                                                                                           (quote #cryptR) (0 ∷ 0 ∷ 0 ∷ 0 ∷ 0 ∷ [])
-                                                                                           (quote indcryptR*)
-                                                                                           (quote cryptR) (quote indcryptR) cryptRpoints cryptRpaths
+              βindcryptR-increment100 βindcryptR-crypt-inc βindcryptR-id
+              = generateIndHit (vArg indcryptR)
+                               ((vArg βindcryptR-insertQ) ∷ (vArg βindcryptR-deleteQ) ∷ (vArg βindcryptR-rsaE) ∷ (vArg βindcryptR-rsaD) ∷
+                                (vArg βindcryptR-paillierE) ∷ (vArg βindcryptR-paillierD) ∷ (vArg βindcryptR-OPEE) ∷ (vArg βindcryptR-OPED) ∷
+                                (vArg βindcryptR-ElgRSAE) ∷ (vArg βindcryptR-ElgRSAD) ∷ (vArg βindcryptR-ElgOPEE) ∷ (vArg βindcryptR-ElgOPED) ∷
+                                (vArg βindcryptR-increment100) ∷ (vArg βindcryptR-crypt-inc) ∷ (vArg βindcryptR-id) ∷ [])
+                               (quote #cryptR) (0 ∷ 0 ∷ 0 ∷ 0 ∷ 0 ∷ [])
+                               (quote indcryptR*)
+                               (quote cryptR) cryptRpoints cryptRpaths
 
 
   paillier-homRToC : {n : Nat} → (p q : Nat) → (i : Nat) → (r : History 0 n) → (ctab  (PAILLIER-DECRYPT p , q :: (CRYPT-INCREMENT100 p , q , i :: (PAILLIER-ENCRYPT p , q :: r))))

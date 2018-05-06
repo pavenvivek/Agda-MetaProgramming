@@ -23,13 +23,8 @@ getRecArgs2 args inds irefs = bindTC (dropTC 1 args) -- drop C
                                     (λ argsR → returnTC (argC' ++L argsR)))))
 
 generateMapRefRec2 : (f : Nat) → (fargs : List (Arg Term)) → (g : Name) → (args : List Nat) → (inds : List Nat) → (irefs : List (List Bool)) → Nat → TC Term
-generateMapRefRec2 f fargs g args inds irefs 0 =  bindTC (debugPrint "tc.sample.debug" 20 (strErr "issue :  generateMapRefRec2 -->" ∷ [])) λ _ →
-                                                        bindTC (printList args) λ _ →
-                                                        bindTC (generateRefTerm args)
-                                                        (λ largs →
-                                                        bindTC (debugPrint "tc.sample.debug" 20 (strErr "issue :  generateMapRefRec2 largs -->" ∷ [])) λ _ →
-                                                        bindTC (printArgs largs) λ _ →
-                                                        returnTC (def g (vArg (var f fargs) ∷ largs)))
+generateMapRefRec2 f fargs g args inds irefs 0 =  bindTC (generateRefTerm args)
+                                                  (λ largs → returnTC (def g (vArg (var f fargs) ∷ largs)))
 generateMapRefRec2 f fargs g args inds irefs (suc x) = bindTC (generateMapRefRec2 f fargs g args inds irefs x)
                                                              (λ y → returnTC (lam visible (abs "lx" y)))
                                                              
@@ -191,4 +186,4 @@ generateRec (arg i f) t indLs =
   bindTC (getType t) λ RTy → 
   bindTC (getRtype t indLs' zero RTy) λ funType →
   bindTC (declareDef (arg i f) funType) λ _ →
-  (defineFun f cls) -- λ _ →
+  (defineFun f cls)
