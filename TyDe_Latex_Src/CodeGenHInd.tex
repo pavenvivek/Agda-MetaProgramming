@@ -175,7 +175,7 @@ Type theory, a foundational language of mathematics, is a functional programming
 
 Proof assistants like Coq \cite{Coq-2009} and Agda \cite{Agda-2007} does not have built-in mechanisms to support the specification of higher inductive types. However, we can work with higher inductive types in Coq and Agda by postulating them using axioms. In this approach, the elimination rule acting on the higher inductive type does not compute. Dan Licata suggested an alternative method to work with higher inductive types using type abstraction \cite{Licata-2011}. It involves defining a higher inductive type using an abstract type inside a module. The module consists of a boiler-plate code segment which defines the higher inductive type using a private base type. Inside the module, the recursion and the induction principles acts on the constructors of the private base type. The abstract type is then exported allowing the reduction rules for point constructors to hold definitionally.
 
-Agda is a proof-assistant based on Martin-Löf’s intensional type theory. In Agda, a metaprogram, which is a programs used to construct other programs, runs in a built-in type checking monad. Inspired by Idris’s elaborator \cite{David-2016}, Agda’s reflection library expose an interface to the type checker using the type checking monad which allows for the construction of more interesting metaprograms. The type checking monad provides the interface to the Agda type checker through a set of primitive operations which can be used to retrieve static type information regarding various code segments. The primitive operations can also be used to build code fragments using constructs of abstract syntax tree, and to convert an abstract syntax tree to its concrete syntax.
+Agda is a proof-assistant based on Martin-Löf’s intensional type theory. In Agda, a metaprogram, which are programs used to construct other programs, run in a built-in type checking monad. Inspired by Idris’s elaborator \cite{David-2016}, Agda’s reflection library expose an interface to the type checker using the type checking monad which allows for the construction of more interesting metaprograms. The type checking monad provides the interface to the Agda type checker through a set of primitive operations which can be used to retrieve static type information regarding various code segments. The primitive operations can also be used to build code fragments using constructs of abstract syntax tree, and to convert an abstract syntax tree to its concrete syntax.
 
 In this paper, we discuss a tool used to automate the generation of bolier-plate code segments of the higher inductive type and its reduction rules. This tool extensively uses the Agda reflection library and it builds the abstract syntax tree of the code segments with static type informations obtained using the reflection primitives. The generated code is then brought into scope by another top-level reflection primitive. More specifically, we discuss the following contributions.
 
@@ -796,26 +796,26 @@ To construct the recursion principle $f$, we need to build the type of points $d
 \fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}[frame = single]
 
-   (pi (vArg (agda-sort (lit 0)))                    -- P
+   (pi (vArg (agda-sort (lit 0)))                  -- P
       (abs "P"
-      (pi (vArg (pi (vArg (def (quote A) []))        -- d₁ : A → P
-      (abs "_" (var 1 []))))                         -- P ref
+   (pi (vArg (pi (vArg (def (quote A) []))         -- d₁ : A → P
+      (abs "_" (var 1 []))))                       -- P ref
       (abs "d₁"
-      (pi (vArg (pi (vArg (def (quote B) []))        -- d₂ : B → P
-      (abs "_" (var 2 []))))                         -- P ref
+   (pi (vArg (pi (vArg (def (quote B) []))         -- d₂ : B → P
+      (abs "_" (var 2 []))))                       -- P ref
       (abs "d₂"
-      (pi (vArg                                      -- h
-      (pi (vArg (def (quote A) []))                  -- α : A
+   (pi (vArg                                       -- h
+      (pi (vArg (def (quote A) []))                -- α : A
       (abs "α"
-      (pi (vArg (def (quote B) []))                  -- β : B
+      (pi (vArg (def (quote B) []))                -- β : B
       (abs "β"
       (def (quote _≡_)
-       vArg (var 3                                   -- d₁ ref
-            (vArg (var 1 []) :: [])) ::              -- α ref
-       vArg (var 2                                   -- d₂ ref
-            (vArg (var 0 []) :: [])) :: []))))))     -- β ref
+         vArg (var 3                               -- d₁ ref
+            (vArg (var 1 []) :: [])) ::            -- α ref
+         vArg (var 2                               -- d₂ ref
+            (vArg (var 0 []) :: [])) :: []))))))   -- β ref
       (abs "h" 
-      (pi (vArg (def (quote W) []))                  -- W → P
+   (pi (vArg (def (quote W) []))                   -- W → P
       (abs "_" (var 4 [])))))))))))
 
 \end{Verbatim}
@@ -833,8 +833,8 @@ The recursion rule $f$ corresponding to figure \eqref{fig:ast-f} is given by the
 \end{align}
 The computation rules for constructors $g_1$ and $g_2$ give the action of eliminator $f$ on input $g_1 (\alpha)$ and $g_2 (\beta)$ respectively. The computation rules say that the function $f$ maps the points $g_1 (\alpha)$ and $g_2 (\beta)$ to the points $d_1 (\alpha)$ and $d_2 (\beta)$ respectively in the output type $P$. We specify the clause definition to build the computation rules for $g_1$ and $g_2$ in the same way as for a regular inductive type (sec.~\ref{sec:sec3.1}) except that the clause definition for the higher inductive type $W$ has an additional reference variable to the path $h$. The following definitional equalities give the computation rules for $g_1$ and $g_2$.
 \begin{align}
-f (P, d_1, d_2, h, g_1 (\alpha)) \equiv d (\alpha) \nonumber \\
-f (P, d_1, d_2, h, g_2 (\beta)) \equiv d (\beta) \nonumber
+f (P, d_1, d_2, h, g_1 (\alpha)) \equiv d_1 (\alpha) \nonumber \\
+f (P, d_1, d_2, h, g_2 (\beta)) \equiv d_2 (\beta) \nonumber
 \end{align}
 
 The computation rule for the path constructor $l$ defines the action of function $f$ on the path $(l \, \alpha \, \beta)$. In type theory, the functions are functorial, and they preserve the path structures in their mapping to the output type \citep{HoTT-2013}. The function $ap_f$ \eqref{eq:ap} defines the action of the non-dependent eliminator $f$ on the path $l$. Using \eqref{eq:ap}, we can build the computation rule for the path $l$ as follows.
@@ -921,6 +921,156 @@ The computation rule $\beta_f$ exists only as propositional equality. We build t
 \end{center}
 
 The term {\tt βrecS₁} represents the computation rule for the path constructor {\tt loop} and is brought into scope by {\tt unquoteDecl}.
+
+\subsection{Dependent Eliminator}
+\label{sec:sec4.3}
+
+Dependent eliminator or the induction principle of a higher inductive type $W$ is a dependent function that maps an element $\omega$ of $W$ to an output type $P \, \omega$. For the type $W$ with point constructors $g_1 : A \rightarrow W$ and $g_2 : B \rightarrow W$ and path constructor $l : (\alpha \rightarrow A) \rightarrow (\beta \rightarrow B) \rightarrow (g_1 \, \alpha) \equiv (g_2 \, \beta)$, to define a mapping $f' : (\omega : W) \rightarrow P \, \omega$, we need $d_1 : (\alpha : A) \rightarrow P \, \alpha$, $d_2 : (\beta : B) \rightarrow P \, \beta$, and $h : (\alpha \rightarrow A) \rightarrow (\beta : B) \rightarrow transport \, P \, (l \, \alpha \, \beta) \, (d_1 \, \alpha) \equiv (d_2 \, \beta)$, where $(h \, \alpha \, \beta)$ is a heterogeneous path transported over $(l \, \alpha \, \beta)$ lying in the space $P \, \beta$. Equation \eqref{eq:transport} gives the type of $transport$.
+
+\begin{figure}
+\begin{center}
+\begingroup
+\fontsize{7pt}{9pt}\selectfont
+\begin{Verbatim}[frame = single]
+
+  (pi (vArg (`W `⇒ agda-sort (lit 0)))
+     (abs "P"
+  (pi (vArg
+     (pi (vArg `A)
+     (abs "α"
+     (var 1 (vArg (con (quote g₁) 
+              (vArg (var 0 []) :: [])) :: [])))))
+     (abs "d₁"
+  (pi (vArg
+     (pi (vArg `B)
+     (abs "β"
+     (var 2 (vArg (con (quote g₂) 
+              (vArg (var 0 []) :: [])) :: [])))))
+     (abs "d₂"
+  (pi (vArg
+     (pi (vArg `A)
+     (abs "α"
+     (pi (vArg `B)
+     (abs "β"
+     (def (quote _≡_)
+       (vArg (def (quote transport)
+         (vArg (var 4 []) ::
+          vArg (def (quote l) (vArg (var 1 []) :: 
+          vArg (var 0 []) :: [])) ::
+          vArg (var 3 (vArg (var 1 []) :: [])) :: [])) :: 
+       vArg (var 2 (vArg (var 0 []) :: [])) :: [])))))))
+     (abs "h"
+  (pi (vArg `W)
+     (abs "ω" (var 4 (vArg (var 0 []) :: [])))))))))))
+
+\end{Verbatim}
+\endgroup
+\end{center}
+\caption{Abstract syntax tree of function $f'$}
+\label{fig:ast-ind-f'}
+\end{figure}
+
+In the abstract syntax tree of $f'$ (fig. \ref{fig:ast-ind-f'}), the type of constructors $d_1$ and $d_2$ are built from the type of $g_1$ and $g_2$ respectively using the same approach as in section \eqref{sec:sec3.2}. When building the type of $d_1$, we copy the constant argument $A$ directly into the abstract syntax tree of $d_1$, and for the codomain P, which depends on the action of constructor $g_1$ on the constant argument $\alpha : A$, we pass the de-bruijn index reference of $\alpha$ as an argument to the constructor $g_1$ built using the reflection construct {\tt con}. Similarly, for $d_2$, we copy the type $B$ directly into the abstract syntax tree of $d_2$ and pass the de-bruijn index of $\beta : B$ to the constructor $g_2$ in the co-domain. We build the type of path $h$ by traversing the abstract syntax tree of $l$ and adding relevant type information into it. We copy the constant arguments of type $A$ and $B$ without modification. For the codomain of $l$, which is the identity type $(g_1 \, \alpha) \equiv (g_2 \, \beta)$, we insert the quoted {\tt name} of function $transport$ with arguments $P$, the path $(l \, \alpha \, \beta)$ and $(d_1 \, \alpha)$. We apply the base eliminator to the arguments of the path $(l \, \alpha \, \beta)$ to form the elements $(d_1 \, \alpha)$ and $(d_2 \, \beta)$. The following declaration gives the type of $f'$ corresponding to figure \eqref{fig:ast-ind-f'}. 
+\begin{align}
+& f' : (P : W \rightarrow Set) \rightarrow \nonumber \\
+& \hspace {0.6cm} (d_1 : (\alpha : A) \rightarrow P (g_1 \, \alpha)) \rightarrow (d_2 : (\beta : B) \rightarrow P (g_2 \, \beta)) \rightarrow \nonumber \\ 
+& \hspace {0.6cm} (h : (\alpha : A) \rightarrow (\beta : B) \rightarrow \nonumber \\
+& \hspace {1.2cm} transport \, P \, (l \, \alpha \, \beta) (d_1 \, \alpha) \equiv (d_2 \, \beta)) \rightarrow \nonumber \\
+& \hspace {0.6cm} (\omega : W) \rightarrow P (\omega) \nonumber
+\end{align}
+
+We build the computation rules corresponding to the mapping $f'$ for the point constructors $g_1$ and $g_2$ using the same approach as for the non-dependent eliminator $f$. The following equations give the computation rules for the point constructors $g_1$ and $g_2$.
+\begin{align}
+f' (P, d_1, d_2, h, g_1 (\alpha)) \equiv d_1 (\alpha) \nonumber \\
+f' (P, d_1, d_2, h, g_2 (\beta)) \equiv d_2 (\beta) \nonumber
+\end{align}
+
+The computation rule $\beta_{f'}$ for the heterogeneous path $h$ depends on $apd$ \eqref{eq:apd} which gives the action of dependent function $f'$ on the path $h$. We build the type of $\beta_{f'}$ using \eqref{eq:apd} as follows.
+\begin{align}
+&\beta_{f'} : (P : W \rightarrow Set) \rightarrow \nonumber \\
+& \hspace {0.6cm} (d_1 : (\alpha : A) \rightarrow P (g_1 \, \alpha)) \rightarrow (d_2 : (\beta : B) \rightarrow P (g_2 \, \beta)) \rightarrow \nonumber \\ 
+& \hspace {0.6cm} (h : (\alpha : A) \rightarrow (\beta : B) \rightarrow \nonumber \\
+& \hspace {1.2cm} transport \, P \, (l \, \alpha \, \beta) (d_1 \, \alpha) \equiv (d_2 \, \beta)) \rightarrow \nonumber \\
+& \hspace {0.6cm} apd_{(\lambda x \rightarrow f'(P, d_1, d_2, h, x))}(l \, \alpha \, \beta) \equiv (h \, \alpha \, \beta) \nonumber
+\end{align}
+
+\begin{figure}
+\begin{center}
+\begingroup
+\fontsize{7pt}{9pt}\selectfont
+\begin{Verbatim}[frame = single]
+
+   (def (quote _≡_) 
+      (vArg (def (quote apd)                       -- apd
+         (vArg (lam visible (abs "x"               -- x
+            (def (quote f')                        -- f
+               (vArg (var 6 []) ::                 -- P ref
+                vArg (var 5 []) ::                 -- d₁ ref
+                vArg (var 4 []) ::                 -- d₂ ref
+                vArg (var 3 []) ::                 -- h ref
+                vArg (var 0 []) :: [])))) ::       -- x ref
+          vArg (def (quote l)                      -- l
+             (vArg (var 1 []) ::                   -- α ref
+              vArg (var 0 []) :: [])) :: [])) ::   -- β ref
+          vArg (var 2                              -- h ref
+             (vArg (var 1 []) ::                   -- α ref
+              vArg (var 0 []) :: [])) :: []))      -- β ref
+             
+\end{Verbatim}
+\endgroup
+\end{center}
+\caption{Abstract syntax tree for the term representing the action of dependent function $f'$ on path $l$}
+\label{fig:ast-beta-f'}
+\end{figure}
+
+We build the abstract syntax tree for the computation rule $\beta_{f'}$ in the same way as for induction principle $f'$. In the codomain of $\beta_{f'}$ (fig.~\ref{fig:ast-beta-f'}), which is an identity type, we insert the abstract representation of the function $apd$ with arguments $f'$, nested inside a lambda body, and the path $(l \, \alpha \, \beta)$. We pass the path $(h \, \alpha \, \beta)$, built using de-bruijn indices, as the second argument to the identity type. The following code gives the implementation of the {\tt generateIndHit} interface in the automation tool.
+
+\begin{center}
+\begingroup
+\fontsize{7pt}{9pt}\selectfont
+\begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
+
+  generateIndHit : Arg Name → List (Arg Name) → 
+    (baseType : Name) → (indLs : List Nat) → 
+    (baseElm : Name) → (indType : Name) → 
+    (points : List Name) → (paths : List Name) → TC ⊤
+  generateIndHit (arg i f) argD b indLs elm ind p1 p2 =
+    bindTC (getIndex base indLs) λ il →
+    bindTC (getConstructors base) λ lcons → 
+    bindTC (getLength points) λ l1 →
+    bindTC (getLength paths) λ l2 →
+    bindTC (getPathClauseDep l1 l2 base elm il lcons) λ cl →
+    bindTC (getType baseType) λ RTy →
+    bindTC (getRtypePathDep base ind elm p1 p2 zero il RTy) λ fty →
+    bindTC (declareDef (arg i f) fty) λ _ →
+    bindTC (defineFun f cl) λ _ →
+    (generateβIndHit argD base indLs elm ind f points paths)
+
+\end{Verbatim}
+\endgroup
+\end{center}
+
+The interface {\tt generateIndHit} takes the base eliminator as an argument and uses that to map the point constructors $g_1$ and $g_2$ to output $d_1$ and $d_2$ when building the codomain of the path constructor $h$. {\tt generateβIndHit} builds the computation rule for the path constructor $h$. The following code builds the induction principle and the computation rules for {\tt Circle}.
+
+\begin{center}
+\begingroup
+\fontsize{8pt}{9pt}\selectfont
+\begin{Verbatim}
+
+  unquoteDecl indS₁* = generateInd (vArg indS₁*)
+                          (quote S₁*) []
+
+  unquoteDecl indS₁ βindS₁ = generateIndHit (vArg indS₁) 
+                                ((vArg βindS₁) :: [])
+                                (quote S₁*) []
+                                (quote indS₁*)
+                                (quote S₁) S₁points S₁paths
+
+\end{Verbatim}
+\endgroup
+\end{center}
+
+The primitive {\tt unquoteDecl} declares {\tt βindS₁} as a postulate. {\tt βindS₁} gives the action of dependent function {\tt indS₁} on the path constructor {\tt loop}.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{sigproc} 
