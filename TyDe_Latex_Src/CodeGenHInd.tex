@@ -177,7 +177,7 @@ Proof assistants like Coq \cite{Coq-2009} and Agda \cite{Agda-2007} does not hav
 
 Agda is a proof-assistant based on Martin-Löf’s intensional type theory. In Agda, a metaprogram, which are programs used to construct other programs, run in a built-in type checking monad. Inspired by Idris’s elaborator \cite{David-2016}, Agda’s reflection library expose an interface to the type checker using the type checking monad which allows for the construction of more interesting metaprograms. The type checking monad provides the interface to the Agda type checker through a set of primitive operations which can be used to retrieve static type information regarding various code segments. The primitive operations can also be used to build code fragments using constructs of abstract syntax tree, and to convert an abstract syntax tree to its concrete syntax.
 
-In this paper, we discuss a tool used to automate the generation of bolier-plate code segments of the higher inductive type and its reduction rules. This tool extensively uses the Agda reflection library and it builds the abstract syntax tree of the code segments with static type informations obtained using the reflection primitives. The generated code is then brought into scope by another top-level reflection primitive. More specifically, we discuss the following contributions.
+In this paper, we discuss a tool used to automate the generation of bolier-plate code segments of the higher inductive type and its elimination and computation rules. This tool extensively uses the Agda reflection library and it builds the abstract syntax tree of the code segments with static type informations obtained using the reflection primitives. The generated code is then brought into scope by another top-level reflection primitive. More specifically, we discuss the following contributions.
 
 \begin{itemize}
 \item We introduce a tool to automate construction of the recursion and the induction principles for inductive types with constructors taking zero arguments, one or more arguments, and the type being defined itself as an argument.
@@ -190,7 +190,7 @@ In this paper, we discuss a tool used to automate the generation of bolier-plate
 
 \end{itemize}
 
-We automated the code generation of approximately 1500 lines of code of the patch theory implementation with just 70 lines of automation code. The automation code extensively uses the static type information queried from the type checker using the reflection primitives.
+The automation tool abstracts the implementation difficulties of a higher inductive type and its recursion and induction principles. We automated the code generation of approximately 1500 lines of code of the patch theory implementation with just 70 lines of automation code. The automation code extensively uses the static type information queried from the type checker using the reflection primitives.
 
 \section{Background}
 \label{sec:sec2}
@@ -1071,6 +1071,18 @@ The interface {\tt generateIndHit} takes the base eliminator as an argument and 
 \end{center}
 
 The primitive {\tt unquoteDecl} declares {\tt βindS₁} as a postulate. {\tt βindS₁} gives the action of dependent function {\tt indS₁} on the path constructor {\tt loop}.
+
+\section{Application}
+The field of homotopy type theory is less well-developed on the programming side. There are only few programming applications of homotopy type theory, and the role of computationally relevant equality proofs on programming is an area of active research. Applications such as homotopical patch theory \cite{Angiuli-2014} discuss the implementation of Darcs \cite{Darcs-2005} version control system using patch theory \cite{Mimram-2013} \cite{Jason-2009} in the context of homotopy type theory. Containers in homotopy type theory \cite{Altenkirch-2014} \cite{Abbott-2005} implement data structures such as multisets and cycles. The automation tool discussed in this paper abstracts away the difficulties involved in the implementation of a higher inductive type and its elimination rules. It introduces interfaces which simplify the intricacies of a higher inductive type definition and usage by automating the generation of the code segments defining the higher inductive type and its elimination rules. The automation tool is significant in reducing the development effort for existing applications, and it can also attract new programming applications in homotopy type theory.
+
+In the following section, we discuss the implementation of patch theory application in Agda using the automation tool.
+
+\subsection{Patch Theory Revisited}
+A patch is a syntactic representation of a function that modifies a repository context when applied. For example, a patch $(s1 \leftrightarrow s2 \, @ \, l)$, which replaces string s1 with s2 at line l, when applied to a repository context with string s1 at line l results in a repository context with string s2 at line l. In homotopical patch theory \cite{Angiuli-2014}, the patches are modeled as paths in a higher inductive type. The higher inductive type representation of patches automatically satisfy groupoid laws such as the composition of patches is associative, and inverse composes to identity. Domain-specific laws related to the patches such as two swaps at independent lines commute are designed as higher dimensional paths. The computation content of the patches is extracted by mapping them to bijections in the universe with the help of univalence. Due to the functoriality of mappings in type theory, the functions preserve the path structures in their mapping to the universe.
+
+We developed the patch theory application in Agda using Dan Licata's method \cite{Licata-2011}. We implemented basic patches like the insertion of a string as line l1 in a file and deletion of a line l2 from a file. The functions implementing insertion and deletion in the universe are not bijective. So, to map the paths representing the patches insert and delete into the universe, we used the patch history approach \cite{Angiuli-2014}. According to this approach, we developed a separate higher inductive type $History$ which serves as the types of patches. In addition to basic patches, we also implemented patches of encryption using cryptosystems like rsa \cite{Rivest-1978} and paillier \cite{Paillier-1999}.
+
+We used the automation tool described in this paper to generate code for the higher inductive type definition representing $History$ and the repository context $cryptR$ for the patches. We also automated the code generation for the elimination and the computation rules for the higher inductive types $History$ and $cryptR$. In addition to abstracting the implementation difficulties of higher inductive types, the automation tool helped us to achieve an extensive reduction in the code size of the original application. We were able to automate the generation of approximately 1500 lines of code with just about 70 lines of automation code. The automation massively reduced the code size of the application which is about 2500 lines resulting in 60\% reduction in the original code size.
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{sigproc} 
