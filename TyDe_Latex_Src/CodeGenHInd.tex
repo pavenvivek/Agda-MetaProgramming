@@ -61,7 +61,7 @@
 
 
 \begin{document}
-\title{Metaprogramming using Elaborator Reflection}
+\title{Encoding Higher Inductive Types Without Boilerplate}
                                         %% when present, will be used in
                                         %% header instead of Full Title.
 %\titlenote{with title note}             %% \titlenote is optional;
@@ -134,7 +134,7 @@
 
 
 \begin{abstract}
-We present an automation tool with metaprogramming interfaces built using Agda's reflection library enhanced with support for elaborator reflection. We discuss code generation for defining elimination and computation rules for inductive types and higher inductive types. The metaprogramming interfaces are built using static type information queried from the type checker using Agda reflection primitives. The abstract syntax tree of dependent and non-dependent eliminators are built by invoking the interfaces. Reduction rules for point and path constructors are generated and brought into scope along with the eliminators using a top-level reflection primitive. The tool handles constructors of inductive type taking zero arguments, one or more arguments and the inductive type being defined itself as an argument. The automation tool abstracts away the intricacies of defining and using higher inductive types and helps to achieve an extensive amount of reduction in code size.
+Higher inductive types are inductive types that include nontrivial higher-dimensional structure, represented as identifications at the type that are not reflexivity. While work proceeds on type theories with a computational interpretation of univalence and higher inductive types, it is convenient to encode these structures in more traditional type theories. However, these encodings involve a great deal of error-prone additional syntax. We present a library that uses Agda's metaprogramming facilities to automate this process, allowing higher inductive types to be specified with minimal additional syntax.
 \end{abstract}
 
 %
