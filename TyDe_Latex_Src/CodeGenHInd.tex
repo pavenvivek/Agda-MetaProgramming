@@ -183,7 +183,7 @@ Elaborator reflection is a powerful mechanism which allows us to create more int
 
 \item We discuss the automation of code generation of the elimination and the computation rules for a higher inductive type with point and path constructors. We demonstrate the code generation of the reduction rules, specified as postulates, for the path constructors of the higher inductive type.
 
-\item We discuss the automation of code generation for patch theory \cite{Angiuli-2014} implementation enriched with patches of encryption. 
+\item We discuss the automation of code generation for patch theory \cite{Angiuli-2014} implementation enriched with patches of encryption. We also examine the usage of the automation tool in a cryptography application \cite{Paventhan-2018}.
 \end{itemize}
 
 The automation tool abstracts the implementation difficulties of a higher inductive type and its recursion and induction principles. We automated the code generation of approximately 1500 lines of code of the patch theory implementation with just 70 lines of automation code. The automation code extensively uses the static type information queried from the type checker using the reflection primitives.
@@ -1089,6 +1089,10 @@ We used the automation tool described in this paper to generate code for the hig
 The work of \cite{Paventhan-2018} applies the tools of homotopy type theory for cryptographic protocol implementation. It introduces a new approach for the formal specification of cryptographic schemes using types. The work discusses modeling $cryptDB$ \citep{Popa-2011} using a framework similar to patch theory. CryptDB employs layered encryption techniques and demonstrates computation on top of encrypted data. We can implement cryptDB by modeling the database queries as paths in a higher inductive type and mapping the paths to the universe using singleton types \cite{Angiuli-2014}. The automation tool can be applied to generate code for the higher inductive type representing cryptDB and its corresponding elimination and computation rules. By using the automation tool, we can abstract the convolutions of homotopy type theory thus making it more accessible to the broad community of cryptography.
 
 A formal specification of a cryptographic construction promises correctness of properties related to security and implementation. The downside of formal specification is that it introduces a framework which requires expert knowledge on theorem proving and a strong mathematical background. By automating the code constructions for the mathematical part such as the higher inductive type implementation, we simplify theorem proving and formal specification to a considerable extent and make it more accessible to regular programmers without a strong mathematical background.
+
+\section{Conclusion and Future Work}
+We presented an automation tool developed using the new reflection library of Agda extended with support for elaborator reflection. Our automation tool handles code generation for inductive types with constructors taking zero arguments, one or more arguments, and type being defined itself as an argument. We simplified the syntax for defining higher inductive types through the mechanized construction of the boiler-plate code segments. By automating the generation of the elimination and the computation rules associated with a higher inductive type, we demonstrated an extensive reduction in code size and abstraction of difficulties involved in implementing and using the higher inductive type. Next, we intend to extend the support to include more categories of the inductive type such as the inductive-inductive type and the inductive-recursive type.
+
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{sigproc} 
