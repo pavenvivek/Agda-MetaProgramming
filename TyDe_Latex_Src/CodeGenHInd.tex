@@ -193,24 +193,35 @@ The automation tool abstracts the implementation difficulties of a higher induct
 
 \subsection{Agda Reflection}
 \label{sec:sec2.1}
-Agda has a reflection library that enables compile time meta-programming. The reflection library provides an interface to the Agda type checker through a built-in type checking elaborator {\tt TC} monad. Using the reflection library and its meta-programming interface, we can convert a code fragment to its corresponding abstract syntax tree, and we can also convert the abstract representation back to its concrete agda code. Internally, agda translates the reflection code to a unique reflection syntax. The core library of Agda is enriched with functions supporting translations from reflection syntax to abstract syntax and from abstract syntax to concrete syntax and vice-versa. In this section, we will see usage examples for some of the primitive operations specified in the Agda reflection library which are used by the metaprogramming interfaces described in this paper. More information on the reflection library can be found in the Agda documentation \cite{Agda-doc-2017}.
+Agda's reflection library enables compile-time metaprogramming.
+This reflection library directly exposes parts of the implementation of Agda's type checker and elaborator for use by metaprograms, in a manner that is similar to Idris's elaborator reflection~\citep{davidphd,David-2016} and Lean's tactic metaprogramming~\citep{Ebner2017}.
+The type checker's implementation is exposed as effects in a monad called \texttt{TC}.
 
-In Agda, a macro is used to construct a metaprogram that executes in a {\tt Term} position. A macro is a function of type {\tt t1 → t2 → ... → Term → TC ⊤} defined inside a macro block. During a macro invocation, the last argument of type {\tt Term} is provided by the type checker, and it represents the metavariable instantiated with the result of the macro invocation. Also, the arguments of type {\tt Term} and {\tt Name} are automatically quoted. For example, consider the following macro invocation on an identity function.
+Agda exposes a representation of its syntax to metaprograms, including datatypes for expressions (called \texttt{Term}) and definitions (called \texttt{Definition}).
+The primitives exposed in \texttt{TC} include declaring new metavariables, unifying two \texttt{Term}s, declaring new definitions, adding new postulates, computing the normal form or weak head normal form of a \texttt{Term}, inspecting the current context, and constructing fresh names.
+This section describes the primitives that are used in our code generation library; more information on the reflection library can be found in the Agda documentation \cite{Agda-doc-2017}.
+
+\texttt{TC} computations can be invoked in three ways: by macros, which work in expression positions, using the \texttt{unquoteDecl} operator in a declaration position, which can bring new names into scope, and using the \texttt{unquoteDef} operator in a declaration position, which can automate constructions using names that are already in scope.
+This preserves the principle in Agda's design that the system never invents a name.
+
+An Agda \emph{macro} is a function of type {\tt $t_1$ → $t_2$ → $\ldots$ → Term → TC ⊤} that is defined inside a \texttt{macro} block.
+Macros are special: their last argument is automatically supplied by the type checker, and consists of a \texttt{Term} that represents the metavariable to be solved by the macro.
+If the remaining arguments are quoted names or \texttt{Term}s, then the type checker will automatically quote the arguments at the macro's use site.
+At some point, the macro is expected to unify the provided metavariable with some other term, thus solving it.
+For example, consider the following macro invocation on an identity function.
 
 %, fontsize=\relsize{-0.5}
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
+\begin{Verbatim}
+macro
+  mc1 : Term → Term → TC ⊤
+  mc1 exp hole = bindTC (quoteTC exp) 
+                   (λ exp' → unify hole exp')
 
-  macro
-    mc1 : Term → Term → TC ⊤
-    mc1 exp hole = bindTC (quoteTC exp) 
-                     (λ exp' → unify hole exp')
-
-  sampleTerm : Term
-  sampleTerm = mc1 (λ (n : Nat) → n) 
-
+sampleTerm : Term
+sampleTerm = mc1 (λ (n : Nat) → n) 
 \end{Verbatim}
 \endgroup
 \end{center}
