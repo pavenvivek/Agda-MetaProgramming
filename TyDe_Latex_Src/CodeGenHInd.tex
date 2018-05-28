@@ -226,6 +226,9 @@ sampleTerm = mc1 (λ (n : Nat) → n)
 
 
 Figure~\ref{fig:macro1} demonstrates a macro that quotes its argument.
+The first step is to quote the quoted expression argument again, yielding a quotation of a quotation.
+The result of this double-quotation is passed, using the \texttt{TC} monad's bind operator \texttt{bindTC}, into a function that unifies it with the hole.
+Because unification removes one layer of quotation, \texttt{unify} inserts the original quoted term into the hole.
 The value of {\tt sampleTerm} is \texttt{lam visible (abs "n" (var 0 []))}. 
 The constructor \texttt{lam} encodes the abstract representation of the identity function. The argument {\tt n} is represented as explicit and the body of the lambda function refers to {\tt n} using a de-bruijn index.   
 
