@@ -208,12 +208,9 @@ An Agda \emph{macro} is a function of type {\tt $t_1$ → $t_2$ → $\ldots$ →
 Macros are special: their last argument is automatically supplied by the type checker, and consists of a \texttt{Term} that represents the metavariable to be solved by the macro.
 If the remaining arguments are quoted names or \texttt{Term}s, then the type checker will automatically quote the arguments at the macro's use site.
 At some point, the macro is expected to unify the provided metavariable with some other term, thus solving it.
-For example, consider the following macro invocation on an identity function.
 
-%, fontsize=\relsize{-0.5}
-\begin{center}
-\begingroup
-\fontsize{7pt}{9pt}\selectfont
+
+\begin{figure}
 \begin{Verbatim}
 macro
   mc1 : Term → Term → TC ⊤
@@ -223,18 +220,14 @@ macro
 sampleTerm : Term
 sampleTerm = mc1 (λ (n : Nat) → n) 
 \end{Verbatim}
-\endgroup
-\end{center}
+  \caption{A macro that quotes its argument}
+  \label{fig:macro1}
+\end{figure}
 
-\normalsize
 
-The value of {\tt sampleTerm} is as follows: 
-%\begin{Verbatim}[fontsize=\relsize{-0.5},commandchars=\\\{\}]
-\begin{equation} \label{eq:lam}
-	lam \, visible \, (abs \, "n" \, (var \, 0 \, []))
-\end{equation}
-
-In \eqref{eq:lam}, the constructor \emph{lam} encodes the abstract representation of the identity function. The argument {\tt n} is represented as explicit and the body of the lambda function refers to {\tt n} using a de-bruijn index.   
+Figure~\ref{fig:macro1} demonstrates a macro that quotes its argument.
+The value of {\tt sampleTerm} is \texttt{lam visible (abs "n" (var 0 []))}. 
+The constructor \texttt{lam} encodes the abstract representation of the identity function. The argument {\tt n} is represented as explicit and the body of the lambda function refers to {\tt n} using a de-bruijn index.   
 
 {\tt Term} is the central type that defines an abstract syntax tree representation for the Agda terms. It is mapped to the AGDATERM built-in. The surface syntax for reflection primitives is not fixed, and so they are mapped to their corresponding built-ins, using BUILTIN pragma, to inform the type checker about the reflection concept being defined. In the above macro, the {\tt quoteTC} primitive converts a concrete agda syntax into its {\tt Term} representation. {\tt unify} performs the unification of two terms and attempts to solve any meta variables present during the unification process. {\tt bindTC} unwraps the result of {\tt (quoteTC exp)}, which is captured in {\tt exp'}, and passes it to {\tt unify} for the unification process.
 
