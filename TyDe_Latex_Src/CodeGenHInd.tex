@@ -226,36 +226,35 @@ sampleTerm = mc1 (λ (n : Nat) → n)
 
 
 Figure~\ref{fig:macro1} demonstrates a macro that quotes its argument.
-The first step is to quote the quoted expression argument again, yielding a quotation of a quotation.
+The first step is to quote the quoted expression argument again, using \texttt{quoteTC}, yielding a quotation of a quotation.
 The result of this double-quotation is passed, using the \texttt{TC} monad's bind operator \texttt{bindTC}, into a function that unifies it with the hole.
 Because unification removes one layer of quotation, \texttt{unify} inserts the original quoted term into the hole.
 The value of {\tt sampleTerm} is \texttt{lam visible (abs "n" (var 0 []))}. 
-The constructor \texttt{lam} encodes the abstract representation of the identity function. The argument {\tt n} is represented as explicit and the body of the lambda function refers to {\tt n} using a de~Bruijn index.   
+The constructor \texttt{lam} represents a lambda, and its body is formed by the abstraction constructor \texttt{abs} that abstracts over the name \texttt{"n"}.
+The body of the abstraction is a reference back to the abstracted name via de~Bruijn index \texttt{0}.
 
-{\tt Term} is the central type that defines an abstract syntax tree representation for the Agda terms. It is mapped to the AGDATERM built-in. The surface syntax for reflection primitives is not fixed, and so they are mapped to their corresponding built-ins, using BUILTIN pragma, to inform the type checker about the reflection concept being defined. In the above macro, the {\tt quoteTC} primitive converts a concrete agda syntax into its {\tt Term} representation. {\tt unify} performs the unification of two terms and attempts to solve any meta variables present during the unification process. {\tt bindTC} unwraps the result of {\tt (quoteTC exp)}, which is captured in {\tt exp'}, and passes it to {\tt unify} for the unification process.
+\begin{figure}
+  \centering
+\begin{Verbatim}
+macro
+  mc2 : Term → Term → TC ⊤
+  mc2 exp hole = bindTC (unquoteTC exp) 
+                   (λ exp' → unify hole exp')
 
-The {\tt unquoteTC} primitive converts the abstract syntax tree representation of {\tt Term} into its concrete Agda syntax. The following code gives an example usage for the {\tt unquoteTC} primitive.
-
-\begin{center}
-\begingroup
-\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
-
-  macro
-    mc2 : Term → Term → TC ⊤
-    mc2 exp hole = bindTC (unquoteTC exp) 
-                     (λ exp' → unify hole exp')
-
-  sampleSyntax : Nat → Nat
-  sampleSyntax = mc2 (lam visible (abs "n" (var 0 [])))
-
+sampleSyntax : Nat → Nat
+sampleSyntax =
+  mc2 (lam visible (abs "n" (var 0 [])))
 \end{Verbatim}
-\endgroup
-\end{center}
+  
+  \caption{A macro that unquotes its argument}
+  \label{fig:macro2}
+\end{figure}
 
-\normalsize
+The {\tt unquoteTC} primitive removes one level of quotation.
+Figure~\ref{fig:macro2} demonstrates the use of \texttt{unquoteTC}.
+The macro {\tt mc2} expects a quotation of a quotation, and substitutes its unquotation for the current metavariable.
 
-Macro {\tt mc2} converts the abstract representation of the identity function given by (1) to its concrete syntax. We also have a type {\tt Name}, an internal identifier mapped to a built-in type {\tt QName}. In Agda, {\tt Name} literals are created using {\tt quote} primitive.
+% We also have a type {\tt Name}, an internal identifier mapped to a built-in type {\tt QName}. In Agda, {\tt Name} literals are created using {\tt quote} primitive.
 
 Metaprograms to create top-level definitions are brought into scope and executed using {\tt unquoteDecl} or {\tt unquoteDef} primitive. A function of a given type is declared using {\tt declareDef}, and is later defined by {\tt defineFun}. A postulate of a given type is defined using {\tt declarePostulate}. Newly defined functions and postulates are brought into scope and executed by {\tt unquoteDecl}. The usage of {\tt declareDef}, {\tt defineFun} and {\tt unquoteDecl} is best illustrated with the following example:
 
