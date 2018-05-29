@@ -134,3 +134,4 @@ recW' {A} {B} (sup a b) C csup = csup a b (λ v → recW' {A} {B} (b v) C csup)
 thm6 : thm-prv recW ≡ thm-prv recW'
 thm6 = refl
 
+

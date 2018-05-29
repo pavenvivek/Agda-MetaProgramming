@@ -25,8 +25,14 @@ _>>=_ = bindTC
 _>>_ : ∀ {α} {A : Set α} → TC ⊤ → TC A → TC A
 _>>_ a b = bindTC a λ _ → b
 
-return : ∀ {α} {A : Set α} → A → TC A
-return = returnTC
+pure : ∀ {α} {A : Set α} → A → TC A
+pure = returnTC
+
+_<*>_ : ∀ {α β} {A : Set α} {B : Set β} → TC (A → B) → TC A → TC B
+f <*> x =
+  do f' ← f
+     x' ← x
+     pure (f' x')
 
 case!_of_ : ∀ {a b} {A : Set a} {B : Set b} → TC A → (A → TC B) → TC B
 case! x of f =
@@ -39,8 +45,8 @@ case! x of f =
 getConstructors : Name → TC (List Name)
 getConstructors d =
   case! getDefinition d of λ
-   { (data-type _ cs) → return cs
-   ; (record-type c _) → return (c ∷ [])
+   { (data-type _ cs) → pure cs
+   ; (record-type c _) → pure (c ∷ [])
    ; _ → typeError (strErr "Cannot get constructors of non-data or record type" ∷ nameErr d ∷ [])
    }
 
@@ -48,8 +54,8 @@ getConstructors d =
 getParameters : Name → TC Nat
 getParameters d =
   do data-type n _ ← (getDefinition d)
-       where _ → return 0
-     return n
+       where _ → pure 0
+     pure n
 
 {--
 map : ∀ {a b} {A : Set a} {B : Set b} → (A → B) → List A → List B
@@ -70,9 +76,10 @@ eq _       _       = false
 
 isMember : Nat → List Nat → TC Bool
 isMember a [] = returnTC false
-isMember a (x ∷ xs) = bindTC (returnTC (eq a x)) λ
-                             { true → returnTC true ;
-                               false → (isMember a xs) }
+isMember a (x ∷ xs) =
+  if eq a x
+    then pure true
+    else isMember a xs
 
 _or_ : (b1 : Bool) → (b2 : Bool) → Bool
 x or true = true
@@ -281,7 +288,7 @@ getIndex x indLs =
         cns ← getConstructors x
         lcons ← getLength cns
         n ← getIndexValue zero d t
-        return (replicate lcons n)
+        pure (replicate lcons n)
    ; false → returnTC indLs
    }
 
@@ -289,14 +296,14 @@ checkName : Name → List Name → TC Bool
 checkName ctr [] = returnTC false
 checkName ctr (x ∷ xs) =
  if primQNameEquality ctr x
-   then return true
+   then pure true
    else checkName ctr xs
 
 getCtrIndex : (ind : Nat) → Name → List Name → TC Nat
 getCtrIndex ind ctr [] = returnTC ind -- Invalid case
 getCtrIndex ind ctr (x ∷ xs) =
   if primQNameEquality ctr x
-    then return ind
+    then pure ind
     else getCtrIndex (suc ind) ctr xs
 
 getListElement' : (n : Nat) → List Name → TC Name
@@ -511,16 +518,16 @@ updateArgs refList (x ∷ xs) =
             debugPrint "tc.sample.debug" 12 (strErr "Inside updateAgrs" ∷ [])
             printList refList'
             debugPrint "tc.sample.debug" 12 (strErr (showNat dis) ∷ strErr " and " ∷ strErr (showNat x') ∷ [])
-            return ((arg info (var x' args')) ∷ xs')
+            pure ((arg info (var x' args')) ∷ xs')
        ; (arg info (def y args)) →
          do args' ← updateArgs refList args
-            return ((arg info (def y args')) ∷ xs')
+            pure ((arg info (def y args')) ∷ xs')
        ; (arg info (con y args)) →
          do args' ← updateArgs refList args
-            return ((arg info (con y args')) ∷ xs')
+            pure ((arg info (con y args')) ∷ xs')
        ; (arg info term) →
          do debugPrint "tc.sample.debug" 12 (strErr "unmatched case" ∷ [])
-            return ((arg info term) ∷ xs')
+            pure ((arg info term) ∷ xs')
        }
 
 
@@ -539,13 +546,13 @@ changeCodomainInd Cref refL pars (def nm x) =
      debugPrint "tc.sample.debug" 12 (strErr "ListEnd ----" ∷ [])
      debugPrint "tc.sample.debug" 12 (termErr (def nm []) ∷ [])
      printArgs indexH
-     return (var Cref (indexH ++L (vArg (var pars pars'') ∷ [])))
+     pure (var Cref (indexH ++L (vArg (var pars pars'') ∷ [])))
 changeCodomainInd Cref refL pars (pi (arg info dom) (abs s cdom)) =
   do let refL' = map (λ z → z + 1) refL
      cdom' ← changeCodomainInd (suc Cref) refL' (suc pars) cdom
-     return (pi (arg info dom) (abs s cdom'))
+     pure (pi (arg info dom) (abs s cdom'))
 changeCodomainInd Cref refL pars x =
-  return unknown
+  pure unknown
 
 getTypeLn : Nat → Type → TC Nat
 getTypeLn ref (pi (arg info t1) (abs s t2)) = bindTC (getTypeLn (suc ref) t2)
@@ -564,7 +571,7 @@ getConsTypes [] = returnTC []
 getConsTypes (x ∷ xs) =
   do t ← getType x
      xt ← getConsTypes xs
-     return (t ∷ xt)
+     pure (t ∷ xt)
 
 {--
 _++_ : ∀ {a} {A : Set a} → List A → List A → List A

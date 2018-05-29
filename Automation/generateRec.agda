@@ -22,20 +22,20 @@ getRecArgs2 args inds irefs =
      argC ← takeTC 1 args -- take C
      argC' ← generateRefTerm argC
      argsR ← generateIndexRef inds irefs args'
-     return (argC' ++L argsR)
+     pure (argC' ++L argsR)
 
 generateMapRefRec2 : (f : Nat) → (fargs : List (Arg Term)) → (g : Name) → (args : List Nat) → (inds : List Nat) → (irefs : List (List Bool)) → Nat → TC Term
 generateMapRefRec2 f fargs g args inds irefs 0 =
   do largs ← generateRefTerm args
-     return (def g (vArg (var f fargs) ∷ largs))
+     pure (def g (vArg (var f fargs) ∷ largs))
 generateMapRefRec2 f fargs g args inds irefs (suc x) =
   do y ← generateMapRefRec2 f fargs g args inds irefs x
-     return (lam visible (abs "lx" y))
+     pure (lam visible (abs "lx" y))
 
 getTermRec : (g : Name) → (inds : List Nat) → (irefs : List (List Bool)) → (f : Nat) → (ref : Nat) → (args : List Nat) → Type → TC Term
 getTermRec g inds irefs f 0 args (def ty y) =
   do largs ← generateRefTerm args
-     return (def g (vArg (var f []) ∷ largs))
+     pure (def g (vArg (var f []) ∷ largs))
 getTermRec g inds irefs f ref args (def ty y) =
   do ls ← generateRef ref
      fargs ← generateRefTerm ls
@@ -82,11 +82,11 @@ getClause' l ref R ty irefs (i ∷ is) (x ∷ xs) =
      case! isMemberBool true lb of λ
       { true →
         do ltm ← getTerm R ty inds irefs zero lcarg (lenlfarg ∷ lfarg) y'
-           return ((clause (vArg (con x laP) ∷ vArg (var (showNat lenlfarg)) ∷ vars) (var Ccon ltm)) ∷ xs')
+           pure ((clause (vArg (con x laP) ∷ vArg (var (showNat lenlfarg)) ∷ vars) (var Ccon ltm)) ∷ xs')
       ; false →
         do y'' ← rmIndex i y'
            ltm ← getTerm R ty inds irefs zero lcarg (lenlfarg ∷ lfarg) y''
-           return ((clause (vArg (con x laP) ∷ vArg (var (showNat lenlfarg)) ∷ vars) (var Ccon ltm)) ∷ xs')
+           pure ((clause (vArg (con x laP) ∷ vArg (var (showNat lenlfarg)) ∷ vars) (var Ccon ltm)) ∷ xs')
       }
 getClause' l ref R ty irefs x y = returnTC [] -- Invalid case
 
@@ -109,13 +109,13 @@ getMapConstructorType Cref pars R mapTy (pi (arg info t1) (abs s t2)) =
         t1' ← getMapConstructorType Cref pars R false t1
         cdom' ← getMapConstructorType (suc Cref) pars'' R false t1
         cdom'' ← changeCodomain (suc Cref) cdom'
-        return (pi (arg info t1') (abs s (pi (arg info cdom'') (abs "Ccons" t2'))))
+        pure (pi (arg info t1') (abs s (pi (arg info cdom'') (abs "Ccons" t2'))))
    ; false →
      do let pars' = map (λ z → z + 1) pars
             pars'' = pars' ∷L 0
         t2' ← getMapConstructorType (suc Cref) pars'' R mapTy t2
         t1' ← getMapConstructorType Cref pars R false t1
-        return (pi (arg info t1') (abs s t2'))
+        pure (pi (arg info t1') (abs s t2'))
    }
 getMapConstructorType Cref pars R mapTy (def x lsargs) =
   case (_and_ mapTy (primQNameEquality R x)) of λ
