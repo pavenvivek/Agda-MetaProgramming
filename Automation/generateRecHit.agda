@@ -254,12 +254,12 @@ generateβRecHit argD baseType indLs baseRec indType indRec points paths =
 
 generateRecHit : Arg Name → List (Arg Name) → (baseType : Name) → (indexList : List Nat) → (baseRec : Name) → (indType : Name) → (points : List Name) → (paths : List Name) → TC ⊤
 generateRecHit (arg i f) argD baseType indLs baseRec indType points paths =
-  bindTC (getConstructors baseType) λ lcons → 
-  bindTC (getLength points) λ lpoints →
-  bindTC (getLength paths) λ lpaths →
-  bindTC (getPathClause lpoints lpaths baseRec) λ clause →
-  bindTC (getType baseType) λ RTy →
-  bindTC (getRtypePath baseType indType baseRec indLs paths zero RTy) λ funTypePath →
-  bindTC (declareDef (arg i f) funTypePath) λ _ →
-  bindTC (defineFun f clause) λ _ →
-  (generateβRecHit argD baseType indLs baseRec indType f points paths)
+  do lcons ← getConstructors baseType
+     lpoints ← getLength points
+     lpaths ← getLength paths
+     clauses ← getPathClause lpoints lpaths baseRec
+     RTy ← getType baseType
+     funTypePath ← getRtypePath baseType indType baseRec indLs paths zero RTy
+     declareDef (arg i f) funTypePath
+     defineFun f clauses
+     generateβRecHit argD baseType indLs baseRec indType f points paths

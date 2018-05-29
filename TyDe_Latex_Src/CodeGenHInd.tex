@@ -214,8 +214,9 @@ At some point, the macro is expected to unify the provided metavariable with som
 \begin{Verbatim}
 macro
   mc1 : Term → Term → TC ⊤
-  mc1 exp hole = bindTC (quoteTC exp) 
-                   (λ exp' → unify hole exp')
+  mc1 exp hole =
+    do exp' ← quoteTC exp
+       unify hole exp'
 
 sampleTerm : Term
 sampleTerm = mc1 (λ (n : Nat) → n) 
@@ -227,7 +228,7 @@ sampleTerm = mc1 (λ (n : Nat) → n)
 
 Figure~\ref{fig:macro1} demonstrates a macro that quotes its argument.
 The first step is to quote the quoted expression argument again, using \texttt{quoteTC}, yielding a quotation of a quotation.
-The result of this double-quotation is passed, using the \texttt{TC} monad's bind operator \texttt{bindTC}, into a function that unifies it with the hole.
+The result of this double-quotation is passed, using Agda's new support for Haskell-style do-notation, into a function that unifies it with the hole.
 Because unification removes one layer of quotation, \texttt{unify} inserts the original quoted term into the hole.
 The value of {\tt sampleTerm} is
 \begin{center}
@@ -243,8 +244,9 @@ The body of the abstraction is a reference back to the abstracted name using de~
 \begin{Verbatim}
 macro
   mc2 : Term → Term → TC ⊤
-  mc2 exp hole = bindTC (unquoteTC exp) 
-                   (λ exp' → unify hole exp')
+  mc2 exp hole =
+    do exp' ← unquoteTC exp
+       unify hole exp'
 
 sampleSyntax : Nat → Nat
 sampleSyntax =
@@ -286,22 +288,22 @@ pattern _`⇒_ a b = pi (vArg a) (abs "_" b)
 pattern `Nat = def (quote Nat) []
 
 unquoteDecl plus =
-  bindTC (declareDef (vArg plus) (`Nat `⇒ `Nat `⇒ `Nat)) λ _ → 
-      defineFun plus
-        (clause (vArg (con (quote zero) []) ::
-                 vArg (var "y") ::
-                 [])
-           (var 0 []) ::
-         clause (vArg (con (quote suc)
-                        (vArg (var "x") :: [])) ::
-                 vArg (var "y") ::
-                 [])
-           (con (quote suc)
-             (vArg (def plus
-                     (vArg (var 1 []) ::
-                      vArg (var 0 []) :: [])) ::
-              [])) ::
-         [])
+  do declareDef (vArg plus) (`Nat `⇒ `Nat `⇒ `Nat)
+     defineFun plus
+       (clause (vArg (con (quote zero) []) ::
+                vArg (var "y") ::
+                [])
+          (var 0 []) ::
+        clause (vArg (con (quote suc)
+                       (vArg (var "x") :: [])) ::
+                vArg (var "y") ::
+                [])
+          (con (quote suc)
+            (vArg (def plus
+                    (vArg (var 1 []) ::
+                     vArg (var 0 []) :: [])) ::
+             [])) ::
+        [])
 \end{Verbatim}
 \endgroup
 \caption{Addition, defined by metaprogramming}
@@ -557,18 +559,17 @@ In the automation tool, {\tt generateRec} interface is used to generate the resu
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
-
-  generateRec : Arg Name → Name → List Nat → TC ⊤
-  generateRec (arg i f) t indLs =
-    bindTC (getConstructors t) λ cns →
-    bindTC (getLength cns) λ lcons →
-    bindTC (getClause lcons zero t f indLs cns) λ cls →
-    bindTC (getType t) λ RTy → 
-    bindTC (getRtype t indLs zero RTy) λ funType →
-    bindTC (declareDef (arg i f) funType) λ _ →
-    (defineFun f cls)
-
+\begin{Verbatim}
+generateRec : Arg Name → Name → (indexList : List Nat) → TC ⊤
+generateRec (arg i f) t indLs =
+  do indLs' ← getIndex t indLs
+     cns ← getConstructors t
+     lcons ← getLength cns
+     cls ← getClause lcons zero t f indLs cns
+     RTy ← getType t
+     funType ← getRtype t indLs' zero RTy
+     declareDef (arg i f) funType
+     defineFun f cls
 \end{Verbatim}
 \endgroup
 \end{center}
@@ -654,19 +655,17 @@ We can automate the generation of the induction rule $f'$ and its corresponding 
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
-
-  generateInd : Arg Name → Name → List Nat → TC ⊤
-  generateInd (arg i f) t indLs =
-    bindTC (getIndex t indLs) λ indLs' →
-    bindTC (getConstructors t) λ cns →
-    bindTC (getLength cns) λ lcons →
-    bindTC (getClauseDep lcons zero t f indLs' cns) λ cls →
-    bindTC (getType t) λ RTy →
-    bindTC (getRtypeInd t zero indLs' RTy) λ funType → 
-    bindTC (declareDef (arg i f) funType) λ _ →
-    (defineFun f cls)
-
+\begin{Verbatim}
+generateInd : Arg Name → Name → (indexList : List Nat) → TC ⊤
+generateInd (arg i f) t indLs =
+  do indLs' ← getIndex t indLs
+     cns ← getConstructors t
+     lcons ← getLength cns
+     cls ← getClauseDep lcons zero t f indLs' cns
+     RTy ← getType t
+     funType ← getRtypeInd t zero indLs' RTy
+     declareDef (arg i f) funType
+     defineFun f cls
 \end{Verbatim}
 \endgroup
 \end{center}
@@ -760,21 +759,19 @@ We define holders $Wpoints$ for point constructors and $Wpaths$ for path constru
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
-
-  data-hit : ∀{ℓ₁} (baseType : Name) → (indType : Name) → 
-    (pointHolder : Name) → (lcons : List Name) → 
-    (pathHolder : Name) → (lpaths : List Name) →
-    (lpathTypes : (List (ArgPath {ℓ₁}))) → TC ⊤
-  data-hit base ind pointH lcons pathH lpaths lpathTypes =
-    bindTC (defineHindType base ind) λ _ → 
-    bindTC (getConstructors base) λ lcons'  →
-    bindTC (defineHitCons base ind lcons' lcons) λ _ →
-    bindTC (getPathTypes base ind lcons' lcons lpathTypes) λ lp →
-    bindTC (defineHitPathCons lpaths lp) λ _ →
-    bindTC (definePointHolder pointHolder lcons) λ _ →
-    definePathHolder pathHolder lpaths
-
+\begin{Verbatim}
+data-hit : ∀{ℓ₁} (baseType : Name) → (indType : Name) → 
+  (pointHolder : Name) → (lcons : List Name) → 
+  (pathHolder : Name) → (lpaths : List Name) →
+  (lpathTypes : (List (ArgPath {ℓ₁}))) → TC ⊤
+data-hit baseType indType pointHolder lcons pathHolder lpaths lpathTypes =
+  do defineHindType baseType indType
+     lcons' ← getConstructors baseType
+     defineHitCons baseType indType lcons' lcons
+     lpathTypes' ← getPathTypes baseType indType lcons' lcons lpathTypes
+     defineHitPathCons lpaths lpathTypes'
+     definePointHolder pointHolder lcons
+     definePathHolder pathHolder lpaths
 \end{Verbatim}
 \endgroup
 \end{center}
@@ -894,22 +891,20 @@ The computation rule $\beta_f$ exists only as propositional equality. We build t
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
-
-  generateRecHit : Arg Name → List (Arg Name) → 
-    (baseType : Name) → (indexList : List Nat) → 
-    (baseRec : Name) → (indType : Name) → 
-    (points : List Name) → (paths : List Name) → TC ⊤
-  generateRecHit (arg i f) argD base il rec ind points paths =
-    bindTC (getConstructors base) λ lcons → 
-    bindTC (getLength points) λ lpoints →
-    bindTC (getLength paths) λ lpaths →
-    bindTC (getPathClause lpoints lpaths rec) λ clause →
-    bindTC (getType base) λ RTy →
-    bindTC (getRtypePath base ind rec il paths zero RTy) λ fty →
-    bindTC (declareDef (arg i f) fty) λ _ →
-    bindTC (defineFun f clause) λ _ →
-    (generateβRecHit argD base il rec ind f points paths)
-
+generateRecHit : Arg Name → List (Arg Name) → 
+  (baseType : Name) → (indexList : List Nat) → 
+  (baseRec : Name) → (indType : Name) → 
+  (points : List Name) → (paths : List Name) → TC ⊤
+generateRecHit (arg i f) argD baseType indLs baseRec indType points paths =
+  do lcons ← getConstructors baseType
+     lpoints ← getLength points
+     lpaths ← getLength paths
+     clauses ← getPathClause lpoints lpaths baseRec
+     RTy ← getType baseType
+     funTypePath ← getRtypePath baseType indType baseRec indLs paths zero RTy
+     declareDef (arg i f) funTypePath
+     defineFun f clauses
+     generateβRecHit argD baseType indLs baseRec indType f points paths
 \end{Verbatim}
 \endgroup
 \end{center}
@@ -1042,24 +1037,22 @@ We build the abstract syntax tree for the computation rule $\beta_{f'}$ in the s
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
-
-  generateIndHit : Arg Name → List (Arg Name) → 
-    (baseType : Name) → (indLs : List Nat) → 
-    (baseElm : Name) → (indType : Name) → 
-    (points : List Name) → (paths : List Name) → TC ⊤
-  generateIndHit (arg i f) argD b indLs elm ind p1 p2 =
-    bindTC (getIndex base indLs) λ il →
-    bindTC (getConstructors base) λ lcons → 
-    bindTC (getLength points) λ l1 →
-    bindTC (getLength paths) λ l2 →
-    bindTC (getPathClauseDep l1 l2 base elm il lcons) λ cl →
-    bindTC (getType baseType) λ RTy →
-    bindTC (getRtypePathDep base ind elm p1 p2 zero il RTy) λ fty →
-    bindTC (declareDef (arg i f) fty) λ _ →
-    bindTC (defineFun f cl) λ _ →
-    (generateβIndHit argD base indLs elm ind f points paths)
-
+\begin{Verbatim}
+generateIndHit : Arg Name → List (Arg Name) → 
+  (baseType : Name) → (indLs : List Nat) → 
+  (baseElm : Name) → (indType : Name) → 
+  (points : List Name) → (paths : List Name) → TC ⊤
+generateIndHit (arg i f) argD baseType indLs baseRec indType points paths =
+  do indLs' ← getIndex baseType indLs
+     lcons ← getConstructors baseType
+     lpoints ← getLength points
+     lpaths ← getLength paths
+     clauses ← getPathClauseDep lpoints lpaths baseType baseRec indLs' lcons
+     RTy ← getType baseType
+     funTypePath ← getRtypePathDep baseType indType baseRec points paths zero indLs' RTy
+     declareDef (arg i f) funTypePath
+     defineFun f clauses
+     generateβIndHit argD baseType indLs baseRec indType f points paths
 \end{Verbatim}
 \endgroup
 \end{center}

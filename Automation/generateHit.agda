@@ -102,10 +102,10 @@ definePathHolder pathHolder lpaths =
 data-hit : ∀{ℓ₁} (baseType : Name) → (indType : Name) → (pointHolder : Name) → (lcons : List Name) → (pathHolder : Name) → (lpaths : List Name) →
                   (lpathTypes : (List (ArgPath {ℓ₁}))) → TC ⊤
 data-hit baseType indType pointHolder lcons pathHolder lpaths lpathTypes =
-  bindTC (defineHindType baseType indType) λ _ → 
-  bindTC (getConstructors baseType) λ lcons'  →
-  bindTC (defineHitCons baseType indType lcons' lcons) λ _ →
-  bindTC (getPathTypes baseType indType lcons' lcons lpathTypes) λ lpathTypes' →
-  bindTC (defineHitPathCons lpaths lpathTypes') λ _ →
-  bindTC (definePointHolder pointHolder lcons) λ _ →
-  definePathHolder pathHolder lpaths
+  do defineHindType baseType indType
+     lcons' ← getConstructors baseType
+     defineHitCons baseType indType lcons' lcons
+     lpathTypes' ← getPathTypes baseType indType lcons' lcons lpathTypes
+     defineHitPathCons lpaths lpathTypes'
+     definePointHolder pointHolder lcons
+     definePathHolder pathHolder lpaths

@@ -214,11 +214,11 @@ getRtypeInd R ref indLs x = returnTC unknown
 
 generateInd : Arg Name → Name → (indexList : List Nat) → TC ⊤
 generateInd (arg i f) t indLs =
-  bindTC (getIndex t indLs) λ indLs' →
-  bindTC (getConstructors t) λ cns →
-  bindTC (getLength cns) λ lcons →
-  bindTC (getClauseDep lcons zero t f indLs' cns) λ cls →
-  bindTC (getType t) λ RTy →
-  bindTC (getRtypeInd t zero indLs' RTy) λ funType → 
-  bindTC (declareDef (arg i f) funType) λ _ →
-  (defineFun f cls)
+  do indLs' ← getIndex t indLs
+     cns ← getConstructors t
+     lcons ← getLength cns
+     cls ← getClauseDep lcons zero t f indLs' cns
+     RTy ← getType t
+     funType ← getRtypeInd t zero indLs' RTy
+     declareDef (arg i f) funType
+     defineFun f cls
