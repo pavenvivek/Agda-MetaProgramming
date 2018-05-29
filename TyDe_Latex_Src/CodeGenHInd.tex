@@ -229,7 +229,12 @@ Figure~\ref{fig:macro1} demonstrates a macro that quotes its argument.
 The first step is to quote the quoted expression argument again, using \texttt{quoteTC}, yielding a quotation of a quotation.
 The result of this double-quotation is passed, using the \texttt{TC} monad's bind operator \texttt{bindTC}, into a function that unifies it with the hole.
 Because unification removes one layer of quotation, \texttt{unify} inserts the original quoted term into the hole.
-The value of {\tt sampleTerm} is \texttt{lam visible (abs "n" (var 0 []))}. 
+The value of {\tt sampleTerm} is
+\begin{center}
+\begin{BVerbatim}
+lam visible (abs "n" (var 0 []))
+\end{BVerbatim}
+\end{center}
 The constructor \texttt{lam} represents a lambda, and its body is formed by the abstraction constructor \texttt{abs} that abstracts over the name \texttt{"n"}.
 The body of the abstraction is a reference back to the abstracted name via de~Bruijn index \texttt{0}.
 
@@ -245,7 +250,6 @@ sampleSyntax : Nat → Nat
 sampleSyntax =
   mc2 (lam visible (abs "n" (var 0 [])))
 \end{Verbatim}
-  
   \caption{A macro that unquotes its argument}
   \label{fig:macro2}
 \end{figure}
@@ -254,60 +258,57 @@ The {\tt unquoteTC} primitive removes one level of quotation.
 Figure~\ref{fig:macro2} demonstrates the use of \texttt{unquoteTC}.
 The macro {\tt mc2} expects a quotation of a quotation, and substitutes its unquotation for the current metavariable.
 
-% We also have a type {\tt Name}, an internal identifier mapped to a built-in type {\tt QName}. In Agda, {\tt Name} literals are created using {\tt quote} primitive.
 
-Metaprograms to create top-level definitions are brought into scope and executed using {\tt unquoteDecl} or {\tt unquoteDef} primitive. A function of a given type is declared using {\tt declareDef}, and is later defined by {\tt defineFun}. A postulate of a given type is defined using {\tt declarePostulate}. Newly defined functions and postulates are brought into scope and executed by {\tt unquoteDecl}. The usage of {\tt declareDef}, {\tt defineFun} and {\tt unquoteDecl} is best illustrated with the following example:
+The {\tt unquoteDecl} and {\tt unquoteDef} primitives, which run \texttt{TC} computations in a declaration context, will typically introduce new declarations by side effect.
+A function of a given type is declared using {\tt declareDef}, and it can be given a definition using {\tt defineFun}.
+Similarly, a postulate of a given type is defined using {\tt declarePostulate}.
+Figure~\ref{fig:plus} shows an Agda implementation of addition on natural numbers, while figure~\ref{fig:plusmeta} demonstrates an equivalent metaprogram that adds the same definition to the context.
 
-\begin{center}
+
+\begin{figure}[h]
+\begin{Verbatim}
+plus : Nat → Nat → Nat
+plus zero b = b
+plus (suc n) b = suc (plus n b)
+\end{Verbatim}
+  \caption{Addition on natural numbers}
+  \label{fig:plus}
+\end{figure}
+
+
+
+\begin{figure}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
+\begin{Verbatim}
+pattern vArg x = arg (arg-info visible relevant) x
+pattern _`⇒_ a b = pi (vArg a) (abs "_" b)
+pattern `Nat = def (quote Nat) []
 
-  plus : Nat → Nat → Nat
-  plus zero b = b
-  plus (suc n) b = suc (plus n b)
-
+unquoteDecl plus =
+  bindTC (declareDef (vArg plus) (`Nat `⇒ `Nat `⇒ `Nat)) λ _ → 
+      defineFun plus
+        (clause (vArg (con (quote zero) []) ::
+                      vArg (var "y") :: [])
+           (var 0 []) ::
+         clause (vArg (con (quote suc)
+                      (vArg (var "x") :: [])) ::
+            vArg (var "y") :: [])
+            (con (quote suc)
+                 (vArg
+                     (def plus
+                        (vArg (var 1 []) ::
+                         vArg (var 0 []) :: [])) :: [])) :: [])
 \end{Verbatim}
 \endgroup
-\end{center}
+\caption{Addition, defined by metaprogramming}
+\label{fig:plusmeta}
+\end{figure}
 
-\normalsize
 
-The above function computes addition of two natural numbers. It can be defined using Agda reflection primitives as follows: 
+In Figure~\ref{fig:plusmeta}, {\tt declareDef} declares the type of {\tt plus} using the constructor {\tt pi}, and {\tt defineFun} uses the declared type information to define the clauses for {\tt plus} using constructors {\tt con} and {\tt def}. Finally, the function {\tt plus} is brought into scope by {\tt unquoteDecl}. Terms use de~Bruijn indices to refer to the declared variables. For example, the variable {\tt y} declared at line 10 is referenced using a de~Bruijn index {\tt 0} at line 11. {\tt vArg} encodes the visibility and relevance information of the arguments to the reflection constructs.
 
-\begin{center}
-\begingroup
-\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
-
-   pattern vArg x = arg (arg-info visible relevant) x
-   pattern _`⇒_ a b = pi (vArg a) (abs "_" b)
-   pattern `Nat = def (quote Nat) []
-
-   unquoteDecl plus =
-     bindTC (declareDef (vArg plus) (`Nat `⇒ `Nat `⇒ `Nat)) λ _ → 
-         defineFun plus
-           (clause (vArg (con (quote zero) []) ::
-                         vArg (var "y") :: [])
-              (var 0 []) ::
-            clause (vArg (con (quote suc)
-                         (vArg (var "x") :: [])) ::
-               vArg (var "y") :: [])
-               (con (quote suc)
-                    (vArg
-                        (def plus
-                           (vArg (var 1 []) ::
-                            vArg (var 0 []) :: [])) :: [])) :: [])
-
-\end{Verbatim}
-\endgroup
-\end{center}
-
-\normalsize
-
-In the above code, {\tt declareDef} declares the type of {\tt plus} using the constructor {\tt pi}, and {\tt defineFun} uses the declared type information to define the clauses for {\tt plus} using constructors {\tt con} and {\tt def}. Finally, the function {\tt plus} is brought into scope by {\tt unquoteDecl}. Terms use the de~Bruijn indices to refer to the declared variables. For example, the variable {\tt y} declared at line 10 is referenced using a de~Bruijn index {\tt 0} at line 11. {\tt vArg} encodes the visibility and relevance informations of the arguments to the reflection constructs.
-
-\subsection{Higher Inductive Type}
+\subsection{Higher Inductive Types}
 \label{sec:sec2.2}
 
 Type theory, a foundational language of mathematics, is a functional programming language and a theorem prover. We can view a type in type theory as a topological space in homotopy theory or a groupoid in category theory. Based on this view, elements of a type corresponds to points in a topological space and elements of an identity type corresponds to paths in a topological space. Homotopy type theory extends type theory by adding the notion of higher inductive type and univalence axiom. A higher inductive type is a general schema for defining new types using constructors for points and paths. The paths specified by a higher inductive type are realized by equivalences in the universe, and the mapping of paths to equivalences is made possible by univalence axiom \cite{HoTT-2013}.
