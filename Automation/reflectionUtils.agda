@@ -18,21 +18,37 @@ module Automation.reflectionUtils where
 pattern vArg y = arg (arg-info visible relevant) y
 pattern hArg y = arg (arg-info hidden relevant) y
 
+_>>=_ : ∀ {α β} {A : Set α} {B : Set β} → TC A → (A → TC B) → TC B
+_>>=_ = bindTC
+
+_>>_ : ∀ {α} {A : Set α} → TC ⊤ → TC A → TC A
+_>>_ a b = bindTC a λ _ → b
+
+return : ∀ {α} {A : Set α} → A → TC A
+return = returnTC
+
+case!_of_ : ∀ {a b} {A : Set a} {B : Set b} → TC A → (A → TC B) → TC B
+case! x of f =
+  do y ← x
+     case y of f
+
+
 {-- Generator for Recursion Principle --}
 
 getConstructors : Name → TC (List Name)
 getConstructors d =
-  bindTC (getDefinition d) λ
-  { (data-type _ cs)  → returnTC cs
-  ; (record-type c _) → returnTC (c ∷ [])
-  ; _ → typeError (strErr "Cannot get constructors of non-data or record type" ∷ nameErr d ∷ [])
-  }
+  case! getDefinition d of λ
+   { (data-type _ cs) → return cs
+   ; (record-type c _) → return (c ∷ [])
+   ; _ → typeError (strErr "Cannot get constructors of non-data or record type" ∷ nameErr d ∷ [])
+   }
+
 
 getParameters : Name → TC Nat
 getParameters d =
-  bindTC (getDefinition d) λ
-  { (data-type n _) → returnTC n
-  ; _ → returnTC 0 }
+  do data-type n _ ← (getDefinition d)
+       where _ → return 0
+     return n
 
 {--
 map : ∀ {a b} {A : Set a} {B : Set b} → (A → B) → List A → List B
@@ -42,10 +58,8 @@ map f (x ∷ xs) = f x ∷ map f xs
 
 checkTrue : List Bool → TC Bool
 checkTrue [] = returnTC false
-checkTrue (b ∷ bs) = bindTC (returnTC b) λ
-                            { true → returnTC true ;
-                              false → (checkTrue bs)
-                            }
+checkTrue (true ∷ bs) = returnTC true
+checkTrue (false ∷ bs) = checkTrue bs
 
 eq : Nat → Nat → Bool
 eq zero    zero    = true
@@ -530,16 +544,18 @@ getTypeLn ref (agda-sort Level) = returnTC ref
 getTypeLn ref x = returnTC 0
 
 getBaseType : Type → TC Type
-getBaseType (pi (arg info t1) (abs s t2)) = bindTC (getBaseType t2)
-                                                   (λ t2' → returnTC t2')
+getBaseType (pi (arg info t1) (abs s t2)) = getBaseType t2
+
 getBaseType (def x args) = returnTC (def x args)
 getBaseType x = returnTC unknown
 
 getConsTypes : List Name → TC (List Type)
 getConsTypes [] = returnTC []
-getConsTypes (x ∷ xs) = bindTC (getType x)
-                               (λ t → bindTC (getConsTypes xs)
-                                              (λ xt → returnTC (t ∷ xt)))
+getConsTypes (x ∷ xs) =
+  do t ← getType x
+     xt ← getConsTypes xs
+     return (t ∷ xt)
+
 {--
 _++_ : ∀ {a} {A : Set a} → List A → List A → List A
 []       ++ ys = ys

@@ -11,35 +11,40 @@ open import Agda.Builtin.Unit
 open import Automation.reflectionUtils
 open import Automation.generateHit
 open import Agda.Builtin.Equality
+open import Function hiding (flip)
 
 module Automation.generateRec where
 
 
 getRecArgs2 : (args : List Nat) → (inds : List Nat) → (irefs : List (List Bool)) → TC (List (Arg Term))
-getRecArgs2 args inds irefs = bindTC (dropTC 1 args) -- drop C
-                                    (λ args' → bindTC (takeTC 1 args) -- take C
-                                    (λ argC → bindTC (generateRefTerm argC)
-                                    (λ argC' → bindTC (generateIndexRef inds irefs args')
-                                    (λ argsR → returnTC (argC' ++L argsR)))))
+getRecArgs2 args inds irefs =
+  do args' ← dropTC 1 args -- drop C
+     argC ← takeTC 1 args -- take C
+     argC' ← generateRefTerm argC
+     argsR ← generateIndexRef inds irefs args'
+     return (argC' ++L argsR)
 
 generateMapRefRec2 : (f : Nat) → (fargs : List (Arg Term)) → (g : Name) → (args : List Nat) → (inds : List Nat) → (irefs : List (List Bool)) → Nat → TC Term
-generateMapRefRec2 f fargs g args inds irefs 0 =  bindTC (generateRefTerm args)
-                                                  (λ largs → returnTC (def g (vArg (var f fargs) ∷ largs)))
-generateMapRefRec2 f fargs g args inds irefs (suc x) = bindTC (generateMapRefRec2 f fargs g args inds irefs x)
-                                                             (λ y → returnTC (lam visible (abs "lx" y)))
-                                                             
+generateMapRefRec2 f fargs g args inds irefs 0 =
+  do largs ← generateRefTerm args
+     return (def g (vArg (var f fargs) ∷ largs))
+generateMapRefRec2 f fargs g args inds irefs (suc x) =
+  do y ← generateMapRefRec2 f fargs g args inds irefs x
+     return (lam visible (abs "lx" y))
+
 getTermRec : (g : Name) → (inds : List Nat) → (irefs : List (List Bool)) → (f : Nat) → (ref : Nat) → (args : List Nat) → Type → TC Term
-getTermRec g inds irefs f 0 args (def ty y) = bindTC (generateRefTerm args)
-                                                     (λ largs → returnTC (def g (vArg (var f []) ∷ largs)))
-getTermRec g inds irefs f ref args (def ty y) = bindTC (generateRef ref)
-                                            (λ ls → bindTC (generateRefTerm ls)
-                                            (λ fargs → bindTC (getLength fargs)
-                                            (λ len → bindTC (returnTC (map (λ z → z + len) inds))
-                                            (λ inds' → bindTC (returnTC (map (λ z → z + len) args))
-                                            (λ args' → bindTC (generateMapRefRec2 (f + len) fargs g args' inds' irefs len)
-                                            (λ tm → returnTC tm))))))
-getTermRec g inds irefs f ref args (pi (arg info dom) (abs s cdom)) = bindTC (getTermRec g inds irefs f (suc ref) args cdom)
-                                                                  (λ cdom' → returnTC cdom')
+getTermRec g inds irefs f 0 args (def ty y) =
+  do largs ← generateRefTerm args
+     return (def g (vArg (var f []) ∷ largs))
+getTermRec g inds irefs f ref args (def ty y) =
+  do ls ← generateRef ref
+     fargs ← generateRefTerm ls
+     len ← getLength fargs
+     let inds' = map (λ z → z + len) inds
+         args' = map (λ z → z + len) args
+     generateMapRefRec2 (f + len) fargs g args' inds' irefs len
+getTermRec g inds irefs f ref args (pi (arg info dom) (abs s cdom)) =
+  getTermRec g inds irefs f (suc ref) args cdom
 getTermRec g inds irefs f ref args x = returnTC unknown
 
 getTerm : (R : Name) → (ty : Name) → (inds : List Nat) → (irefs : List (List Bool)) → (cRef : Nat) → (lcarg : List Nat) → (lfarg : List Nat) → (cTy : Type) → TC (List (Arg Term))
@@ -54,37 +59,42 @@ getTerm R ty inds irefs cRef lcarg lfarg x = returnTC []
 
 getClause' : Nat → Nat → (R : Name) → (ty : Name) → (irefs : List (List Bool)) → (indLs : List Nat) → (lcons : List Name) → TC (List Clause)
 getClause' l ref R ty irefs [] [] = returnTC []
-getClause' l ref R ty irefs (i ∷ is) (x ∷ xs) = bindTC (getType x)
-                                       (λ y → bindTC (getParameters R)
-                                       (λ d → bindTC (rmPars d y)
-                                       (λ y' → bindTC (generateRef i)
-                                       (λ il → bindTC (getArgsCount 0 y')
-                                       (λ argC → bindTC (getDiff argC i)
-                                       (λ argC' → bindTC (getClauseVars zero l)
-                                       (λ vars' →  bindTC (reverseTC vars')
-                                       (λ vars → bindTC (getRef 0 vars)
-                                       (λ lfargRev → bindTC (reverseTC lfargRev)
-                                       (λ lfarg → bindTC (getLength lfarg)
-                                       (λ lenlfarg → bindTC (getHidArgs y')
-                                       (λ argInfo → bindTC (consArgs (suc lenlfarg) argInfo y')
-                                       (λ laP → bindTC (getRef (suc lenlfarg) laP)
-                                       (λ lcargRev → bindTC (reverseTC lcargRev)
-                                       (λ lcarg → bindTC (returnTC (map (λ z → z + (argC' + (suc lenlfarg))) il)) 
-                                       (λ inds → bindTC (getListElement ref lfarg)
-                                       (λ Ccon →  bindTC (getClause' l (suc ref) R ty irefs is xs)
-                                       (λ xs' → bindTC (getIndexRef R i x)
-                                       (λ lb → bindTC (isMemberBool true lb) λ
-                                          { true → bindTC (getTerm R ty inds irefs zero lcarg (lenlfarg ∷ lfarg) y')
-                                                          (λ ltm → returnTC ((clause (vArg (con x laP) ∷ vArg (var (showNat lenlfarg)) ∷ vars) (var Ccon ltm)) ∷ xs')) ;
-                                            false → bindTC (rmIndex i y')
-                                                           (λ y'' → bindTC (getTerm R ty inds irefs zero lcarg (lenlfarg ∷ lfarg) y'')
-                                                           (λ ltm → returnTC ((clause (vArg (con x laP) ∷ vArg (var (showNat lenlfarg)) ∷ vars) (var Ccon ltm)) ∷ xs'))) } )))))))))))))))))))
+getClause' l ref R ty irefs (i ∷ is) (x ∷ xs) =
+  do y ← getType x
+     d ← getParameters R
+     y' ← rmPars d y
+     il ← generateRef i
+     argC ← getArgsCount 0 y'
+     argC' ← getDiff argC i
+     vars' ← getClauseVars zero l
+     vars ← reverseTC vars'
+     lfargRev ← getRef 0 vars
+     lfarg ← reverseTC lfargRev
+     lenlfarg ← getLength lfarg
+     argInfo ← getHidArgs y'
+     laP ← consArgs (suc lenlfarg) argInfo y'
+     lcargRev ← getRef (suc lenlfarg) laP
+     lcarg ← reverseTC lcargRev
+     let inds = map (λ z → z + (argC' + (suc lenlfarg))) il
+     Ccon ← getListElement ref lfarg
+     xs' ← getClause' l (suc ref) R ty irefs is xs
+     lb ← getIndexRef R i x
+     case! isMemberBool true lb of λ
+      { true →
+        do ltm ← getTerm R ty inds irefs zero lcarg (lenlfarg ∷ lfarg) y'
+           return ((clause (vArg (con x laP) ∷ vArg (var (showNat lenlfarg)) ∷ vars) (var Ccon ltm)) ∷ xs')
+      ; false →
+        do y'' ← rmIndex i y'
+           ltm ← getTerm R ty inds irefs zero lcarg (lenlfarg ∷ lfarg) y''
+           return ((clause (vArg (con x laP) ∷ vArg (var (showNat lenlfarg)) ∷ vars) (var Ccon ltm)) ∷ xs')
+      }
 getClause' l ref R ty irefs x y = returnTC [] -- Invalid case
 
 getClause : Nat → Nat → (R : Name) → (ty : Name) → (indList : List Nat) → (lcons : List Name) → TC (List Clause)
-getClause l ref R ty indList lcons = bindTC (getIndexRefInfo R indList lcons)
-                                            (λ lbs → bindTC (getIndex R indList)
-                                            (λ indLs → (getClause' l ref R ty lbs indLs lcons)))
+getClause l ref R ty indList lcons =
+  do lbs ← getIndexRefInfo R indList lcons
+     indLs ← getIndex R indList
+     getClause' l ref R ty lbs indLs lcons
 
 
 {-# TERMINATING #-}
@@ -122,7 +132,7 @@ getMapConstructorType Cref pars R mapTy (var ref lsargs) = bindTC (debugPrint "t
 getMapConstructorType Cref pars R mapTy (lam vis (abs s term)) = bindTC (returnTC (map (λ z → z + 1) pars))
                                                                         (λ pars' → bindTC (returnTC (pars' ∷L 0))
                                                                         (λ pars'' → bindTC (getMapConstructorType Cref pars'' R mapTy term)
-                                                                        (λ term' → returnTC (lam vis (abs s term')))))                                                                        
+                                                                        (λ term' → returnTC (lam vis (abs s term')))))
 getMapConstructorType Cref pars R mapTy (con cn lsargs) = bindTC (returnTC (null lsargs)) λ
                                                                  { true → returnTC (con cn []) ;
                                                                    false → bindTC (map' (λ { (arg i term) → bindTC (getMapConstructorType Cref pars R mapTy term)
@@ -141,7 +151,7 @@ getMapConstructorType Cref pars R mapTy (pat-lam cs lsargs) = bindTC (returnTC (
 getMapConstructorType Cref pars R mapTy x = returnTC x
 
 
--- getRefTypes : 
+-- getRefTypes :
 
 getMapConsTypeList : Name → (Cref : Nat) → (Crefbase : Nat) → (pars : List Nat) → (indexList : List Nat) → (lcons : List Name) → TC Type
 getMapConsTypeList R Cref Crefbase pars [] [] = returnTC (var Crefbase [])
@@ -174,7 +184,7 @@ getRtype R indLs ref (agda-sort Level) = bindTC (getConstructors R)
                                      (λ argInfoL → bindTC (generateRefTerm' argInfoL ls)
                                      (λ Rargs → bindTC (takeTC d refls)
                                      (λ pars → bindTC (getMapConsTypeList R zero lcons pars indLs cns)
-                                     (λ funType → returnTC (pi (vArg (def R Rargs)) (abs "R" (pi (vArg (agda-sort (lit 0))) (abs "C" funType)))))))))))))))      
+                                     (λ funType → returnTC (pi (vArg (def R Rargs)) (abs "R" (pi (vArg (agda-sort (lit 0))) (abs "C" funType)))))))))))))))
 getRtype R indLs ref x = returnTC unknown
 
 generateRec : Arg Name → Name → (indexList : List Nat) → TC ⊤
@@ -183,7 +193,7 @@ generateRec (arg i f) t indLs =
   bindTC (getConstructors t) λ cns →
   bindTC (getLength cns) λ lcons →
   bindTC (getClause lcons zero t f indLs cns) λ cls →
-  bindTC (getType t) λ RTy → 
+  bindTC (getType t) λ RTy →
   bindTC (getRtype t indLs' zero RTy) λ funType →
   bindTC (declareDef (arg i f) funType) λ _ →
   (defineFun f cls)
