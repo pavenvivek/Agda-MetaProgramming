@@ -502,21 +502,21 @@ printList (x ∷ xs) = bindTC (debugPrint "tc.sample.debug" 12 (strErr (showNat 
 updateArgs : (refList : List Nat) → List (Arg Term) → TC (List (Arg Term))
 updateArgs refList [] = returnTC []
 updateArgs refList (x ∷ xs) =
-  do xs' <- updateArgs refList xs
+  do xs' ← updateArgs refList xs
      case x of λ
        { (arg info (var dis args)) →
-         do args' <- updateArgs refList args
-            refList' <- reverseTC refList
-            x' <- getListElement dis refList'
+         do args' ← updateArgs refList args
+            refList' ← reverseTC refList
+            x' ← getListElement dis refList'
             debugPrint "tc.sample.debug" 12 (strErr "Inside updateAgrs" ∷ [])
             printList refList'
             debugPrint "tc.sample.debug" 12 (strErr (showNat dis) ∷ strErr " and " ∷ strErr (showNat x') ∷ [])
             return ((arg info (var x' args')) ∷ xs')
        ; (arg info (def y args)) →
-         do args' <- updateArgs refList args
+         do args' ← updateArgs refList args
             return ((arg info (def y args')) ∷ xs')
        ; (arg info (con y args)) →
-         do args' <- updateArgs refList args
+         do args' ← updateArgs refList args
             return ((arg info (con y args')) ∷ xs')
        ; (arg info term) →
          do debugPrint "tc.sample.debug" 12 (strErr "unmatched case" ∷ [])
@@ -526,14 +526,14 @@ updateArgs refList (x ∷ xs) =
 
 changeCodomainInd : (Cref : Nat) → (refL : List Nat) → (pars : Nat) → Type → TC Type
 changeCodomainInd Cref refL pars (def nm x) =
-  do pars' <- generateRef pars
-     pars'' <- generateRefTerm pars'
-     d <- getParameters nm
-     index <- dropTC d x
+  do pars' ← generateRef pars
+     pars'' ← generateRefTerm pars'
+     d ← getParameters nm
+     index ← dropTC d x
      debugPrint "tc.sample.debug" 12 (strErr "changeCodomainInd 1 -----> " ∷ [])
      printArgs x
-     index' <- updateArgs refL index
-     indexH <- changeVisToHid index
+     index' ← updateArgs refL index
+     indexH ← changeVisToHid index
      debugPrint "tc.sample.debug" 12 (strErr "changeCodomainInd -----> " ∷ [])
      printList refL
      debugPrint "tc.sample.debug" 12 (strErr "ListEnd ----" ∷ [])
@@ -542,7 +542,7 @@ changeCodomainInd Cref refL pars (def nm x) =
      return (var Cref (indexH ++L (vArg (var pars pars'') ∷ [])))
 changeCodomainInd Cref refL pars (pi (arg info dom) (abs s cdom)) =
   do let refL' = map (λ z → z + 1) refL
-     cdom' <- changeCodomainInd (suc Cref) refL' (suc pars) cdom
+     cdom' ← changeCodomainInd (suc Cref) refL' (suc pars) cdom
      return (pi (arg info dom) (abs s cdom'))
 changeCodomainInd Cref refL pars x =
   return unknown

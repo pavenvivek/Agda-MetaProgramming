@@ -235,8 +235,8 @@ The value of {\tt sampleTerm} is
 lam visible (abs "n" (var 0 []))
 \end{BVerbatim}
 \end{center}
-The constructor \texttt{lam} represents a lambda, and its body is formed by the abstraction constructor \texttt{abs} that abstracts over the name \texttt{"n"}.
-The body of the abstraction is a reference back to the abstracted name via de~Bruijn index \texttt{0}.
+The constructor \texttt{lam} represents a lambda, and its body is formed by the abstraction constructor \texttt{abs} that represents a scope in which a new name \texttt{"n"} is bound.
+The body of the abstraction is a reference back to the abstracted name using de~Bruijn index \texttt{0}.
 
 \begin{figure}
   \centering
@@ -289,24 +289,33 @@ unquoteDecl plus =
   bindTC (declareDef (vArg plus) (`Nat `⇒ `Nat `⇒ `Nat)) λ _ → 
       defineFun plus
         (clause (vArg (con (quote zero) []) ::
-                      vArg (var "y") :: [])
+                 vArg (var "y") ::
+                 [])
            (var 0 []) ::
          clause (vArg (con (quote suc)
-                      (vArg (var "x") :: [])) ::
-            vArg (var "y") :: [])
-            (con (quote suc)
-                 (vArg
-                     (def plus
-                        (vArg (var 1 []) ::
-                         vArg (var 0 []) :: [])) :: [])) :: [])
+                        (vArg (var "x") :: [])) ::
+                 vArg (var "y") ::
+                 [])
+           (con (quote suc)
+             (vArg (def plus
+                     (vArg (var 1 []) ::
+                      vArg (var 0 []) :: [])) ::
+              [])) ::
+         [])
 \end{Verbatim}
 \endgroup
 \caption{Addition, defined by metaprogramming}
 \label{fig:plusmeta}
 \end{figure}
 
+In Figure~\ref{fig:plusmeta}, {\tt declareDef} declares the type of {\tt plus}.
+The constructor {\tt pi} represents dependent function types, but a pattern synonym is used to make it shorter.
+Similarly, \texttt{def} constructs references to defined names, and the pattern synonym \Verb|`Nat| abbreviates references to the defined name \texttt{Nat}, and {\tt vArg} represents the desired visibility and relevance settings of the arguments.
+Once declared, \texttt{plus} is defined using {\tt defineFun}, which takes a name and a list of clauses, defining the function by side effect.
+Each clause consists of a pattern and a right-hand side.
+Patterns have their own datatype, while right-hand sides are \texttt{Term}s.
+The name \texttt{con} is overloaded: in patterns, it denotes a pattern that match a particular constructor, while in \texttt{Term}s, it denotes a reference to a constructor.
 
-In Figure~\ref{fig:plusmeta}, {\tt declareDef} declares the type of {\tt plus} using the constructor {\tt pi}, and {\tt defineFun} uses the declared type information to define the clauses for {\tt plus} using constructors {\tt con} and {\tt def}. Finally, the function {\tt plus} is brought into scope by {\tt unquoteDecl}. Terms use de~Bruijn indices to refer to the declared variables. For example, the variable {\tt y} declared at line 10 is referenced using a de~Bruijn index {\tt 0} at line 11. {\tt vArg} encodes the visibility and relevance information of the arguments to the reflection constructs.
 
 \subsection{Higher Inductive Types}
 \label{sec:sec2.2}
