@@ -501,41 +501,51 @@ printList (x ∷ xs) = bindTC (debugPrint "tc.sample.debug" 12 (strErr (showNat 
 {-# TERMINATING #-}
 updateArgs : (refList : List Nat) → List (Arg Term) → TC (List (Arg Term))
 updateArgs refList [] = returnTC []
-updateArgs refList (x ∷ xs) = bindTC (updateArgs refList xs)
-                                     (λ xs' → bindTC (returnTC x) λ
-                                     { (arg info (var dis args)) →  bindTC (updateArgs refList args)
-                                                                         (λ args' → bindTC (reverseTC refList)
-                                                                         (λ refList' → bindTC (getListElement dis refList')
-                                                                         (λ x' → bindTC (debugPrint "tc.sample.debug" 12 (strErr "Inside updateAgrs" ∷ []))
-                                                                         (λ _ → bindTC (printList refList')
-                                                                         (λ _ → bindTC (debugPrint "tc.sample.debug" 12 (strErr (showNat dis) ∷ strErr " and " ∷ strErr (showNat x') ∷ []))
-                                                                         (λ _ → returnTC ((arg info (var x' args')) ∷ xs'))))))) ;
-                                       (arg info (def y args)) → bindTC (updateArgs refList args)
-                                                                        (λ args' → returnTC ((arg info (def y args')) ∷ xs')) ;
-                                       (arg info (con y args)) → bindTC (updateArgs refList args)
-                                                                        (λ args' → returnTC ((arg info (con y args')) ∷ xs')) ;
-                                       (arg info term) → bindTC (debugPrint "tc.sample.debug" 12 (strErr "unmatched case" ∷ []))
-                                                                (λ _ → returnTC ((arg info term) ∷ xs')) } )
+updateArgs refList (x ∷ xs) =
+  do xs' <- updateArgs refList xs
+     case x of λ
+       { (arg info (var dis args)) →
+         do args' <- updateArgs refList args
+            refList' <- reverseTC refList
+            x' <- getListElement dis refList'
+            debugPrint "tc.sample.debug" 12 (strErr "Inside updateAgrs" ∷ [])
+            printList refList'
+            debugPrint "tc.sample.debug" 12 (strErr (showNat dis) ∷ strErr " and " ∷ strErr (showNat x') ∷ [])
+            return ((arg info (var x' args')) ∷ xs')
+       ; (arg info (def y args)) →
+         do args' <- updateArgs refList args
+            return ((arg info (def y args')) ∷ xs')
+       ; (arg info (con y args)) →
+         do args' <- updateArgs refList args
+            return ((arg info (con y args')) ∷ xs')
+       ; (arg info term) →
+         do debugPrint "tc.sample.debug" 12 (strErr "unmatched case" ∷ [])
+            return ((arg info term) ∷ xs')
+       }
+
 
 changeCodomainInd : (Cref : Nat) → (refL : List Nat) → (pars : Nat) → Type → TC Type
-changeCodomainInd Cref refL pars (def nm x) = bindTC (generateRef pars)
-                                                (λ pars' → bindTC (generateRefTerm pars')
-                                                (λ pars'' → bindTC (getParameters nm)
-                                                (λ d → bindTC (dropTC d x)
-                                                (λ index → bindTC (debugPrint "tc.sample.debug" 12 (strErr "changeCodomainInd 1 -----> " ∷ []))
-                                                (λ _ → bindTC (printArgs x)
-                                                (λ _ → bindTC (updateArgs refL index)
-                                                (λ index' → bindTC (changeVisToHid index)
-                                                (λ indexH → bindTC (debugPrint "tc.sample.debug" 12 (strErr "changeCodomainInd -----> " ∷ []))
-                                                (λ _ → bindTC (printList refL)
-                                                (λ _ → bindTC (debugPrint "tc.sample.debug" 12 (strErr "ListEnd ----" ∷ []))
-                                                (λ _ → bindTC (debugPrint "tc.sample.debug" 12 (termErr (def nm []) ∷ []))
-                                                (λ _ → bindTC (printArgs indexH)
-                                                (λ _ → returnTC (var Cref (indexH ++L (vArg (var pars pars'') ∷ []))))))))))))))))
-changeCodomainInd Cref refL pars (pi (arg info dom) (abs s cdom)) = bindTC (returnTC (map (λ z → z + 1) refL))
-                                                                           (λ refL' → bindTC (changeCodomainInd (suc Cref) refL' (suc pars) cdom)
-                                                                           (λ cdom' → returnTC (pi (arg info dom) (abs s cdom'))))
-changeCodomainInd Cref refL pars x = returnTC unknown
+changeCodomainInd Cref refL pars (def nm x) =
+  do pars' <- generateRef pars
+     pars'' <- generateRefTerm pars'
+     d <- getParameters nm
+     index <- dropTC d x
+     debugPrint "tc.sample.debug" 12 (strErr "changeCodomainInd 1 -----> " ∷ [])
+     printArgs x
+     index' <- updateArgs refL index
+     indexH <- changeVisToHid index
+     debugPrint "tc.sample.debug" 12 (strErr "changeCodomainInd -----> " ∷ [])
+     printList refL
+     debugPrint "tc.sample.debug" 12 (strErr "ListEnd ----" ∷ [])
+     debugPrint "tc.sample.debug" 12 (termErr (def nm []) ∷ [])
+     printArgs indexH
+     return (var Cref (indexH ++L (vArg (var pars pars'') ∷ [])))
+changeCodomainInd Cref refL pars (pi (arg info dom) (abs s cdom)) =
+  do let refL' = map (λ z → z + 1) refL
+     cdom' <- changeCodomainInd (suc Cref) refL' (suc pars) cdom
+     return (pi (arg info dom) (abs s cdom'))
+changeCodomainInd Cref refL pars x =
+  return unknown
 
 getTypeLn : Nat → Type → TC Nat
 getTypeLn ref (pi (arg info t1) (abs s t2)) = bindTC (getTypeLn (suc ref) t2)
