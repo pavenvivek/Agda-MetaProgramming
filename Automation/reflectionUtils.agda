@@ -8,6 +8,7 @@ open import Agda.Builtin.Nat
 open import Agda.Builtin.Equality
 open import Agda.Builtin.Bool
 open import Agda.Builtin.Unit
+open import Data.Bool
 open import Data.String renaming (_++_ to _++S_)
 open import Data.List
 open import Data.Empty
@@ -168,10 +169,6 @@ getListElement (suc n) (x ∷ xs) = bindTC (getListElement n xs)
                                          (λ y → returnTC y)
 getListElement x y = returnTC x
 
-if_then_else_ : ∀ {a} {A : Set a} → Bool → A → A → A
-if true  then t else f = t
-if false then t else f = f
-
 _$_<or>_ : {A : Set} → Bool → A → A → TC A
 b $ x <or> y = returnTC (if b then x else y)
 
@@ -244,7 +241,7 @@ isHidden (arg-info vis r) = returnTC false
 
 removeHidden : List (Arg Term) → TC (List (Arg Term))
 removeHidden [] = returnTC []
-removeHidden ((arg i term) ∷ xs) = bindTC (isHidden i) λ 
+removeHidden ((arg i term) ∷ xs) = bindTC (isHidden i) λ
                                           { true → removeHidden xs ;
                                             false → bindTC (removeHidden xs)
                                                            (λ xs' → returnTC ((arg i term) ∷ xs')) }
@@ -276,32 +273,35 @@ getIndex' x = bindTC (getType x)
                     (λ n → returnTC n)))
 
 getIndex : Name → List Nat → TC (List Nat)
-getIndex x indLs = bindTC (returnTC (null indLs)) λ
-                           { true →  bindTC (getType x)
-                                            (λ t → bindTC (getParameters x)
-                                            (λ d → bindTC (getConstructors x)
-                                            (λ cns → bindTC (getLength cns)
-                                            (λ lcons → bindTC (getIndexValue zero d t)
-                                            (λ n → bindTC (returnTC (replicate lcons n))
-                                            (λ indLs' → returnTC indLs')))))) ;
-                             false → returnTC indLs }
+getIndex x indLs =
+  case null indLs of λ
+   { true →
+     do t ← getType x
+        d ← getParameters x
+        cns ← getConstructors x
+        lcons ← getLength cns
+        n ← getIndexValue zero d t
+        return (replicate lcons n)
+   ; false → returnTC indLs
+   }
 
 checkName : Name → List Name → TC Bool
 checkName ctr [] = returnTC false
-checkName ctr (x ∷ xs) = bindTC (returnTC (primQNameEquality ctr x)) λ 
-                                { true → returnTC true ;
-                                  false → (checkName ctr xs) }
+checkName ctr (x ∷ xs) =
+ if primQNameEquality ctr x
+   then return true
+   else checkName ctr xs
 
 getCtrIndex : (ind : Nat) → Name → List Name → TC Nat
 getCtrIndex ind ctr [] = returnTC ind -- Invalid case
-getCtrIndex ind ctr (x ∷ xs) = bindTC (returnTC (primQNameEquality ctr x)) λ 
-                                { true → returnTC ind ;
-                                  false → (getCtrIndex (suc ind) ctr xs) }
+getCtrIndex ind ctr (x ∷ xs) =
+  if primQNameEquality ctr x
+    then return ind
+    else getCtrIndex (suc ind) ctr xs
 
 getListElement' : (n : Nat) → List Name → TC Name
 getListElement' 0 (x ∷ xs) = returnTC x
-getListElement' (suc n) (x ∷ xs) = bindTC (getListElement' n xs)
-                                         (λ y → returnTC y)
+getListElement' (suc n) (x ∷ xs) = getListElement' n xs
 getListElement' x y = returnTC (quote ⊥) -- Invalid case
 
 rmPars : (d : Nat) → (ty : Type) → TC Type
@@ -333,7 +333,7 @@ getHidArgs x = returnTC []
 
 getHidArgs' : List ArgInfo → TC (List Bool) -- true for hidden args and false for visible args
 getHidArgs' (x ∷ xs) = bindTC (getHidArgs' xs)
-                              (λ xs' → bindTC (returnTC x) λ 
+                              (λ xs' → bindTC (returnTC x) λ
                                           { (arg-info hidden rel) → returnTC (true ∷ xs') ;
                                             (arg-info vis rel) → returnTC (false ∷ xs') })
 getHidArgs' [] = returnTC []
@@ -375,12 +375,12 @@ checkIndexRef' cns (x ∷ xs) = bindTC (checkIndexRef' cns xs)
                                      (λ x' → returnTC (x' ∷ xs'))))
 
 getIndexRef' : (index : List Nat) → (indLength : Nat) → Type → TC (List Bool)
-getIndexRef' inds 0 x = checkIndexRef' x inds 
+getIndexRef' inds 0 x = checkIndexRef' x inds
 getIndexRef' inds (suc x) (pi (arg info t1) (abs s t2)) = bindTC (returnTC (map (λ z → z + 1) inds))
                                                                        (λ index' → bindTC (returnTC (index' ∷L 0))
                                                                        (λ index'' → (getIndexRef' index'' x t2)))
 getIndexRef' inds (suc x) (def ty args) = returnTC [] -- cases where cons does not encode index in its type (Vec.[])
-getIndexRef' inds x y = returnTC []                                                                            
+getIndexRef' inds x y = returnTC []
 
 getIndexRef : Name → Nat → Name → TC (List Bool)
 getIndexRef R ind cn = bindTC (getParameters R)
@@ -434,7 +434,7 @@ generateIndexRef-c inds bs argRef = bindTC (countBool true bs)
 
 generateIndexRef : (inds : List Nat) → (irefs : List (List Bool)) → (args : List Nat) → TC (List (Arg Term))
 generateIndexRef inds (ib ∷ ibs) (x ∷ xs) = bindTC (generateIndexRef inds ibs xs)
-                                                   (λ xs' → bindTC (debugPrint "tc.sample.debug" 20 (strErr "Inside generateIndRef ##--> " ∷ [])) 
+                                                   (λ xs' → bindTC (debugPrint "tc.sample.debug" 20 (strErr "Inside generateIndRef ##--> " ∷ []))
                                                    (λ _ → bindTC (isMemberBool false ib) λ
                                                                    { true → bindTC (generateIndexRef-c inds ib x)
                                                                                    (λ ty → returnTC (vArg ty ∷ xs')) ;
@@ -476,28 +476,28 @@ changeCodomain Cref x = returnTC unknown
 printArgs : List (Arg Term) → TC ⊤
 printArgs [] = returnTC tt
 printArgs (x ∷ xs) = bindTC (returnTC x) λ
-                            { (arg info (var x args)) → bindTC (debugPrint "tc.sample.debug" 12 (strErr (showNat x) ∷ [])) 
+                            { (arg info (var x args)) → bindTC (debugPrint "tc.sample.debug" 12 (strErr (showNat x) ∷ []))
                                                          (λ _ → printArgs xs) ;
                               (arg info (def y args')) → bindTC (debugPrint "tc.sample.debug" 12 (strErr "term is ---> " ∷ []))
-                                                         (λ _ → bindTC (debugPrint "tc.sample.debug" 12 (termErr (def y []) ∷ [])) 
+                                                         (λ _ → bindTC (debugPrint "tc.sample.debug" 12 (termErr (def y []) ∷ []))
                                                          (λ _ → bindTC (debugPrint "tc.sample.debug" 12 (strErr "sub start ---> " ∷ []))
                                                          (λ _ → bindTC (printArgs args')
                                                          (λ _ → bindTC (debugPrint "tc.sample.debug" 12 (strErr "sub end ---> " ∷ []))
                                                          (λ _ → printArgs xs))))) ;
                               (arg info (con y args')) → bindTC (debugPrint "tc.sample.debug" 12 (strErr "constructor is ---> " ∷ []))
-                                                         (λ _ → bindTC (debugPrint "tc.sample.debug" 12 (termErr (con y []) ∷ [])) 
+                                                         (λ _ → bindTC (debugPrint "tc.sample.debug" 12 (termErr (con y []) ∷ []))
                                                          (λ _ → bindTC (debugPrint "tc.sample.debug" 12 (strErr "sub start ---> " ∷ []))
                                                          (λ _ → bindTC (printArgs args')
                                                          (λ _ → bindTC (debugPrint "tc.sample.debug" 12 (strErr "sub end ---> " ∷ []))
                                                          (λ _ → printArgs xs))))) ;
-                              (arg info term) → bindTC (debugPrint "tc.sample.debug" 12 (termErr term ∷ [])) 
+                              (arg info term) → bindTC (debugPrint "tc.sample.debug" 12 (termErr term ∷ []))
                                                          (λ _ → printArgs xs) }
 
 printList : List Nat → TC ⊤
 printList [] = returnTC tt
 printList (x ∷ xs) = bindTC (debugPrint "tc.sample.debug" 12 (strErr (showNat x) ∷ []))
                             (λ _ → printList xs)
-                                                         
+
 {-# TERMINATING #-}
 updateArgs : (refList : List Nat) → List (Arg Term) → TC (List (Arg Term))
 updateArgs refList [] = returnTC []
@@ -514,7 +514,7 @@ updateArgs refList (x ∷ xs) = bindTC (updateArgs refList xs)
                                                                         (λ args' → returnTC ((arg info (def y args')) ∷ xs')) ;
                                        (arg info (con y args)) → bindTC (updateArgs refList args)
                                                                         (λ args' → returnTC ((arg info (con y args')) ∷ xs')) ;
-                                       (arg info term) → bindTC (debugPrint "tc.sample.debug" 12 (strErr "unmatched case" ∷ [])) 
+                                       (arg info term) → bindTC (debugPrint "tc.sample.debug" 12 (strErr "unmatched case" ∷ []))
                                                                 (λ _ → returnTC ((arg info term) ∷ xs')) } )
 
 changeCodomainInd : (Cref : Nat) → (refL : List Nat) → (pars : Nat) → Type → TC Type
@@ -522,11 +522,11 @@ changeCodomainInd Cref refL pars (def nm x) = bindTC (generateRef pars)
                                                 (λ pars' → bindTC (generateRefTerm pars')
                                                 (λ pars'' → bindTC (getParameters nm)
                                                 (λ d → bindTC (dropTC d x)
-                                                (λ index → bindTC (debugPrint "tc.sample.debug" 12 (strErr "changeCodomainInd 1 -----> " ∷ [])) 
+                                                (λ index → bindTC (debugPrint "tc.sample.debug" 12 (strErr "changeCodomainInd 1 -----> " ∷ []))
                                                 (λ _ → bindTC (printArgs x)
                                                 (λ _ → bindTC (updateArgs refL index)
                                                 (λ index' → bindTC (changeVisToHid index)
-                                                (λ indexH → bindTC (debugPrint "tc.sample.debug" 12 (strErr "changeCodomainInd -----> " ∷ [])) 
+                                                (λ indexH → bindTC (debugPrint "tc.sample.debug" 12 (strErr "changeCodomainInd -----> " ∷ []))
                                                 (λ _ → bindTC (printList refL)
                                                 (λ _ → bindTC (debugPrint "tc.sample.debug" 12 (strErr "ListEnd ----" ∷ []))
                                                 (λ _ → bindTC (debugPrint "tc.sample.debug" 12 (termErr (def nm []) ∷ []))
