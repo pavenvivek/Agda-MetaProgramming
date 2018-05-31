@@ -3,6 +3,7 @@
 -- {-# OPTIONS --verbose tc.term.expr.top:5 #-}
 -- {-# OPTIONS --verbose tc.sample.debug:12 #-}
 -- {-# OPTIONS --type-in-type #-}
+{-# OPTIONS --no-auto-inline #-}
 
 open import Agda.Builtin.Reflection
 open import Agda.Primitive

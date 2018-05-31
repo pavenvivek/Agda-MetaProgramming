@@ -1,4 +1,5 @@
 {-# OPTIONS --type-in-type #-}
+{-# OPTIONS --no-auto-inline #-}
 
 open import Function renaming (_∘_ to _○_)
 open import Data.Product using (_×_; _,_; Σ; Σ-syntax; proj₁; proj₂)
