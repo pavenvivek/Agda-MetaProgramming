@@ -1,6 +1,3 @@
--- {-# OPTIONS --verbose tc.unquote.decl:20 #-}
--- {-# OPTIONS --verbose tc.unquote.def:10 #-}
--- {-# OPTIONS --verbose tc.term.expr.top:5 #-}
 -- {-# OPTIONS --verbose tc.sample.debug:12 #-}
 -- {-# OPTIONS --type-in-type #-}
 
@@ -13,6 +10,7 @@ open import Agda.Builtin.Bool
 open import Agda.Builtin.Nat
 open import Data.Empty
 open import Automation.reflectionUtils
+open import Function hiding (flip)
 
 module Automation.generateHit where
 
@@ -21,83 +19,90 @@ data ArgPath {ℓ₁} : Set (lsuc ℓ₁) where
 
 
 getHdType : (baseType : Name) → (indType : Name) → (consType : Type) → TC Type
-getHdType baseType indType (pi (arg info dom) (abs s cdom)) = bindTC (getHdType baseType indType cdom)
-                                                                     (λ cdom' → bindTC (getHdType baseType indType dom)
-                                                                     (λ dom' → returnTC (pi (arg info dom') (abs s cdom'))))
-getHdType baseType indType (def ty y) = bindTC (returnTC (primQNameEquality ty baseType)) λ
-                                               { true → returnTC (def indType y) ;
-                                                 false → returnTC (def ty y) }
-getHdType baseType indType x = returnTC unknown 
+getHdType baseType indType (pi (arg info dom) (abs s cdom)) = do cdom' ← (getHdType baseType indType cdom)
+                                                                 dom' ← (getHdType baseType indType dom)
+                                                                 pure (pi (arg info dom') (abs s cdom'))
+getHdType baseType indType (def ty y) = case (primQNameEquality ty baseType) of λ
+                                         { true → pure (def indType y)
+                                         ; false → pure (def ty y) }
+getHdType baseType indType x = pure unknown 
 
 defineHitCons : Name → Name → List Name → List Name → TC ⊤
-defineHitCons base ind (x ∷ xs) (y ∷ ys) = bindTC (defineHitCons base ind xs ys) λ _ →
-                                           bindTC (getType x) λ ty →
-                                           bindTC (getHdType base ind ty) λ ty' →
-                                           bindTC (declareDef (vArg y) ty') λ _ →
-                                           (defineFun y (clause [] (con x []) ∷ []))
-defineHitCons base ind x y = returnTC tt
+defineHitCons base ind (x ∷ xs) (y ∷ ys) = do (defineHitCons base ind xs ys)
+                                              ty ← (getType x)
+                                              ty' ← (getHdType base ind ty)
+                                              (declareDef (vArg y) ty')
+                                              (defineFun y (clause [] (con x []) ∷ []))
+defineHitCons base ind x y = pure tt
 
 defineHitPathCons : (paths : List Name) → (pathTypes : List Type) → TC ⊤
-defineHitPathCons (x ∷ xs) (ty ∷ tys) = bindTC (defineHitPathCons xs tys) λ _ →
-                                               (declarePostulate (vArg x) ty)
-defineHitPathCons x ty = returnTC tt
+defineHitPathCons (x ∷ xs) (ty ∷ tys) = do (defineHitPathCons xs tys)
+                                           (declarePostulate (vArg x) ty)
+defineHitPathCons x ty = pure tt
 
 {-# TERMINATING #-}
 changeBaseCtrs : (baseType : Name) → (indType : Name) → (baseCtrs : List Name) → (hindCtrs : List Name) → Term → TC Term
-changeBaseCtrs base ind ctrs ictrs (con x args) = bindTC (checkName x ctrs) λ
-                                         { true → bindTC (getCtrIndex 0 x ctrs)
-                                                         (λ i → bindTC (getListElement' i ictrs)
-                                                         (λ ctr' → bindTC (debugPrint "tc.sample.debug" 12 (termErr (con x []) ∷ strErr "and" ∷ termErr (def ctr' []) ∷ [])) 
-                                                         (λ _ → bindTC (map' (λ { (arg i term) → bindTC (changeBaseCtrs base ind ctrs ictrs term)
-                                                                                                         (λ term' → returnTC (arg i term')) }) args)
-                                                         (λ args' → returnTC (def ctr' args'))))) ;
-                                           false → returnTC (con x args) }
-changeBaseCtrs base ind ctrs ictrs x = returnTC x
+changeBaseCtrs base ind ctrs ictrs (con x args) = case! (checkName x ctrs) of λ
+                                                   { true →
+                                                       do i ← (getCtrIndex 0 x ctrs)
+                                                          ctr' ← (getListElement' i ictrs)
+                                                          args' ← (map' (λ { (arg i term) →
+                                                                                do term' ← (changeBaseCtrs base ind ctrs ictrs term)
+                                                                                   pure (arg i term') })
+                                                                         args)
+                                                          pure (def ctr' args')
+                                                     ; false → pure (con x args) }
+changeBaseCtrs base ind ctrs ictrs x = pure x
 
 qualifyPath : (baseType : Name) → (indType : Name) → (baseCtrs : List Name) → (hindCtrs : List Name) → (args : Term) → TC Type
-qualifyPath base ind ctrs ictrs (pi (arg info t1) (abs s t2)) = bindTC (qualifyPath base ind ctrs ictrs t2)
-                                                                       (λ t2' → bindTC (returnTC t1) λ
-                                                                                       { (def x args) → bindTC (returnTC (primQNameEquality x base)) λ
-                                                                                                               { true → returnTC (pi (arg info (def ind args)) (abs s t2')) ;
-                                                                                                                 false → returnTC (pi (arg info (def x args)) (abs s t2')) } ;
-                                                                                         term' → returnTC (pi (arg info term') (abs s t2')) })
-qualifyPath base ind ctrs ictrs (def x args) = bindTC (returnTC (primQNameEquality x (quote _≡_))) λ 
-                                  { true → bindTC (map' (λ { (arg (arg-info visible relevant) term) → bindTC (changeBaseCtrs base ind ctrs ictrs term)
-                                                                                                              (λ term' → returnTC (vArg term')) ;
-                                                              argTerm → returnTC argTerm }) args)
-                                                   (λ args' → returnTC (def x args')) ;
-                                    false → returnTC (def x args) }
-qualifyPath base ind ctrs ictrs x = returnTC x
+qualifyPath base ind ctrs ictrs (pi (arg info t1) (abs s t2)) = do t2' ← (qualifyPath base ind ctrs ictrs t2)
+                                                                   case t1 of λ
+                                                                    { (def x args) →
+                                                                       case (primQNameEquality x base) of λ
+                                                                        { true → pure (pi (arg info (def ind args)) (abs s t2'))
+                                                                        ; false → pure (pi (arg info (def x args)) (abs s t2'))
+                                                                        }
+                                                                    ; term' → pure (pi (arg info term') (abs s t2')) 
+                                                                    }
+qualifyPath base ind ctrs ictrs (def x args) = case (primQNameEquality x (quote _≡_)) of λ 
+                                                { true →
+                                                    do args' ← (map' (λ { (arg (arg-info visible relevant) term) →
+                                                                             (do term' ← (changeBaseCtrs base ind ctrs ictrs term)
+                                                                                 pure (vArg term'))
+                                                                           ; argTerm → pure argTerm }) args)
+                                                       pure (def x args')
+                                                ; false → pure (def x args) }
+qualifyPath base ind ctrs ictrs x = pure x
 
 addArgPath : ∀{ℓ₁} → (baseType : Name) → (indType : Name) → (baseCtrs : List Name) → (hindCtrs : List Name) → ArgPath {ℓ₁} → TC Type
-addArgPath base ind ctrs ictrs (argPath argType) = bindTC (quoteTC argType)
-                                                   (λ argTyp → qualifyPath base ind ctrs ictrs argTyp )
+addArgPath base ind ctrs ictrs (argPath argType) = do argTyp ← (quoteTC argType)
+                                                      qualifyPath base ind ctrs ictrs argTyp
 
 getPathTypes : ∀{ℓ₁} → (baseType : Name) → (indType : Name) → (baseCtrs : List Name) → (hindCtrs : List Name) → List (ArgPath {ℓ₁}) → TC (List Type)
-getPathTypes base ind ctrs ictrs [] = returnTC []
-getPathTypes base ind ctrs ictrs (x ∷ xs) = bindTC (getPathTypes base ind ctrs ictrs xs)
-                                                   (λ xs' → bindTC (addArgPath base ind ctrs ictrs x)
-                                                   (λ x' → returnTC (x' ∷ xs')))
+getPathTypes base ind ctrs ictrs [] = pure []
+getPathTypes base ind ctrs ictrs (x ∷ xs) = do xs' ← (getPathTypes base ind ctrs ictrs xs)
+                                               x' ← (addArgPath base ind ctrs ictrs x)
+                                               pure (x' ∷ xs')
 
 defineHindType : (baseType : Name) → (indType : Name) → TC ⊤
 defineHindType baseType indType =
-  bindTC (getType baseType) λ ty →
-  bindTC (declareDef (vArg indType) ty) λ _ →
-  (defineFun indType (clause [] (def baseType []) ∷ []))
+  do ty ← (getType baseType)
+     (declareDef (vArg indType) ty)
+     (defineFun indType (clause [] (def baseType []) ∷ []))
 
 definePointHolder : (pointHolder : Name) → (lcons : List Name) → TC ⊤
 definePointHolder pointHolder lcons =
-  bindTC (quoteTC (List Name)) λ LQName →
-  bindTC (declareDef (vArg pointHolder) LQName) λ _ →
-  bindTC (quoteTC lcons) λ lconsQ →
-  (defineFun pointHolder (clause [] lconsQ ∷ []))
+  do LQName ← (quoteTC (List Name))
+     (declareDef (vArg pointHolder) LQName)
+     lconsQ ← (quoteTC lcons)
+     (defineFun pointHolder (clause [] lconsQ ∷ []))
 
 definePathHolder : (pathHolder : Name) → (lpaths : List Name) → TC ⊤
 definePathHolder pathHolder lpaths =
-  bindTC (quoteTC (List Name)) λ LQName →
-  bindTC (declareDef (vArg pathHolder) LQName) λ _ →
-  bindTC (quoteTC lpaths) λ lpathsQ →
-  (defineFun pathHolder (clause [] lpathsQ ∷ []))
+  do LQName ← (quoteTC (List Name))
+     (declareDef (vArg pathHolder) LQName)
+     lpathsQ ← (quoteTC lpaths)
+     (defineFun pathHolder (clause [] lpathsQ ∷ []))
 
 data-hit : ∀{ℓ₁} (baseType : Name) → (indType : Name) → (pointHolder : Name) → (lcons : List Name) → (pathHolder : Name) → (lpaths : List Name) →
                   (lpathTypes : (List (ArgPath {ℓ₁}))) → TC ⊤

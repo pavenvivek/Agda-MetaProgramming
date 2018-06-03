@@ -1,7 +1,4 @@
 -- {-# OPTIONS --verbose tc.unquote.decl:20 #-}
--- {-# OPTIONS --verbose tc.unquote.def:10 #-}
--- {-# OPTIONS --verbose tc.term.expr.top:5 #-}
--- {-# OPTIONS --verbose tc.sample.debug:20 #-}
 
 open import Agda.Builtin.Reflection
 open import Agda.Builtin.Nat
@@ -45,20 +42,23 @@ getTermRec g inds irefs f ref args (def ty y) =
      generateMapRefRec2 (f + len) fargs g args' inds' irefs len
 getTermRec g inds irefs f ref args (pi (arg info dom) (abs s cdom)) =
   getTermRec g inds irefs f (suc ref) args cdom
-getTermRec g inds irefs f ref args x = returnTC unknown
+getTermRec g inds irefs f ref args x = pure unknown
 
 getTerm : (R : Name) → (ty : Name) → (inds : List Nat) → (irefs : List (List Bool)) → (cRef : Nat) → (lcarg : List Nat) → (lfarg : List Nat) → (cTy : Type) → TC (List (Arg Term))
-getTerm R ty inds irefs cRef lcarg lfarg (def qn ls) = returnTC []
-getTerm R ty inds irefs cRef lcarg lfarg (pi (arg info dom) (abs s cdom)) = bindTC (getListElement cRef lcarg)
-                                                                        (λ r → bindTC (getTerm R ty inds irefs (suc cRef) lcarg lfarg cdom)
-                                                                        (λ cdom' →  bindTC (checkCdmR R dom) λ
-                                                                                        { true → bindTC (getTermRec ty inds irefs r zero lfarg dom)
-                                                                                                         (λ tm → returnTC (arg info (var r []) ∷ vArg tm ∷ cdom')) ;
-                                                                                          false → returnTC (arg info (var r []) ∷ cdom') }))
-getTerm R ty inds irefs cRef lcarg lfarg x = returnTC []
+getTerm R ty inds irefs cRef lcarg lfarg (def qn ls) = pure []
+getTerm R ty inds irefs cRef lcarg lfarg (pi (arg info dom) (abs s cdom)) =
+  do r ← (getListElement cRef lcarg)
+     cdom' ← (getTerm R ty inds irefs (suc cRef) lcarg lfarg cdom)
+     case! (checkCdmR R dom) of λ
+      { true →
+        do tm ← (getTermRec ty inds irefs r zero lfarg dom)
+           pure (arg info (var r []) ∷ vArg tm ∷ cdom')
+      ; false → pure (arg info (var r []) ∷ cdom')
+      }
+getTerm R ty inds irefs cRef lcarg lfarg x = pure []
 
 getClause' : Nat → Nat → (R : Name) → (ty : Name) → (irefs : List (List Bool)) → (indLs : List Nat) → (lcons : List Name) → TC (List Clause)
-getClause' l ref R ty irefs [] [] = returnTC []
+getClause' l ref R ty irefs [] [] = pure []
 getClause' l ref R ty irefs (i ∷ is) (x ∷ xs) =
   do y ← getType x
      d ← getParameters R
@@ -88,7 +88,7 @@ getClause' l ref R ty irefs (i ∷ is) (x ∷ xs) =
            ltm ← getTerm R ty inds irefs zero lcarg (lenlfarg ∷ lfarg) y''
            pure ((clause (vArg (con x laP) ∷ vArg (var (showNat lenlfarg)) ∷ vars) (var Ccon ltm)) ∷ xs')
       }
-getClause' l ref R ty irefs x y = returnTC [] -- Invalid case
+getClause' l ref R ty irefs x y = pure [] -- Invalid case
 
 getClause : Nat → Nat → (R : Name) → (ty : Name) → (indList : List Nat) → (lcons : List Name) → TC (List Clause)
 getClause l ref R ty indList lcons =
@@ -119,85 +119,107 @@ getMapConstructorType Cref pars R mapTy (pi (arg info t1) (abs s t2)) =
    }
 getMapConstructorType Cref pars R mapTy (def x lsargs) =
   case (_and_ mapTy (primQNameEquality R x)) of λ
-   { true → returnTC (var Cref [])
+   { true → pure (var Cref [])
    ; false →
      case null lsargs of λ
-      { true → returnTC (def x [])
+      { true → pure (def x [])
       ; false →
         do lsargs' ←
-             map' (λ { (arg i term) →
+             (map' (λ { (arg i term) →
                        do term' ← getMapConstructorType Cref pars R mapTy term
-                          returnTC (arg i term') })
-                           lsargs
-           returnTC (def x lsargs')
+                          pure (arg i term') })
+                   lsargs)
+           pure (def x lsargs')
       }
    }
-getMapConstructorType Cref pars R mapTy (var ref lsargs) = bindTC (debugPrint "tc.sample.debug" 20 (strErr "issue : printing pars -->" ∷ strErr (showNat ref) ∷ []))
-                                                                  (λ _ → bindTC (printList pars)
-                                                                  (λ _ → bindTC (reverseTC pars)
-                                                                  (λ pars' → bindTC (getListElement ref pars')
-                                                                  (λ x → bindTC (returnTC (null lsargs)) λ
-                                                                                { true → returnTC (var x []) ;
-                                                                                  false → bindTC (map' (λ { (arg i term) → bindTC (getMapConstructorType Cref pars R mapTy term)
-                                                                                                                                   (λ term' → returnTC (arg i term')) }) lsargs)
-                                                                                                  (λ lsargs' → returnTC (var x lsargs')) }))))
-getMapConstructorType Cref pars R mapTy (lam vis (abs s term)) = bindTC (returnTC (map (λ z → z + 1) pars))
-                                                                        (λ pars' → bindTC (returnTC (pars' ∷L 0))
-                                                                        (λ pars'' → bindTC (getMapConstructorType Cref pars'' R mapTy term)
-                                                                        (λ term' → returnTC (lam vis (abs s term')))))
-getMapConstructorType Cref pars R mapTy (con cn lsargs) = bindTC (returnTC (null lsargs)) λ
-                                                                 { true → returnTC (con cn []) ;
-                                                                   false → bindTC (map' (λ { (arg i term) → bindTC (getMapConstructorType Cref pars R mapTy term)
-                                                                                                                    (λ term' → returnTC (arg i term')) }) lsargs)
-                                                                                   (λ lsargs' → returnTC (con cn lsargs')) }
-getMapConstructorType Cref pars R mapTy (meta x lsargs) = bindTC (returnTC (null lsargs)) λ
-                                                                 { true → returnTC (meta x []) ;
-                                                                   false → bindTC (map' (λ { (arg i term) → bindTC (getMapConstructorType Cref pars R mapTy term)
-                                                                                                                    (λ term' → returnTC (arg i term')) }) lsargs)
-                                                                                   (λ lsargs' → returnTC (meta x lsargs')) }
-getMapConstructorType Cref pars R mapTy (pat-lam cs lsargs) = bindTC (returnTC (null lsargs)) λ
-                                                                     { true → returnTC (pat-lam cs []) ;
-                                                                       false → bindTC (map' (λ { (arg i term) → bindTC (getMapConstructorType Cref pars R mapTy term)
-                                                                                                                    (λ term' → returnTC (arg i term')) }) lsargs)
-                                                                                   (λ lsargs' → returnTC (pat-lam cs lsargs')) }
-getMapConstructorType Cref pars R mapTy x = returnTC x
+getMapConstructorType Cref pars R mapTy (var ref lsargs) =
+  do pars' ← (reverseTC pars)
+     x ← (getListElement ref pars')
+     case (null lsargs) of λ
+      { true → pure (var x [])
+      ; false →
+        do lsargs' ←
+             (map' (λ { (arg i term) →
+                       do term' ← (getMapConstructorType Cref pars R mapTy term)
+                          pure (arg i term') })
+                  lsargs)
+           pure (var x lsargs')
+      }
+getMapConstructorType Cref pars R mapTy (lam vis (abs s term)) =
+  do let pars' = (map (λ z → z + 1) pars)
+         pars'' = (pars' ∷L 0)
+     term' ← (getMapConstructorType Cref pars'' R mapTy term)
+     pure (lam vis (abs s term'))
+getMapConstructorType Cref pars R mapTy (con cn lsargs) =
+  case (null lsargs) of λ
+   { true → pure (con cn [])
+   ; false →
+     do lsargs' ← (map' (λ { (arg i term) →
+                     do term' ← (getMapConstructorType Cref pars R mapTy term)
+                        pure (arg i term') }) lsargs)
+        pure (con cn lsargs')
+   }
+getMapConstructorType Cref pars R mapTy (meta x lsargs) =
+  case (null lsargs) of λ
+   { true → pure (meta x [])
+   ; false →
+     do lsargs' ← (map' (λ { (arg i term) →
+                     do term' ← (getMapConstructorType Cref pars R mapTy term)
+                        pure (arg i term') }) lsargs)
+        pure (meta x lsargs')
+   }
+getMapConstructorType Cref pars R mapTy (pat-lam cs lsargs) =
+  case (null lsargs) of λ
+   { true → pure (pat-lam cs [])
+   ; false →
+     do lsargs' ← (map' (λ { (arg i term) →
+                     do term' ← (getMapConstructorType Cref pars R mapTy term)
+                        pure (arg i term') }) lsargs)
+        pure (pat-lam cs lsargs') }
+getMapConstructorType Cref pars R mapTy x = pure x
 
 
 -- getRefTypes :
 
 getMapConsTypeList : Name → (Cref : Nat) → (Crefbase : Nat) → (pars : List Nat) → (indexList : List Nat) → (lcons : List Name) → TC Type
-getMapConsTypeList R Cref Crefbase pars [] [] = returnTC (var Crefbase [])
-getMapConsTypeList R Cref Crefbase pars (i ∷ is) (x ∷ xs) = bindTC (getParameters R)
-                                                          (λ d → bindTC (getType x)
-                                                          (λ ty → bindTC (rmPars d ty)
-                                                          (λ x' → bindTC (returnTC (map (λ z → z + 1) pars))
-                                                          (λ pars' → bindTC (getIndexRef R i x)
-                                                          (λ lb → bindTC (isMemberBool true lb) λ
-                                                            { true → bindTC (getMapConstructorType Cref pars R true x')
-                                                                             (λ t → bindTC (getMapConsTypeList R (suc Cref) Crefbase pars' is xs)
-                                                                             (λ xt → returnTC (pi (vArg t) (abs "_" xt)))) ;
-                                                              false → bindTC (rmIndex i x')
-                                                                             (λ x'' → bindTC (getMapConstructorType Cref pars R true x'')
-                                                                             (λ t → bindTC (getMapConsTypeList R (suc Cref) Crefbase pars' is xs)
-                                                                             (λ xt → returnTC (pi (vArg t) (abs "_" xt))))) })))))
-getMapConsTypeList R Cref Crefbase pars x y = returnTC unknown -- Invalid case
+getMapConsTypeList R Cref Crefbase pars [] [] = pure (var Crefbase [])
+getMapConsTypeList R Cref Crefbase pars (i ∷ is) (x ∷ xs) =
+  do let pars' = (map (λ z → z + 1) pars)
+     d ← (getParameters R)
+     ty ← (getType x)
+     x' ← (rmPars d ty)
+     lb ← (getIndexRef R i x)
+     case! (isMemberBool true lb) of λ
+      { true →
+        do t ← (getMapConstructorType Cref pars R true x')
+           xt ← (getMapConsTypeList R (suc Cref) Crefbase pars' is xs)
+           pure (pi (vArg t) (abs "_" xt))
+      ; false →
+        do x'' ← (rmIndex i x')
+           t ← (getMapConstructorType Cref pars R true x'')
+           xt ← (getMapConsTypeList R (suc Cref) Crefbase pars' is xs)
+           pure (pi (vArg t) (abs "_" xt))
+      }
+getMapConsTypeList R Cref Crefbase pars x y = pure unknown -- Invalid case
 
 getRtype : (R : Name) → (indexList : List Nat) → (ref : Nat) → (RTy : Type) → TC Type
-getRtype R indLs ref (pi (arg (arg-info vis rel) t1) (abs s t2)) = bindTC (getRtype R indLs (suc ref) t2)
-                                                                   (λ t2' → returnTC (pi (arg (arg-info hidden rel) t1) (abs s t2')))
-getRtype R indLs ref (agda-sort Level) = bindTC (getConstructors R)
-                                     (λ cns → bindTC (getConsTypes cns)
-                                     (λ ty → bindTC (getLength cns)
-                                     (λ lcons → bindTC (generateRef (suc (suc ref))) -- +1 for "R" and +1 for "C"
-                                     (λ refls → bindTC (getParameters R)
-                                     (λ d → bindTC (getType R)
-                                     (λ Rty' → bindTC (generateRef ref)
-                                     (λ ls → bindTC (getHidArgs Rty')
-                                     (λ argInfoL → bindTC (generateRefTerm' argInfoL ls)
-                                     (λ Rargs → bindTC (takeTC d refls)
-                                     (λ pars → bindTC (getMapConsTypeList R zero lcons pars indLs cns)
-                                     (λ funType → returnTC (pi (vArg (def R Rargs)) (abs "R" (pi (vArg (agda-sort (lit 0))) (abs "C" funType)))))))))))))))
-getRtype R indLs ref x = returnTC unknown
+getRtype R indLs ref (pi (arg (arg-info vis rel) t1) (abs s t2)) =
+  do t2' ← (getRtype R indLs (suc ref) t2)
+     pure (pi (arg (arg-info hidden rel) t1) (abs s t2'))
+getRtype R indLs ref (agda-sort Level) =
+  do cns ← (getConstructors R)
+     ty ← (getConsTypes cns)
+     lcons ← (getLength cns)
+     refls ← (generateRef (suc (suc ref))) -- +1 for "R" and +1 for "C"
+     d ← (getParameters R)
+     Rty' ← (getType R)
+     ls ← (generateRef ref)
+     argInfoL ← (getHidArgs Rty')
+     Rargs ← (generateRefTerm' argInfoL ls)
+     pars ← (takeTC d refls)
+     funType ← (getMapConsTypeList R zero lcons pars indLs cns)
+     pure (pi (vArg (def R Rargs)) (abs "R" (pi (vArg (agda-sort (lit 0))) (abs "C" funType))))
+getRtype R indLs ref x = pure unknown
 
 generateRec : Arg Name → Name → (indexList : List Nat) → TC ⊤
 generateRec (arg i f) t indLs =
