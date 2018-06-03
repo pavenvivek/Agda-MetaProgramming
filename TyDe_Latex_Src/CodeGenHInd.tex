@@ -368,47 +368,50 @@ In Agda, we don't have built-in primitives to support the definition of higher i
 
 \begin{center}
 \begingroup
-\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
+%\fontsize{7pt}{9pt}\selectfont
+\begin{Verbatim}[commandchars=\\\{\}]
+module Circle where
+  private
+    data S* : Set where
+      base* : S*
 
-  module Circle where
-    private
-      data S* : Set where
-        base* : S*
+  S : Set
+  S = S*
 
-    S : Set
-    S = S*
+  base : S
+  base = base*
 
-    base : S
-    base = base*
-
-    postulate
-      loop : base ≡ base
-
+  postulate
+    loop : base ≡ base
+  \ensuremath{\vdots}
 \end{Verbatim}
 \endgroup
 \end{center}
 
 \normalsize
 
-Inside the module {\tt Circle}, the type {\tt S} is defined using a private type {\tt S*}. The constructor {\tt base} is defined using {\tt base*} and the path {\tt loop} is given as a propositional equality. The recursion and the induction principles are defined to pattern match on the constructor {\tt base*} of the type {\tt S*}. The clients of {\tt Circle} will not have access to the constructor {\tt base*} of the private type {\tt S*} as it is not visible outside the module. The clients only way of access to the constructor is through the non-dependent and dependent elimination rules. The following code gives the non-dependent eliminator or the recursion rule {\tt recS}.
+Inside the module {\tt Circle}, the type {\tt S} is defined using a private datatype {\tt S*}.
+The constructor {\tt base} is defined using {\tt base*} and the path {\tt loop} is given as a postulated propositional equality.
+The recursion and induction principles are defined by pattern matching on the constructor {\tt base*} of the type {\tt S*}, and thus compute as expected.
+The clients of {\tt Circle} will not have access to the constructor {\tt base*} of the private type {\tt S*}, as it is not visible outside the module, which prevents them from writing functions that distinguish between multiple constructors of a higher inductive type that may be identified by additional path constructors.
+The client's \emph{only} access to the constructor is through the provided elimination rules. The following code gives the non-dependent eliminator (sometimes called the \emph{recursion rule}) {\tt recS}.
 
 \begin{center}
 \begingroup
-\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
+%\fontsize{7pt}{9pt}\selectfont
+\begin{Verbatim}[commandchars=\\\{\}]
+  \ensuremath{\vdots}
+  recS : {C : Set} →
+    (cbase : C) →
+    (cloop : cbase ≡ cbase) →
+    S → C
+  recS cbase cloop base* = cbase
 
-    recS : {C : Set} →
+  postulate
+    βrecS : {C : Set} →
       (cbase : C) →
       (cloop : cbase ≡ cbase) →
-      S → C
-    recS cbase cloop base* = cbase
-
-    postulate
-      βrecS : {C : Set} →
-        (cbase : C) →
-        (cloop : cbase ≡ cbase) →
-        ap (recS cbase cloop) loop ≡ cloop
+      ap (recS cbase cloop) loop ≡ cloop
 
 \end{Verbatim}
 \endgroup
