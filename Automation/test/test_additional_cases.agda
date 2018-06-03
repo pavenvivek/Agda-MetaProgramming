@@ -7,11 +7,11 @@ open import Agda.Builtin.Reflection
 open import Agda.Builtin.Unit
 open import Agda.Builtin.Equality
 open import Data.List
-open import Automation.reflectionUtils
-open import Automation.generateRec
-open import Automation.generateInd
+open import Automation.utils.reflectionUtils
+open import Automation.lib.generateRec
+open import Automation.lib.generateInd
 
-module Automation.test_additional_cases where
+module Automation.test.test_additional_cases where
 
 macro
   thm-prv : (C : Name) → Term → TC ⊤

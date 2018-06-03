@@ -11,15 +11,15 @@ open import Agda.Builtin.Unit
 open import Agda.Builtin.Equality
 open import Data.List
 
-open import Automation.generateRec
-open import Automation.generateInd
-open import Automation.generateHit
-open import Automation.generateRecHit
-open import Automation.generateIndHit
-open import Automation.reflectionUtils
-open import Automation.pathUtils
+open import Automation.lib.generateRec
+open import Automation.lib.generateInd
+open import Automation.lib.generateHit
+open import Automation.lib.generateRecHit
+open import Automation.lib.generateIndHit
+open import Automation.utils.reflectionUtils
+open import Automation.utils.pathUtils
 
-module Automation.test_HIndTypes where
+module Automation.test.test_HIndTypes where
 
 macro
   thm-prv : (C : Name) → Term → TC ⊤

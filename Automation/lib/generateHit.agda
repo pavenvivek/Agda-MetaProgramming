@@ -1,18 +1,18 @@
 -- {-# OPTIONS --verbose tc.sample.debug:12 #-}
 -- {-# OPTIONS --type-in-type #-}
 
+open import Data.List
+open import Data.Empty
+open import Function hiding (flip)
 open import Agda.Builtin.Reflection
 open import Agda.Primitive
-open import Data.List
 open import Agda.Builtin.Unit
 open import Agda.Builtin.Equality
 open import Agda.Builtin.Bool
 open import Agda.Builtin.Nat
-open import Data.Empty
-open import Automation.reflectionUtils
-open import Function hiding (flip)
+open import Automation.utils.reflectionUtils
 
-module Automation.generateHit where
+module Automation.lib.generateHit where
 
 data ArgPath {ℓ₁} : Set (lsuc ℓ₁) where
   argPath : Set ℓ₁ → ArgPath

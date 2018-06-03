@@ -5,8 +5,7 @@ open import Data.Product using (_×_; _,_)
 open import Agda.Builtin.Nat
 open import Agda.Builtin.Equality
 open import Patch_Theory.agda_lib.Vector
--- open import Patch_Theory.agda_lib.Equiv
-open import Automation.pathUtils
+open import Automation.utils.pathUtils
 open import Patch_Theory.agda_lib.Prelude using (flip)
 
 module Patch_Theory.agda_lib.Utils where

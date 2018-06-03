@@ -1,19 +1,19 @@
 -- {-# OPTIONS --verbose tc.sample.debug:20 #-}
 
+open import Data.List
+open import Data.Bool
+open import Function hiding (flip)
 open import Agda.Builtin.Reflection
 open import Agda.Builtin.Nat
 open import Agda.Builtin.Equality
 open import Agda.Builtin.Unit
-open import Data.List
-open import Data.Bool
-open import Automation.reflectionUtils
-open import Automation.pathUtils
-open import Automation.generateRec using (getMapConstructorType)
-open import Automation.generateInd
-open import Automation.generateHit
-open import Function hiding (flip)
+open import Automation.utils.reflectionUtils
+open import Automation.utils.pathUtils
+open import Automation.lib.generateRec using (getMapConstructorType)
+open import Automation.lib.generateInd
+open import Automation.lib.generateHit
 
-module Automation.generateIndHit where
+module Automation.lib.generateIndHit where
 
 getPathClauseDep : (lpoints : Nat) → (lpaths : Nat) → (baseTyp : Name) → (baseRec : Name) →
   (indLs : List Nat) → (cns : List Name) → TC (List Clause)

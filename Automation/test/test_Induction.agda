@@ -12,10 +12,10 @@ open import Agda.Primitive
 open import Data.List
 open import Data.Vec
 open import Data.Fin
-open import Automation.reflectionUtils
-open import Automation.generateInd
+open import Automation.utils.reflectionUtils
+open import Automation.lib.generateInd
 
-module Automation.test_Induction where
+module Automation.test.test_Induction where
 
 cong : ∀ {a b}{A : Set a}{B : Set b}(f : A → B){x y : A} → x ≡ y → f x ≡ f y
 cong f refl = refl

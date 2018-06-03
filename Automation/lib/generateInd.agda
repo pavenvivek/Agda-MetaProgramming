@@ -1,20 +1,18 @@
 -- {-# OPTIONS --verbose tc.sample.debug:20 #-}
 
+open import Data.List
+open import Function hiding (flip)
 open import Agda.Builtin.Reflection
 open import Agda.Primitive
-open import Data.List
 open import Agda.Builtin.Nat
 open import Agda.Builtin.Bool
 open import Agda.Builtin.Unit
 open import Agda.Builtin.Equality
-open import Function hiding (flip)
-
-open import Automation.reflectionUtils
-open import Automation.generateRec using (getMapConstructorType)
-open import Automation.generateHit
+open import Automation.utils.reflectionUtils
+open import Automation.lib.generateRec using (getMapConstructorType)
 
 
-module Automation.generateInd where
+module Automation.lib.generateInd where
 
 getTermRecDep : (g : Name) → (ils : List Nat) → (irefs : List (List Bool)) → (f : Nat) → (ref : Nat) → (args : List Nat) → Type → TC Term
 getTermRecDep g ils irefs f 0 args (def ty y) = do gargs ← (generateRefTerm args)
