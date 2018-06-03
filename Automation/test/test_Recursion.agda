@@ -12,10 +12,10 @@ open import Agda.Primitive
 open import Data.List
 open import Data.Vec
 open import Data.Fin
-open import Automation.reflectionUtils
-open import Automation.generateRec
+open import Automation.utils.reflectionUtils
+open import Automation.lib.generateRec
 
-module Automation.test_Recursion where
+module Automation.test.test_Recursion where
 
 macro
   thm-prv : (C : Name) → Term → TC ⊤

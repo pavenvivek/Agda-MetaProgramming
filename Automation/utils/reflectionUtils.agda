@@ -14,7 +14,7 @@ open import Data.List
 open import Data.Empty
 open import Function hiding (flip)
 
-module Automation.reflectionUtils where
+module Automation.utils.reflectionUtils where
 
 pattern vArg y = arg (arg-info visible relevant) y
 pattern hArg y = arg (arg-info hidden relevant) y

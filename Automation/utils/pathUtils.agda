@@ -1,9 +1,9 @@
 {-# OPTIONS --type-in-type #-}
 
-module Automation.pathUtils where
-
 open import Function renaming (_∘_ to _○_)
 open import Agda.Builtin.Equality
+
+module Automation.utils.pathUtils where
 
 infixr 8  _∘_     -- path composition
 -- infix  4  _≡_     -- propositional equality

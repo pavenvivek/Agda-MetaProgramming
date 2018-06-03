@@ -19,13 +19,13 @@ open import Patch_Theory.cryptography.insert-delete-query
 open import Patch_Theory.cryptography.increment-path
 open import Patch_Theory.cryptography.encrypted-increment
 
-open import Automation.generateRec
-open import Automation.generateInd
-open import Automation.generateHit
-open import Automation.generateRecHit
-open import Automation.generateIndHit
-open import Automation.reflectionUtils
-open import Automation.pathUtils
+open import Automation.lib.generateRec
+open import Automation.lib.generateInd
+open import Automation.lib.generateHit
+open import Automation.lib.generateRecHit
+open import Automation.lib.generateIndHit
+open import Automation.utils.reflectionUtils
+open import Automation.utils.pathUtils
 
 
 module Patch_Theory.cryptography.repository where
