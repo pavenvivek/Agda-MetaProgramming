@@ -366,10 +366,11 @@ The convenience of programming in Agda, combined with the ability to avoid axiom
 
 In Agda, we don't have built-in primitives to support the definition of higher inductive type such as {\tt Circle}. One approach is to use Agda's rewrite rules \todo{cite Cockx and Abel, extended abstract at TYPES 2016} mechanism to define higher inductive types. In this approach, we define the dependent and non-dependent eliminators of a higher inductive type as paramterized modules inside which we declare the computation rules for points as rewrite rules using \Verb|{-# REWRITE , ...#-}| pragma. However, Agda's reflection library do not have interfaces to support introducing new pragmas and defining new modules. Another approach to define higher inductive types is to use Dan Licata's method \cite{Licata-2011}. According to this method, a higher inductive type is defined using type abstraction inside a module. The module consists of a boiler-plate code segment which defines the higher inductive type using a private base type. Inside the module, the recursion and the induction principles acts on the constructors of the private base type. The abstract type is then exported allowing the reduction rules for point constructors to hold definitionally. For example, {\tt Circle} is defined using Dan Licata's method as follows.
 
+\begin{figure}
 \begin{center}
 \begingroup
 %\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[commandchars=\\\{\}]
+\begin{Verbatim}
 module Circle where
   private
     data S* : Set where
@@ -383,24 +384,7 @@ module Circle where
 
   postulate
     loop : base ≡ base
-  \ensuremath{\vdots}
-\end{Verbatim}
-\endgroup
-\end{center}
 
-\normalsize
-
-Inside the module {\tt Circle}, the type {\tt S} is defined using a private datatype {\tt S*}.
-The constructor {\tt base} is defined using {\tt base*} and the path {\tt loop} is given as a postulated propositional equality.
-The recursion and induction principles are defined by pattern matching on the constructor {\tt base*} of the type {\tt S*}, and thus compute as expected.
-The clients of {\tt Circle} will not have access to the constructor {\tt base*} of the private type {\tt S*}, as it is not visible outside the module, which prevents them from writing functions that distinguish between multiple constructors of a higher inductive type that may be identified by additional path constructors.
-The client's \emph{only} access to the constructor is through the provided elimination rules. The following code gives the non-dependent eliminator (sometimes called the \emph{recursion rule}) {\tt recS}.
-
-\begin{center}
-\begingroup
-%\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[commandchars=\\\{\}]
-  \ensuremath{\vdots}
   recS : {C : Set} →
     (cbase : C) →
     (cloop : cbase ≡ cbase) →
@@ -413,41 +397,47 @@ The client's \emph{only} access to the constructor is through the provided elimi
       (cloop : cbase ≡ cbase) →
       ap (recS cbase cloop) loop ≡ cloop
 
-\end{Verbatim}
-\endgroup
-\end{center}
+  indS : {C : S → Set} →
+    (cbase : C base) →
+    (cloop : transport C loop cbase ≡ cbase) →
+    (circle : S) → C circle
+  indS cbase cloop base* = cbase
 
-\normalsize
-
-{\tt recS} ignores the path argument and simply computes to the appropriate answer for the point constructor. The computational behavior for the path constructor loop is postulated using reduction rule {\tt βrecS}. In the above code, the function {\tt ap} gives the action of a function $f$ on paths. The following equation gives the type of {\tt ap}.
-\begin{align} \label{eq:ap}
-ap_f : (x =_A y) \rightarrow (f(x) =_A f(y))
-\end{align}
-
-The following code gives the dependent eliminator or the induction rule {\tt indS} and its computational rules.
-
-\begin{center}
-\begingroup
-\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
-
-    indS : {C : S → Set} →
+  postulate
+    βindS : {C : S → Set} →
       (cbase : C base) →
       (cloop : transport C loop cbase ≡ cbase) →
-      (circle : S) → C circle
-    indS cbase cloop base* = cbase
-
-    postulate
-      βindS : {C : S → Set} →
-        (cbase : C base) →
-        (cloop : transport C loop cbase ≡ cbase) →
-        apd (indS {C} cbase cloop) loop ≡ cloop
-
+      apd (indS {C} cbase cloop) loop ≡ cloop
 \end{Verbatim}
 \endgroup
 \end{center}
 
+\caption{An example of a higher inductive type using Licata's encoding}
+\label{fig:circle-hit}
+\end{figure}
 \normalsize
+
+Inside the module {\tt Circle}, the type {\tt S} is defined using a private datatype {\tt S*}.
+The constructor {\tt base} is defined using {\tt base*} and the path {\tt loop} is given as a postulated propositional equality.
+The recursion and induction principles are defined by pattern matching on the constructor {\tt base*} of the type {\tt S*}, and thus compute as expected.
+The clients of {\tt Circle} will not have access to the constructor {\tt base*} of the private type {\tt S*}, as it is not visible outside the module, which prevents them from writing functions that distinguish between multiple constructors of a higher inductive type that may be identified by additional path constructors.
+The client's \emph{only} access to the constructor is through the provided elimination rules. The following code gives the non-dependent eliminator (sometimes called the \emph{recursion rule}) {\tt recS}.
+
+
+%%% Perhaps we should move the discussion of ap earlier, so that we don't need the digression
+{\tt recS} ignores the path argument and simply computes to the appropriate answer for the point constructor. The computational behavior for the path constructor loop is postulated using reduction rule {\tt βrecS}.
+The operator \texttt{ap} is frequently referred to as \texttt{cong}, because it expresses that propositional equality is a congruence.
+However, when viewed through a homotopy type theory lens, it is often called \texttt{ap}, as it describes the action of a function on paths.
+In a higher inductive type, \texttt{ap} should compute new paths from old ones.
+\begin{center}
+\begin{BVerbatim}
+ap : {A B : Set} → {x y : A} →
+     (f : A → B) → (p : x ≡ y) →
+     f x ≡ f y
+\end{BVerbatim}
+\end{center}
+The following code gives the dependent eliminator or the induction rule {\tt indS} and its computational rules.
+
 In the above code, the function {\tt apd} gives the action of dependent functions of type $f : \prod_{(x:A)}B(x)$ on paths. The following equation gives the type of {\tt apd}.
 \begin{equation} \label{eq:apd}
 	apd_f : \prod_{p:x=y} (p_*(f(x)) =_{B(y)} f(y))
