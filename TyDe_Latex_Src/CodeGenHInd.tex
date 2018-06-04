@@ -174,9 +174,9 @@ A metaprogram is a program used to create other programs. In dependently-typed p
 
 Agda is a proof-assistant based on Martin-Löf’s intensional type theory. Unlike Idris, which has a dedicated elaborator to convert the high-level syntax to its core language, Agda’s elaboration mechanism is a part of its type checker. Inspired by Idris’s elaborator reflection, Agda development team extended the reflection library of Agda by exposing its elaboration monad to its high-level metaprogramming instructions. The elaboration monad provides an interface to the Agda type checker through a set of primitive operations which can be used to retrieve static type information regarding various code segments. The primitive operations can also be used to build code fragments using constructs of an abstract syntax tree, and to convert an abstract syntax tree to its concrete syntax.
 
-In this paper, we discuss metaprogramming using elaborator reflection in Agda. By using the elaboration monad, we performed code generation for the elimination and computation rules of inductive types and higher inductive types. We also automated the code generation for the boiler-plate code segment used to define the higher inductive type. We discuss the construction process in detail and introduce new metaprogramming interfaces which build the code segments using elaborator reflection. The interfaces extensively use Agda’s reflection primitives and build the abstract syntax tree of the code segments with static type information obtained using the reflection primitives. The generated code is then brought into scope by another top-level reflection primitive.
+In this paper, we discuss metaprogramming using elaborator reflection in Agda. By using the elaboration monad, we performed code generation for the elimination and computation rules of inductive types and higher inductive types. We also automated the code generation for the boiler-plate code segment used to define the higher inductive type. We discuss the construction process in detail and introduce new metaprogramming interfaces which build the code segments using elaborator reflection. The interfaces extensively use Agda’s reflection primitives and build the abstract syntax tree of the code segments with static type information obtained using the reflection primitives. The generated code is then brought into scope by another top-level reflection primitive.\todo{Insert a mention of Licata's method that we're automating}
 
-Elaborator reflection is a powerful mechanism which allows us to create more interesting metaprograms. By performing the above automation, we abstracted the difficulties involved in implementing and using inductive types and higher inductive types by automating the construction of their corresponding elimination and computation rules. We also achieved an extensive reduction in code size, and we demonstrated how to extend a language without modifying the compiler or depending on the language implementers. More specifically, we discuss the following contributions in this paper.
+Elaborator reflection is a powerful mechanism which allows us to create more interesting metaprograms. By performing the above automation, we abstracted the difficulties involved in implementing and using inductive types and higher inductive types by automating the construction of their corresponding elimination and computation rules. We also achieved an extensive reduction in code size, and we demonstrated how to extend a language without modifying the compiler or depending on the language implementers. More specifically, we discuss the following contributions in this paper.\todo{Rewrite contributions list to focus on actually novel things - many people have automated eliminator generation before}
 
 \begin{itemize}
 \item We automate the construction of the recursion and the induction principles for inductive types with constructors taking zero arguments, one or more arguments, and the type being defined itself as an argument.
@@ -424,60 +424,44 @@ The recursion and induction principles are defined by pattern matching on the co
 The clients of {\tt Circle} will not have access to the constructor {\tt base*} of the private type {\tt S*}, as it is not visible outside the module, which prevents them from writing functions that distinguish between multiple constructors of a higher inductive type that may be identified by additional path constructors.
 The client's \emph{only} access to the constructor is through the provided elimination rules. The following code gives the non-dependent eliminator (sometimes called the \emph{recursion rule}) {\tt recS}.
 
-%%% Perhaps we should move the discussion of ap earlier, so that we don't need the digression
 {\tt recS} ignores the path argument and simply computes to the appropriate answer for the point constructor. The computational behavior for the path constructor loop is postulated using reduction rule {\tt βrecS}.
-The operator \texttt{ap} is frequently referred to as \texttt{cong}, because it expresses that propositional equality is a congruence.
+The operator \texttt{ap}\texttt{Perhaps we should move the discussion of ap earlier, so that we don't need the digression} is frequently referred to as \texttt{cong}, because it expresses that propositional equality is a congruence.
 However, when viewed through a homotopy type theory lens, it is often called \texttt{ap}, as it describes the action of a function on paths.
 In a higher inductive type, \texttt{ap} should compute new paths from old ones.
 \begin{center}
 \begin{BVerbatim}
-ap : {A B : Set} → {x y : A} →
-     (f : A → B) → (p : x ≡ y) →
-     f x ≡ f y
+ap : {A B : Set} {x y : A}
+     (f : A → B) (p : x ≡ y) → f x ≡ f y
 \end{BVerbatim}
 \end{center}
+
 The following code gives the dependent eliminator or the induction rule {\tt indS} and its computational rules.
+The dependent eliminator relies on another operation on identifications, called \texttt{transport}, that coerces an inhabitant of a family of types at a particular index into an inhabitant at another index.
+Outside of homotopy type theory, \texttt{transport} is typically called \texttt{subst} or \texttt{replace}, because it also expresses that substituting equal elements for equal elements is acceptable.
+\begin{center}
+\begin{Verbatim}
+transport : {A : Set} {x y : A} → 
+  (P : A → Set) → (p : x ≡ y) → P x → P y
+\end{Verbatim}
 
-In the above code, the function {\tt apd} gives the action of dependent functions of type $f : \prod_{(x:A)}B(x)$ on paths. The following equation gives the type of {\tt apd}.
+\end{center}
 
+
+In the postulated computation rule for \texttt{indS}, the function {\tt apd} is the dependent version of \texttt{ap}: it expresses the action of dependent functions on paths.
 \begin{center}
 \begingroup
-%\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[commandchars=\\\{\}]
-
-apd : \{A : Set\} \{B : A → Set\} \{x y : A\} → 
+\begin{Verbatim}
+apd : {A : Set} {B : A → Set} {x y : A} → 
   (f : (a : A) → B a) → 
   (p : x ≡ y) → (transport B p (f x) ≡ f y)
-
 \end{Verbatim}
 \endgroup
 \end{center}
 
-\normalsize
-
-%\begin{equation} \label{eq:apd}
-%	apd_f : \prod_{p:x=y} (p_*(f(x)) =_{B(y)} f(y))
-%\end{equation}
-In the above type, the point {\tt (transport B p (f x))} lying in space {\tt B(y)} can be thought of as an endpoint of a path obtained by lifting the path p from {\tt f(x)} to a path in the total space $\sum_{(x:A)} B(x) \rightarrow A$. The following equation gives the type of {\tt transport} \cite{HoTT-2013}.
+\todo{This sentence does not clarify anything for me. What is a "total space"? No reader who knows what that is won't know what "ap" is. Can it be made more clear?}In the above type, the point {\tt (transport B p (f x))} lying in space {\tt B(y)} can be thought of as an endpoint of a path obtained by lifting the path p from {\tt f(x)} to a path in the total space $\sum_{(x:A)} B(x) \rightarrow A$. 
 
 
-%\begin{equation} \label{eq:transport}
-%	transport^B_p : B(x) \rightarrow B(y)
-%\end{equation}
-\begin{center}\label{eq:transport}
-\begingroup
-%\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[commandchars=\\\{\}]
-
-transport : \{A : Set\} \{x y : A\} → 
-  (P : A → Set) → (p : x ≡ y) → P x → P y
-
-\end{Verbatim}
-\endgroup
-\end{center}
-\normalsize
-
-In the next section, we will see automation of code generation for normal inductive types. In section 4, we will see automation of code generation for higher inductive types, and in section 5, we will revisit patch theory \citep{Angiuli-2014} application and discuss automation of code generation for the higher inductive types defined to model Darc's version control system.
+The next section introduces the necessary automation features by describing the automatic generation of eliminators for a variant on Dybjer's inductive families.\todo{Check whether this is right - it might be a variation on Luo's inductive types instead.} Section 4 then generalizes this feature to automate the production of eliminators for higher inductive types using Licata's technique. Section 5 revisits \citeauthor{Angiuli-2014}'s encoding of Darcs's patch theory \citep{Angiuli-2014} and demonstrates that the higher inductive types employed in that paper can be generated succinctly using our library.
 
 \section{Code Generation for Inductive Type}
 \label{sec:sec3}
@@ -779,7 +763,7 @@ To build the dependent eliminator, we need the type of the function $d'$. We can
 
 \normalsize
 
-We can construct the type of the induction principle $f'$ using $d'$ . The type \emph{P} in the mapping $f'$ depends on the element of the input type \emph{W}. The following equation gives the type of the induction principle $f'$.
+We can construct the type of the induction principle $f'$ using $d'$ . The type \emph{P} in the mapping $f'$ depends on the element of the input type \emph{W}. The following equation\todo{this is not an equation} gives the type of the induction principle $f'$.
 \begin{align}
 & f' : (P : W \rightarrow Set) \rightarrow \nonumber \\
 & \hspace {0.6cm} (d' : \prod_{\alpha : A \rightarrow W} (\prod_{a : A} P(\alpha (a))) \rightarrow \prod_{\beta : B} \prod_{\omega : W} P(\omega) \rightarrow \nonumber \\
@@ -857,7 +841,7 @@ The parameters $(x_1:P_1)\ldots(x_n:P_n)$ are common to all the constructors, an
 g_i^* : (A \rightarrow W^*) \rightarrow (B \rightarrow W^*) \rightarrow C \rightarrow W^* \rightarrow W^* \nonumber
 \end{equation}
 
-We built the type of $g_i$ by traversing the abstract syntax tree of $g_i^*$ and replacing the base type $W^*$ with the higher inductive type $W$. The abstract syntax tree of $g_i^*$ incorporates the type of the parameters and the indices if present. We have to retain the parameters and the indices explicitly during the construction of $g_i$. The following equation represents the type of the constructor $g_i$.
+We built the type of $g_i$ by traversing the abstract syntax tree of $g_i^*$ and replacing the base type $W^*$ with the higher inductive type $W$. The abstract syntax tree of $g_i^*$ incorporates the type of the parameters and the indices if present. We have to retain the parameters and the indices explicitly during the construction of $g_i$. The following equation \todo{This is not an equation.} represents the type of the constructor $g_i$.
 \begin{equation}
 g_i : (A \rightarrow W) \rightarrow (B \rightarrow W) \rightarrow C \rightarrow W \rightarrow W \nonumber
 \end{equation}
@@ -978,7 +962,7 @@ To construct the recursion principle $f$, we need to build the type of points $d
 \label{fig:ast-f}
 \end{figure}
 
-The recursion rule $f$ corresponding to figure \eqref{fig:ast-f} is given by the following equation.
+The recursion rule $f$ corresponding to figure \eqref{fig:ast-f} is given by the following equation\todo{This is not an equation}.
 \begin{align}
 & f : (P : Set) \rightarrow (d_1 : A \rightarrow P) \rightarrow (d_2 : B \rightarrow P) \rightarrow \nonumber \\
 & \hspace {0.4cm} (h : (\alpha : A) \rightarrow (\beta : B) \rightarrow (d_1 \, \alpha) \equiv (d_2 \, \beta)) \rightarrow \nonumber \\
@@ -1076,7 +1060,7 @@ The term {\tt βrecS₁} represents the computation rule for the path constructo
 \subsection{Dependent Eliminator}
 \label{sec:sec4.3}
 
-Dependent eliminator or the induction principle of a higher inductive type $W$ is a dependent function that maps an element $\omega$ of $W$ to an output type $P \, \omega$. For the type $W$ with point constructors $g_1 : A \rightarrow W$ and $g_2 : B \rightarrow W$ and path constructor $l : (\alpha \rightarrow A) \rightarrow (\beta \rightarrow B) \rightarrow (g_1 \, \alpha) \equiv (g_2 \, \beta)$, to define a mapping $f' : (\omega : W) \rightarrow P \, \omega$, we need $d_1 : (\alpha : A) \rightarrow P \, \alpha$, $d_2 : (\beta : B) \rightarrow P \, \beta$, and $h : (\alpha \rightarrow A) \rightarrow (\beta : B) \rightarrow transport \, P \, (l \, \alpha \, \beta) \, (d_1 \, \alpha) \equiv (d_2 \, \beta)$, where $(h \, \alpha \, \beta)$ is a heterogeneous path transported over $(l \, \alpha \, \beta)$ lying in the space $P \, \beta$. Equation \eqref{eq:transport} gives the type of $transport$.
+Dependent eliminator or the induction principle of a higher inductive type $W$ is a dependent function that maps an element $\omega$ of $W$ to an output type $P \, \omega$. For the type $W$ with point constructors $g_1 : A \rightarrow W$ and $g_2 : B \rightarrow W$ and path constructor $l : (\alpha \rightarrow A) \rightarrow (\beta \rightarrow B) \rightarrow (g_1 \, \alpha) \equiv (g_2 \, \beta)$, to define a mapping $f' : (\omega : W) \rightarrow P \, \omega$, we need $d_1 : (\alpha : A) \rightarrow P \, \alpha$, $d_2 : (\beta : B) \rightarrow P \, \beta$, and $h : (\alpha \rightarrow A) \rightarrow (\beta : B) \rightarrow transport \, P \, (l \, \alpha \, \beta) \, (d_1 \, \alpha) \equiv (d_2 \, \beta)$, where $(h \, \alpha \, \beta)$ is a heterogeneous path transported over $(l \, \alpha \, \beta)$ lying in the space $P \, \beta$. Equation\todo{Not an equation, just do a page ref} \eqref{eq:transport} gives the type of $transport$.
 
 \begin{figure}
 \begin{center}
