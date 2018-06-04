@@ -555,7 +555,7 @@ pi (hArg (def (quote Level) []))
 
 \normalsize
 
-During the traversal of abstract syntax tree of {\tt \_::\_}, when we identify a function {\tt f1} with codomain {\tt Vec}, we add a new function {\tt f2}, with the same arguments as {\tt f1} and codomain {\tt C}, to the tree. When the type {\tt Vec} occurs directly in a non-codomain position, we add the type {\tt C} next to it. For example, in figure~\ref{fig:ast-g}, a new function is built from the argument {\tt (xs : Vec A n)} by modifying it to {\tt (Vec A n) → C} (fig.~\ref{fig:ast-d}). Constant types require no modifications. Therefore, we copy {\tt (x : A)} into the new type without any changes. Finally, we change the codomain {Vec A (suc n)} of {\tt \_::\_} to \emph{C} resulting in an abstract syntax tree representation of {\tt c2} (fig.~\ref{fig:ast-d}). We repeat this process for all the constructors of a given type. 
+During the traversal of abstract syntax tree of the type of {\tt \_::\_}, when we identify a function {\tt f1} with codomain {\tt Vec}, we add a new function {\tt f2}, with the same arguments as {\tt f1} and codomain {\tt C}, to the tree.\todo{Why? Without the schematic presentation, this is hard to follow. Here, it is the result of the recursion, which is what makes this into primitive recursion.} When the type {\tt Vec} occurs directly in a non-codomain position, we add the type {\tt C} next to it. For example, in figure~\ref{fig:ast-g}, a new function is built from the argument {\tt (xs : Vec A n)} by modifying it to {\tt (Vec A n) → C} (fig.~\ref{fig:ast-d}). Constant types require no modifications. Therefore, we copy {\tt (x : A)} into the new type without any changes. Finally, we change the codomain {Vec A (suc n)} of {\tt \_::\_} to \emph{C} resulting in an abstract syntax tree representation of {\tt c2}\todo{Wouldn't that be c2's type? Be careful when talking about a reference to a name, a reference to what the name refers to, and a reference to the type of what the name refers to. These things are all different, and it matters when writing about metaprogramming.} (fig.~\ref{fig:ast-d}). We repeat this process for each of the constructors.\todo{The nesting of pi and abs seems unfortunate - can we write a helper that does both at once?}
 
 \begin{figure}
 \begin{center}
@@ -563,17 +563,17 @@ During the traversal of abstract syntax tree of {\tt \_::\_}, when we identify a
 \fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}[frame = single]
 (pi (hArg (def (quote Nat) []))
-  (abs "m"
-(pi (vArg (var 5 []))                -- (x : A)
-  (abs "x"
-(pi (vArg (def (quote Vec)           -- Vec A n → C
-    (hArg (var 7 []) ::              
-     vArg (var 6 []) ::              -- A
-     vArg (var 1 []) :: [])))        -- n
-  (abs "xs"
-(pi (vArg (var 4 []))                -- C 
-  (abs "_" 
-    (var 5 [])))))))))               -- C
+ (abs "m"
+  (pi (vArg (var 5 []))                -- (x : A)
+   (abs "x"
+    (pi (vArg (def (quote Vec)           -- Vec A n → C
+               (hArg (var 7 []) ::              
+                vArg (var 6 []) ::              -- A
+                vArg (var 1 []) :: [])))        -- n
+     (abs "xs"
+      (pi (vArg (var 4 []))                -- C 
+       (abs "_" 
+        (var 5 [])))))))))               -- C
 \end{Verbatim}
 \endgroup
 \end{center}
@@ -583,20 +583,18 @@ During the traversal of abstract syntax tree of {\tt \_::\_}, when we identify a
 
 \normalsize
 
-The parameter and the index of {\tt Vec}, should be encoded as part of the type of function \emph{f}. We can retrieve information about the parameter and the index of {\tt Vec} from its type. The constructors refer to the parameter and the index using de~Bruijn indices. During the construction of the output type {\tt c2}, we should update the de~Bruijn indices accordingly. The constructor {\tt data-type} contains the count \emph{cp} of parameters occurring in a defined type. It also encodes the constructors of the type as a list of {\tt Name}. We can retrieve the index count by finding the difference between \emph{cp} and length of the constructor list. The parameters are common to all the constructors of a type. But the index values are different for each constructor. So we have to encode unique indices for each constructor. Also, some constructors might not take the same number of indices as the parent type. For example, in the case of {\tt Vec}, the constructor {\tt []} excludes the index {\tt Nat} from its type. We do not have any reflection primitive to retrieve the index count from a constructor name. A workaround is to pass the index count of each constructor explicitly to the automation tool.
+The parameter and the index to {\tt Vec} must be reflected in type of function \emph{f}. We can retrieve information about the parameter and the index of {\tt Vec} from its type. The constructors refer to the parameter and the index using de~Bruijn indices. During the construction of the output type {\tt c2}, we\todo{This is not ``we'', it is the metaprogram} should update the de~Bruijn indices accordingly. The constructor {\tt data-type} contains the count \emph{cp} of parameters occurring in a defined type. It also encodes the constructors of the type as a list of \texttt{Name}s. Metaprograms can retrieve the index count by finding the difference between \emph{cp} and the length of the constructor list. The parameters are common to all the constructors of a type. But the index values are different for each constructor. So we have to encode unique indices for each constructor. Also, some constructors might not take the same number of indices as the parent type. For example, in the case of {\tt Vec}, the constructor {\tt []} excludes the index {\tt Nat} from its type. We do not have any reflection primitive to retrieve the index count from a constructor name. A workaround is to pass the index count of each constructor explicitly to the automation tool.\todo{This paragraph is doing two things at once: discussing fragments of the schematic presentation of the eliminator type that should have been at the beginning of the section, and talking about how to find those things in Agda. First give the idea, then give it's implementation.}
 
-Once we have the type of {\tt c2}, we can build the type of the recursion rule for {\tt Vec}. To encode the mapping {\tt Vec → C} in the recursion type we need to declare {\tt C}. We can use the constructor {\tt agda-sort} to introduce the type {\tt (C : Set)}. The type of the recursion rule \emph{f} is given as follows.
+Once we have the type of {\tt c2}\todo{Isn't c2 here a metavariable rather than a piece of Agda syntax? I'm not entirely sure what it is, especially because the type for it above is incorrect by ignoring params and indices}, we can build the type of the recursion rule for {\tt Vec}. To encode the mapping {\tt Vec → C} in the recursion type we need to declare {\tt C}. We can use the constructor {\tt agda-sort} to introduce the type {\tt (C : Set)}. The type of the recursion rule \emph{f} is given as follows.
 
 \begin{center}
 \begingroup
 \fontsize{7pt}{2pt}\selectfont
-\begin{Verbatim}%[frame = single]
-
+\begin{Verbatim}
 f : ∀{a} {A : Set a} → {n : Nat} → (C : Set) → 
     C → 
     ({m : Nat} → (x : A) → (xs : Vec A m) → C → C) → 
     Vec A n → C
-
 \end{Verbatim}
 \endgroup
 \end{center}
@@ -609,16 +607,14 @@ f : ∀{a} {A : Set a} → {n : Nat} → (C : Set) →
 %& \hspace {0.5cm} W \rightarrow P \nonumber
 %\end{align}
 
-The above type is declared using {\tt declareDef}. We can build the computation rule representing the action of function \emph{f} on {\tt c1} and {\tt c2} using {\tt clause} (fig.~\ref{fig:ast-cdef}). The first argument to {\tt clause} encodes variables corresponding to the above type, and it also includes the abstract representation of {\tt c1},{\tt c2} on which the pattern matching should occur. The second argument to clause, which is of type {\tt Term}, refers to the variables in the first argument using de~Bruijn indices, and it encodes the output of the action of function \emph{f} on {\tt c1},{\tt c2}. The constructor {\tt var} in {\tt Pattern} is used to introduce new variables in the {\tt clause} definition. The type {\tt Pattern} also has another constructor {\tt con} used to represent the pattern matching term. The type {\tt Term} has similar constructors {\tt var} and {\tt con}, but with different types, used to encode the output of the recursion rule. The computation rules corresponding to the above type is given as follows.
+The above type is declared using {\tt declareDef}. We can build the computation rule representing the action of function \emph{f} on {\tt c1} and {\tt c2} using {\tt clause} (fig.~\ref{fig:ast-cdef}). The first argument to {\tt clause} encodes variables corresponding to the above type, and it also includes the abstract representation of {\tt c1},{\tt c2} on which the pattern matching should occur. The second argument to clause, which is of type {\tt Term}, refers to the variables in the first argument using de~Bruijn indices, and it encodes the output of the action of function \emph{f} on {\tt c1},{\tt c2}. The constructor {\tt var} in {\tt Pattern} is used to introduce new variables in the {\tt clause} definition. The type {\tt Pattern} also has another constructor {\tt con} used to represent the pattern matching term. The type {\tt Term} has similar constructors {\tt var} and {\tt con}, but with different types, used to encode the output of the recursion rule. The computation rules corresponding to the above type is given as follows.\todo{This paragraph is also doing double duty: first extract the general description of the computation rules for an eliminator, put that earlier; and the talk about it's Agda realization as pattern matching, then how to write those patterns in metaprograms, goes here}
 
 \begin{center}
 \begingroup
 \fontsize{7pt}{2pt}\selectfont
-\begin{Verbatim}%[frame = single]
-
+\begin{Verbatim}
 f C c1 c2 [] = c1
 f C c1 c2 (x :: xs) = c2 x xs (f xs C c1 c2)
-
 \end{Verbatim}
 \endgroup
 \end{center}
@@ -635,7 +631,6 @@ f C c1 c2 (x :: xs) = c2 x xs (f xs C c1 c2)
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}[frame = single]
-
 (clause
   (vArg (var "C") ::                           -- P
    vArg (var "c2") ::                          -- d
@@ -654,15 +649,15 @@ f C c1 c2 (x :: xs) = c2 x xs (f xs C c1 c2)
 \end{Verbatim}
 \endgroup
 \end{center}
-\caption{Clause definition for the computation rule of \emph{W}}
+\caption{Clause definition for the computation rule of \texttt{Vec}}
 \label{fig:ast-cdef}
 \end{figure}
 
 \normalsize
 
-The clause definition, which evaluates to the above computation rule of {\tt Vec} pattern matching on {\tt \_::\_}, is given in figure~\ref{fig:ast-cdef}. The de~Bruijn index reference increments right to left starting from the last argument.  The above clause definition is defined using {\tt defineFun} primitive, and the function \emph{f} is brought into scope by {\tt unquotedecl}.
+A clause definition, which evaluates to the above computation rule of {\tt Vec} pattern matching on {\tt \_::\_}, is given in figure~\ref{fig:ast-cdef}. The de~Bruijn index reference increments right to left starting from the last argument.  The above clause definition is defined using {\tt defineFun} primitive, and the function \emph{f} is brought into scope by {\tt unquotedecl}.\texttt{While de~Bruijn indices are a pain the butt, they may not be worthy of this much discussion in a paper. The point is not to document the library, it's to describe the most interesting ideas!}
 
-Constructors with arguments of function type with the inductive type being defined as the codomain are handled differently. For example, consider a constructor $g$ of the following type.
+Constructors with arguments of function type with the inductive type being defined as the codomain are handled differently.\todo{Is that the case? Aren't the previous rules the nullary case of what you're going to describe?} For example, consider a constructor $g$ of the following type.\todo{Give the actual Agda definition of the version of the W type that you're using. Also, the constructor should be called \texttt{sup}, which is PML's name (``suprememum'')}
 \begin{equation}
 g : (A \rightarrow W) \rightarrow (B \rightarrow C \rightarrow W) \rightarrow D \rightarrow W \rightarrow W \nonumber
 \end{equation}
