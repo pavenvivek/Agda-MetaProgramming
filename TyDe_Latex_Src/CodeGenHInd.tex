@@ -824,7 +824,7 @@ In Agda, there are no built-in primitives to support the definition of higher in
 \subsection{Higher Inductive Type Definition}
 \label{sec:sec4.1}
 
-In Agda, we define an inductive type using {\tt data} keyword. The {\tt data} literal characterize a data type by declaring its type and specifying its constructors. Consider the following generic form for the definition of an inductive type \emph{W} with constructors $g_1 \ldots g_n$.
+In Agda,\todo{This looks more like Dybjer's or Luo's presentations of datatypes, not Agda's...} we define an inductive type using the {\tt data} keyword\todo{Totally unnecessary to give the keyword - anyone who can read up to here either knows this or can work it out.}. A datatype declaration characterizes a datatype by declaring its type and specifying its constructors. Consider the following generic form for the definition of an inductive type \emph{W} \todo{Use a better metavariable} with constructors $g_1 \ldots g_n$\todo{Why not c for constructors?}.\todo{This more schematic presentation should come much earlier}
 \begin{center}
 \begingroup
 \fontsize{7.9pt}{0pt}\selectfont
@@ -838,17 +838,17 @@ In Agda, we define an inductive type using {\tt data} keyword. The {\tt data} li
 \end{center}
 \normalsize
 
-The parameters $(x_1:P_1)\ldots(x_n:P_n)$ are common to all the constructors, and the type of each constructor implicitly encodes the parameter references. However, the indices are different for each constructor. So, the type of each constructor explicitly exhibits the index declaration. During the construction of a higher inductive type, we have to represent the parameters and the indices as explicit arguments in the type of the constructors. We define a higher inductive type $W$ as a top-level definition using a base type $W^*$ similar to the module {\tt Circle} in section 2.1. The reflection type {\tt Definition} provides us the type and the constructors of the base type $W^*$. We copy the type of $W^*$ to $W$ and for the constructors $g_1 \ldots g_n$ of $W$, we traverse the abstract representation of the type of $g_1^* \ldots g_n^*$ respectively replacing the occurrence of $W^*$ to $W$ in every strict positive position. Consider a constructor $g_i^*$ having the following type.
+The parameters $(x_1:P_1)\ldots(x_n:P_n)$ are common to all the constructors, and the type of each constructor implicitly encodes the parameter references. However, the indices may be different for each constructor. So, the type of each constructor explicitly exhibits \todo{What does ``exhibits'' mean here?} the index declaration. During the construction of a higher inductive type, we have to represent the parameters and the indices as explicit arguments in the types of the constructors. We define a higher inductive type $W$ as a top-level definition using a base type $W^*$ similar to the module {\tt Circle} in section 2.1. The reflection type {\tt Definition} provides us the type and the constructors of the base type $W^*$. We copy the type of $W^*$ to $W$ and for the constructors $g_1 \ldots g_n$ of $W$, we traverse the abstract representation of the type of $g_1^* \ldots g_n^*$ respectively replacing the occurrence of $W^*$ to $W$ in every strictly positive position.\todo{These sentences are mixing the description of what a datatype is with techniques for encoding HITs with Agda metaprograms. Tease them apart!} Consider a constructor $g_i^*$ that has the following type.
 \begin{equation}
 g_i^* : (A \rightarrow W^*) \rightarrow (B \rightarrow W^*) \rightarrow C \rightarrow W^* \rightarrow W^* \nonumber
 \end{equation}
 
-We built the type of $g_i$ by traversing the abstract syntax tree of $g_i^*$ and replacing the base type $W^*$ with the higher inductive type $W$. The abstract syntax tree of $g_i^*$ incorporates the type of the parameters and the indices if present. We have to retain the parameters and the indices explicitly during the construction of $g_i$. The following equation \todo{This is not an equation.} represents the type of the constructor $g_i$.
+We\todo{Not ``we'' here} built the type of $g_i$ by traversing the abstract syntax tree of $g_i^*$ and replacing the base type $W^*$ with the higher inductive type $W$. The abstract syntax tree of $g_i^*$ incorporates the type of the parameters and the indices if present. We have to retain the parameters and the indices explicitly during the construction of $g_i$. The following equation \todo{This is not an equation.} represents the type of the constructor $g_i$.
 \begin{equation}
 g_i : (A \rightarrow W) \rightarrow (B \rightarrow W) \rightarrow C \rightarrow W \rightarrow W \nonumber
 \end{equation}
 
-We explicitly pass the type of the path constructors to the automation tool. The higher inductive type definition of {\tt Circle} in section 2.1 represents the path constructors as propositional equalities. The automation tool takes the path types as input and declares them as propositional equalities using the reflection primitive {\tt declarePostulate}. We introduce a new data type {\tt ArgPath} to input the path types to the automation tool.
+We explicitly pass the types of the path constructors to the automation tool. The higher inductive type definition of {\tt Circle} in section 2.1 represents the path constructors as propositional equalities. The automation tool takes the path types as input and declares them as propositional equalities using the reflection primitive {\tt declarePostulate}. We introduce a new data type {\tt ArgPath}\todo{Get rid of math mode in its definition} to input the path types to the automation tool.
 \begin{center}
 \begingroup
 \fontsize{7.9pt}{0pt}\selectfont
@@ -860,7 +860,7 @@ We explicitly pass the type of the path constructors to the automation tool. The
 \end{center}
 \normalsize
 
-The constructor $argPath$ takes the type of a path constructor as input. We define the generic form of a higher inductive type as follows.
+The constructor $argPath$ takes the type of a path constructor as input. We define the generic form of a higher inductive type as follows.\todo{Use Agda syntax the same as in the rest of the paper}
 \begin{center}
 \begingroup
 \fontsize{7.9pt}{0pt}\selectfont
