@@ -420,9 +420,24 @@ The client's \emph{only} access to the constructor is through the provided elimi
 \normalsize
 
 {\tt recS} ignores the path argument and simply computes to the appropriate answer for the point constructor. The computational behavior for the path constructor loop is postulated using reduction rule {\tt βrecS}. In the above code, the function {\tt ap} gives the action of a function $f$ on paths. The following equation gives the type of {\tt ap}.
-\begin{align} \label{eq:ap}
-ap_f : (x =_A y) \rightarrow (f(x) =_A f(y))
-\end{align}
+
+\begin{center}
+\begingroup
+%\fontsize{7pt}{9pt}\selectfont
+\begin{Verbatim}[commandchars=\\\{\}]
+
+ap : \{A : Set\} \{B : Set\} \{x y : A\} → 
+     (f : A → B) → (x ≡ y) → (f x ≡ f y)
+
+\end{Verbatim}
+\endgroup
+\end{center}
+
+\normalsize
+     
+%\begin{align} \label{eq:ap}
+%ap_f : (x =_A y) \rightarrow (f(x) =_A f(y))
+%\end{align}
 
 The following code gives the dependent eliminator or the induction rule {\tt indS} and its computational rules.
 
@@ -449,14 +464,43 @@ The following code gives the dependent eliminator or the induction rule {\tt ind
 
 \normalsize
 In the above code, the function {\tt apd} gives the action of dependent functions of type $f : \prod_{(x:A)}B(x)$ on paths. The following equation gives the type of {\tt apd}.
-\begin{equation} \label{eq:apd}
-	apd_f : \prod_{p:x=y} (p_*(f(x)) =_{B(y)} f(y))
-\end{equation}
 
-In \eqref{eq:apd}, the point $p_*(f(x))$ lying in space $B(y)$ can be thought of as an endpoint of a path obtained by lifting the path p from f(x) to a path in the total space $\sum_{(x:A)} B(x) \rightarrow A$. The following equation gives the type of $p*$ which is also known as $transport$ \cite{HoTT-2013}.
-\begin{equation} \label{eq:transport}
-	transport^B_p : B(x) \rightarrow B(y)
-\end{equation}
+\begin{center}
+\begingroup
+%\fontsize{7pt}{9pt}\selectfont
+\begin{Verbatim}[commandchars=\\\{\}]
+
+apd : \{A : Set\} \{B : A → Set\} \{x y : A\} → 
+  (f : (a : A) → B a) → 
+  (p : x ≡ y) → (transport B p (f x) ≡ f y)
+
+\end{Verbatim}
+\endgroup
+\end{center}
+
+\normalsize
+
+%\begin{equation} \label{eq:apd}
+%	apd_f : \prod_{p:x=y} (p_*(f(x)) =_{B(y)} f(y))
+%\end{equation}
+In the above type, the point {\tt (transport B p (f x))} lying in space {\tt B(y)} can be thought of as an endpoint of a path obtained by lifting the path p from {\tt f(x)} to a path in the total space $\sum_{(x:A)} B(x) \rightarrow A$. The following equation gives the type of {\tt transport} \cite{HoTT-2013}.
+
+
+%\begin{equation} \label{eq:transport}
+%	transport^B_p : B(x) \rightarrow B(y)
+%\end{equation}
+\begin{center}\label{eq:transport}
+\begingroup
+%\fontsize{7pt}{9pt}\selectfont
+\begin{Verbatim}[commandchars=\\\{\}]
+
+transport : \{A : Set\} \{x y : A\} → 
+  (P : A → Set) → (p : x ≡ y) → P x → P y
+
+\end{Verbatim}
+\endgroup
+\end{center}
+\normalsize
 where $p : x = y$ for $x,y : A$.
 
 In the next section, we will see automation of code generation for normal inductive types. In section 4, we will see automation of code generation for higher inductive types, and in section 5, we will revisit patch theory \citep{Angiuli-2014} application and discuss automation of code generation for the higher inductive types defined to model Darc's version control system.
