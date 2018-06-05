@@ -531,14 +531,15 @@ Based on the generic form of the inductive type given above, we can define the f
 
   \begin{align*}
 D_{\mathit{elim}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
-& (\mathit{mot} : (i_1 : I_1) \to \ldots \to (i_m : I_m) \to \SET{}) \to \\
+& \begin{array}{@{}l@{}l}(\mathit{mot} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & D\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
 & (\mathit{f_1} : \Delta_1 \to  \Delta_1^\prime \to \mathit{mot}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
 & (\mathit{f_r} : \Delta_r \to  \Delta_r^\prime \to \mathit{mot}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
 & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
 & (\mathit{tgt} : D\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
-& \mathtit{mot}\ i_1\ \ldots\ i_n\ \mathit{tgt}
+& \mathit{mot}\ i_1\ \ldots\ i_n\ \mathit{tgt}
   \end{align*}
-where $\overline{\Psi}$ represents the sequence of variables bound in the telescope $\Psi$.
+
+where $\overline{\Psi}$ represents the sequence of variables bound in the telescope $\Psi$, and $j_{ij}$ are bound in $\Delta_i$.
 
 The type of $A{_i}^*$ in constructor $c_i$ depends on the type of $A_i$ in the  constructor $g_i$. If $A_i$ is a constant type $B$, the automation tool replaces $A{_i}^*$ with $B$. For inductive type $D$, the automation tool replaces $A{_i}^*$ with type $D \rightarrow C$. For function type $(B_1 \rightarrow\ldots\rightarrow B_n \rightarrow D)$, the automation tool replaces $A{_i}^*$ with $(B_1 \rightarrow\ldots\rightarrow B_n \rightarrow D) \rightarrow (B_1 \rightarrow\ldots\rightarrow B_n \rightarrow C)$. The parameter and the index to type $D$ must be reflected in the type of function $f$. We can retrieve information about the parameter and the index of $D$ from its type. The constructors refer to the parameter and the index using de~Bruijn indices. The general schema for the computation rules corresponding to $f$ and constructors $g_1, \ldots, g_n$ is given as follows.
 
