@@ -502,8 +502,8 @@ Based on the generic form of the inductive type given above, we can define the f
 \begin{align}
 & f \, : \, \{x_1:P_1\}\ldots\{x_n:P_n\} \rightarrow \{k_1:Q_1\} \rightarrow\ldots\rightarrow \{k_n:Q_n\} \rightarrow \nonumber \\
 & \hspace{0.4cm} D \, x_1 \dots x_n \, k_1 \ldots k_n \rightarrow (C : Set) \rightarrow \nonumber \\
-& \hspace{0.4cm} (c_1 : \{i_1:Q_1\} \rightarrow\ldots\rightarrow \{i_n:Q_n\} \rightarrow A{_1}^* \rightarrow C) \rightarrow \nonumber \\
-& \hspace{0.4cm} (c_2 : \{j_1:Q_1\} \rightarrow\ldots\rightarrow \{j_n:Q_n\} \rightarrow A{_n}^* \rightarrow C) \rightarrow C \nonumber \\ \nonumber 
+& \hspace{0.4cm} (c_1 : \{i_1:Q_1\} \rightarrow\ldots\rightarrow \{i_n:Q_n\} \rightarrow A{_1}^* \rightarrow C) \rightarrow \ldots \nonumber \\
+& \hspace{0.4cm} (c_n : \{j_1:Q_1\} \rightarrow\ldots\rightarrow \{j_n:Q_n\} \rightarrow A{_n}^* \rightarrow C) \rightarrow C \nonumber \\ \nonumber 
 \end{align}
 \endgroup
 \end{center}
@@ -515,8 +515,9 @@ The type of $A{_i}^*$ in constructor $c_i$ depends on the type of $A_i$ in the  
 \begingroup
 \fontsize{8.9pt}{2pt}\selectfont
 \begin{align}
-f \, (g_1 \, a_1 ... a_n) \, C \, c_1 \ldots c_n = c_1 ... \nonumber \\
-f \, (g_n \, a_1 ... a_n) \, C \, c_1 \ldots c_n = c_n ... \nonumber \\ \nonumber
+& f \, (g_1 \, a_1 ... a_n) \, C \, c_1 \ldots c_n = c_1 ... \nonumber \\
+& \hspace{0.5cm} \vdots \nonumber \\
+& f \, (g_n \, a_1 ... a_n) \, C \, c_1 \ldots c_n = c_n ... \nonumber \\ \nonumber
 \end{align}
 \endgroup
 \end{center}
@@ -781,7 +782,21 @@ The third argument to {\tt generateRec} is a list consisting of the index count 
 \subsection{Dependent Eliminators}
 \label{sec:sec3.2}
 
-The dependent eliminator for a datatype, also known as the \emph{induction principle}, is used to eliminate elements of a datatype when the type resulting from the elimination mentions the very element being eliminated. For the inductive type $W$, the induction principle says that to define a mapping $f' : (w : W) \rightarrow P(w)$, it suffices to define the action of $f'$ on $g$. To define the action of $f'$ on $g$, we need an element of the following type.\todo{This is totally opaque to me - is this Martin-Löf's W, or is it something generic? And why is it in math notation?}
+The dependent eliminator for a datatype, also known as the \emph{induction principle}, is used to eliminate elements of a datatype when the type resulting from the elimination mentions the very element being eliminated. We can define the general schema for the induction principle as follows.
+\begin{center}
+\begingroup
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{align}
+& f' \, : \, \{x_1:P_1\}\ldots\{x_n:P_n\} \rightarrow \{k_1:Q_1\} \rightarrow\ldots\rightarrow \{k_n:Q_n\} \rightarrow \nonumber \\
+& \hspace{0.4cm} (d : D \, x_1 \dots x_n \, k_1 \ldots k_n) \rightarrow (C : D \rightarrow Set) \rightarrow \nonumber \\
+& \hspace{0.4cm} (c_1 : \{i_1:Q_1\} \rightarrow\ldots\rightarrow \{i_n:Q_n\} \rightarrow A{_1}^* \rightarrow C (g_1 ...)) \rightarrow \nonumber \\
+& \hspace{0.4cm} (c_n : \{j_1:Q_1\} \rightarrow\ldots\rightarrow \{j_n:Q_n\} \rightarrow A{_n}^* \rightarrow C (g_n ...)) \rightarrow C \, d \nonumber \\ \nonumber 
+\end{align}
+\endgroup
+\end{center}
+\normalsize
+
+For the inductive type $W$, the induction principle says that to define a mapping $f' : (w : W A B) \rightarrow P(w)$, it suffices to define the action of $f'$ on $g$. To define the action of $f'$ on $g$, we need an element of the following type.\todo{This is totally opaque to me - is this Martin-Löf's W, or is it something generic? And why is it in math notation?}
 \begin{equation}
 d' : \prod_{\alpha : A \rightarrow W} (\prod_{a : A} P(\alpha (a))) \rightarrow  \prod_{\beta : B} \prod_{\omega : W} P(\omega) \rightarrow P (g(\alpha, \beta, \omega)) \nonumber
 \end{equation}
