@@ -50,6 +50,7 @@
 \usepackage{amssymb}
 \usepackage{mathtools}
 
+\usepackage[belowskip=-5pt,aboveskip=3pt]{caption}
 \usepackage{todonotes}
 
 \renewcommand{\theFancyVerbLine}{%
@@ -475,12 +476,56 @@ In Agda, constructors are given a function type. In Agda's reflection library, t
 \subsection{Non-dependent Eliminators}
 \label{sec:sec3.1}
 
-\todo{The beginning of this section needs a general-purpose description of what's going on, that at least sketches the high-level process. Then, Vec can be used as an example. But an example alone is not sufficient. This para is mostly a sketch to be filled in.}
-While inductive datatypes are defined by their constructors, it must also be possible to \emph{eliminate} them.
-This section describes how to generate a non-dependent recursion principle for an inductive type; section~\ref{sec:sec3.2} generalizes this technique to fully-dependent induction principles.\todo{Give a schematic presentation of the recursor of an inductive type here, then instantiate it using Vec. The schematic presentation should match the Agda code to generate it.}
+In Agda, we define an inductive type using {\tt data} keyword. The {\tt data} literal characterize a data type by declaring its type and specifying its constructors. Consider the following generic form for the definition of an inductive type \emph{D} with constructors $g_1 \ldots g_n$.
+\begin{center}
+\begingroup
+\fontsize{7.9pt}{0pt}\selectfont
+\begin{align}
+& data \hspace{0.2cm} D \hspace{0.2cm} (x_1:P_1)\ldots(x_n:P_n) : Q_1 \rightarrow\ldots\rightarrow Q_n \rightarrow Set \, \, where \nonumber \\
+& \hspace{0.3cm} g_1 : \{i_1 : Q_1\} \ldots \{i_n : Q_n\} \rightarrow A_1\rightarrow D \, x_1 \ldots x_n \, i_1 \ldots i_n \nonumber \\
+& \hspace{3.5cm} \vdots \nonumber \\
+& \hspace{0.3cm} g_n : \{j_1 : Q_1\} \ldots \{j_n : Q_n\} \rightarrow A_n\rightarrow D \, x_1 \dots x_n \, j_1 \ldots j_n \nonumber \\ \nonumber
+\end{align}
+\endgroup
+\end{center}
+\normalsize
 
+The type of $A_i$ can take one of the three forms: a constant type {\tt B}, the inductive type $D$, or a function $B_1 \rightarrow \ldots \rightarrow B_n \rightarrow D$ with co-domain $D$. The parameters $(x_1:P_1)\ldots(x_n:P_n)$ are common to all the constructors, and the type of each constructor implicitly encodes the parameter references. However, the indices are different for each constructor. So, the type of each constructor explicitly exhibits the index declaration.
 
-The Agda datatype \texttt{Vec} represents lists of a known length. It is defined in figure~\ref{fig:vec}. 
+While inductive datatypes are defined by their constructors, it must also be possible to \emph{eliminate} them. This section describes how to generate a non-dependent recursion principle for an inductive type; section~\ref{sec:sec3.2} generalizes this technique to fully-dependent induction principles.
+
+Based on the generic form of the inductive type given above, we can define the following schematic representation for the non-dependent eliminator.
+
+\begin{center}
+\begingroup
+\fontsize{7.9pt}{0pt}\selectfont
+\begin{align}
+& f \, : \, \{x_1:P_1\}\ldots\{x_n:P_n\} \rightarrow \{k_1:Q_1\} \rightarrow\ldots\rightarrow \{k_n:Q_n\} \rightarrow \nonumber \\
+& \hspace{0.4cm} D \, x_1 \dots x_n \, k_1 \ldots k_n \rightarrow (C : Set) \rightarrow \nonumber \\
+& \hspace{0.4cm} (c_1 : \{i_1:Q_1\} \rightarrow\ldots\rightarrow \{i_n:Q_n\} \rightarrow A{_1}^* \rightarrow C) \rightarrow \ldots \nonumber \\
+& \hspace{0.4cm} (c_n : \{j_1:Q_1\} \rightarrow\ldots\rightarrow \{j_n:Q_n\} \rightarrow A{_n}^* \rightarrow C) \rightarrow C \nonumber \\ \nonumber 
+\end{align}
+\endgroup
+\end{center}
+\normalsize
+
+The type of $A{_i}^*$ in constructor $c_i$ depends on the type of $A_i$ in the  constructor $g_i$. If $A_i$ is a constant type $B$, the automation tool replaces $A{_i}^*$ with $B$. For inductive type $D$, the automation tool replaces $A{_i}^*$ with type $D \rightarrow C$. For function type $(B_1 \rightarrow\ldots\rightarrow B_n \rightarrow D)$, the automation tool replaces $A{_i}^*$ with $(B_1 \rightarrow\ldots\rightarrow B_n \rightarrow D) \rightarrow (B_1 \rightarrow\ldots\rightarrow B_n \rightarrow C)$. The parameter and the index to type $D$ must be reflected in the type of function $f$. We can retrieve information about the parameter and the index of $D$ from its type. The constructors refer to the parameter and the index using de~Bruijn indices. The general schema for the computation rules corresponding to $f$ and constructors $g_1, \ldots, g_n$ is given as follows.
+
+\begin{center}
+\begingroup
+\fontsize{8.9pt}{2pt}\selectfont
+\begin{align}
+& f \, (g_1 \, a_1 ... a_n) \, C \, c_1 \ldots c_n = c_1 ... \nonumber \\
+& \hspace{0.5cm} \vdots \nonumber \\
+& f \, (g_n \, a_1 ... a_n) \, C \, c_1 \ldots c_n = c_n ... \nonumber \\ \nonumber
+\end{align}
+\endgroup
+\end{center}
+\normalsize
+
+The value of $c_i$ on the right-hand side of the above computation rules depends on the type of $g_i$. If $g_i$ takes zero arguments, then the corresponding computation rule for $g_i$ evaluates to $c_i$. If $g_i$ takes one or more arguments $(g_i \, a_1 \ldots a_n)$, then the computation rule evaluates to $(c_i \, a_1 \ldots a_n)$. If $g_i$ takes the inductive type $D$ as an argument $(g_i \, \ldots \, d_i \, \ldots)$, then the computation rule evaluates to $(c_i \, \ldots \, (f \, \ldots) \ldots)$, encoding the recursor $f$ to evaluate the value for the substructure $d_i$ of $D$. If $g_i$ takes a function with co-domain $D$ as an argument such as $(g_i \, \ldots \, d{_i}^* \, \ldots)$, we need a composite function $(f \circ d{_i}^*)$ to evaluate the value for the substructure $d{_i}^*$. The automation tool handles composites by using a lambda function $(\lambda \, a \, \ldots \, \rightarrow (f \ldots (d{_i}^* a \ldots) \ldots))$.
+
+The Agda datatype \texttt{Vec} represents lists of a known length. It is defined in figure~\ref{fig:vec}. For {\tt Vec}, the recursion principle says that to define a mapping {\tt f : Vec A n → C}, it suffices to define the action of \emph{f} on inputs {\tt []} and {\tt \_::\_}.
 
 \begin{figure}
 \begin{center}
@@ -498,20 +543,16 @@ data Vec (A : Set) : Nat → Set where
 \label{fig:vec}
 \end{figure}
 
-For {\tt Vec}, the recursion principle says that to define a mapping $f : Vec \rightarrow C$\todo{Two issues: why math mode instead of Agda? And what happened to the parameter and the index? Those things are important and shouldn't be swept under the rug!}, it suffices to define the action of \emph{f} on inputs {\tt []} and {\tt \_::\_}.
-
-
-
 To define the action of \emph{f} on inputs {\tt []} and {\tt \_::\_}, we need elements {\tt c1} and {\tt c2} of the following type.\todo{The usual presentation instead quantifies the parameters over the entire eliminator, and then the index separately over the motive, instantiating the index as necessary for each method, and then quantifies once more for the target of elimination.}
 
 \begin{center}
 \begingroup
-\fontsize{9pt}{2pt}\selectfont
-\begin{Verbatim}
+%\fontsize{9pt}{2pt}\selectfont
+\begin{BVerbatim}
 c1 : C
-
-c2 : {m : Nat} → (x : A) → (xs : Vec A m) → C → C
-\end{Verbatim}
+c2 : {m : Nat} → (x : A) → (xs : Vec A m) → 
+     C → C
+\end{BVerbatim}
 \endgroup
 \end{center}
 \normalsize
@@ -520,32 +561,28 @@ c2 : {m : Nat} → (x : A) → (xs : Vec A m) → C → C
 %d : (A \rightarrow W) \rightarrow (A \rightarrow P) \rightarrow B \rightarrow W \rightarrow P \rightarrow P \nonumber
 %\end{equation}
 
-The function \emph{f} will map the constructors {\tt []} and {\tt \_::\_} to {\tt c1} and {\tt c2} respectively.\todo{Use present tense, not future tense, unless it really only is true in the future.}\todo{This seems a bit off, shouldn't it instantiate those two methods with the appropriate arguments, and also with the results of recursion on Vec-typed substructures?} To construct the type of the recursion rule for {\tt Vec}, we need to build the type of {\tt c1} and {\tt c2}. Since {\tt []} is not a function type, we can map it directly to {\tt c1 : C}. We can retrieve the static type information of {\tt \_::\_} using reflection primitives, and use that to construct the type of {\tt c2}. The constructor {\tt pi} of type {\tt Term} encodes the abstract syntax tree (AST) representation of {\tt \_::\_} (fig.~\ref{fig:ast-g}). We can retrieve and traverse the AST of {\tt \_::\_}, and add new type information into it to build a new type representing {\tt c2}.
+The recursor {\tt f} maps the constructor {\tt []}, which takes zero arguments, to {\tt c1}. The constructor {\tt \_::\_} takes a constant argument {\tt x} and an argument {\tt xs} of the inductive type {\tt Vec}. {\tt f} maps {\tt (x :: xs)} to {\tt (c2 x xs (f xs C c1 c2))}. To construct the type of the recursion rule for {\tt Vec}, we need to build the type of {\tt c1} and {\tt c2}. Since {\tt []} is not a function type, we can map it directly to {\tt c1 : C}. We can retrieve the static type information of {\tt \_::\_} using reflection primitives, and use that to construct the type of {\tt c2}. The constructor {\tt pi} of type {\tt Term} encodes the abstract syntax tree (AST) representation of {\tt \_::\_} (fig.~\ref{fig:ast-g}). We can retrieve and traverse the AST of {\tt \_::\_}, and add new type information into it to build a new type representing {\tt c2}.
 
 \begin{figure}
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}[frame = single]
-pi (hArg (def (quote Level) []))
- (abs "a"
-  (pi (hArg (agda-sort (set (var 0 []))))
-   (abs "A"
-    (pi (hArg (def (quote Nat) []))
-     (abs "n"
-      (pi (vArg (var 1 []))             -- (x : A)
-       (abs "x"
-        (pi
-         (vArg (def (quote Vec)          -- (xs : Vec A n)
-          (hArg (var 3 []) ::           
-           vArg (var 2 []) ::           -- A
-           vArg (var 1 []) :: [])))     -- n
-          (abs "xs"
-           (def (quote Vec)              -- Vec A (suc n)
-            (hArg (var 4 []) ::         
-             vArg (var 3 []) ::         -- A
-             vArg (con (quote suc)      -- (suc n)
-                   (vArg (var 2 []) :: [])) :: [])))))))))))
+pattern _[_v]⇒_ a s b = pi (vArg a) (abs s b)
+pattern _[_h]⇒_ a s b = pi (hArg a) (abs s b)
+
+(agda-sort (lit 0) [ "A" h]⇒               -- A
+ (def (quote Nat) [] [ "n" h]⇒             -- n
+  (var 1 [] [ "x" v]⇒                      -- x
+   (def (quote Vec)                         -- xs : Vec A n
+        (vArg (var 2 []) ::
+         vArg (var 1 []) :: [])
+         [ "xs" v]⇒
+    def (quote Vec)                         -- Vec A (suc n)
+        (vArg (var 3 []) ::
+         vArg (con (quote suc)
+                (vArg (var 2 []) :: []))
+         :: [])))))
 \end{Verbatim}
 \endgroup
 \end{center}
@@ -555,47 +592,49 @@ pi (hArg (def (quote Level) []))
 
 \normalsize
 
-During the traversal of abstract syntax tree of the type of {\tt \_::\_}, when we identify a function {\tt f1} with codomain {\tt Vec}, we add a new function {\tt f2}, with the same arguments as {\tt f1} and codomain {\tt C}, to the tree.\todo{Why? Without the schematic presentation, this is hard to follow. Here, it is the result of the recursion, which is what makes this into primitive recursion.} When the type {\tt Vec} occurs directly in a non-codomain position, we add the type {\tt C} next to it. For example, in figure~\ref{fig:ast-g}, a new function is built from the argument {\tt (xs : Vec A n)} by modifying it to {\tt (Vec A n) → C} (fig.~\ref{fig:ast-d}). Constant types require no modifications. Therefore, we copy {\tt (x : A)} into the new type without any changes. Finally, we change the codomain {Vec A (suc n)} of {\tt \_::\_} to \emph{C} resulting in an abstract syntax tree representation of {\tt c2}\todo{Wouldn't that be c2's type? Be careful when talking about a reference to a name, a reference to what the name refers to, and a reference to the type of what the name refers to. These things are all different, and it matters when writing about metaprogramming.} (fig.~\ref{fig:ast-d}). We repeat this process for each of the constructors.\todo{The nesting of pi and abs seems unfortunate - can we write a helper that does both at once?}
+During the traversal of abstract syntax tree of the type of {\tt \_::\_}, when the type {\tt Vec} occurs directly in a non-codomain position, we add the type {\tt C} next to it. For example, in figure~\ref{fig:ast-g}, a new function is built from the argument {\tt (xs : Vec A n)} by modifying it to {\tt (Vec A n) → C} (fig.~\ref{fig:ast-d}). Constant types require no modifications. Therefore, we copy {\tt (x : A)} into the new type without any changes. Finally, we change the codomain {Vec A (suc n)} of {\tt \_::\_} to \emph{C} resulting in an abstract syntax tree representation of the type {\tt c2}. We repeat this process for each of the constructors.
 
 \begin{figure}
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}[frame = single]
-(pi (hArg (def (quote Nat) []))
- (abs "m"
-  (pi (vArg (var 5 []))                -- (x : A)
-   (abs "x"
-    (pi (vArg (def (quote Vec)           -- Vec A n → C
-               (hArg (var 7 []) ::              
-                vArg (var 6 []) ::              -- A
-                vArg (var 1 []) :: [])))        -- n
-     (abs "xs"
-      (pi (vArg (var 4 []))                -- C 
-       (abs "_" 
-        (var 5 [])))))))))               -- C
+(agda-sort (lit 0) [ "A" h]⇒                    -- A
+ (def (quote Nat) [] [ "n" h]⇒                  -- n
+  (def (quote Vec) (vArg (var 1 []) ::           -- Vec A n
+     vArg (var 0 []) :: []) [ "_" v]⇒
+   (agda-sort (lit 0) [ "C" v]⇒                 -- C
+    (var 0 [] [ "_" v]⇒                         -- c1
+     ((def (quote Nat) [] [ "m" h]⇒             -- c2
+       (var 5 [] [ "x" v]⇒                      -- x
+        (def (quote Vec) (vArg (var 6 []) ::     -- xs : Vec A m
+           vArg (var 1 []) :: []) [ "xs" v]⇒  
+             (var 4 [] [ "_" v]⇒ var 5 []))))   -- C → C
+      [ "_" v]⇒ var 2 []))))))                  -- C
 \end{Verbatim}
 \endgroup
 \end{center}
-\caption{Abstract syntax tree for constructor {\tt c2}}
+\caption{Abstract syntax tree for recursor {\tt f} on Vec}
 \label{fig:ast-d}
 \end{figure}
 
 \normalsize
 
-The parameter and the index to {\tt Vec} must be reflected in type of function \emph{f}. We can retrieve information about the parameter and the index of {\tt Vec} from its type. The constructors refer to the parameter and the index using de~Bruijn indices. During the construction of the output type {\tt c2}, we \todo{This is not ``we'', it is the metaprogram} should update the de~Bruijn indices accordingly. The constructor {\tt data-type} contains the count \emph{cp} of parameters occurring in a defined type. It also encodes the constructors of the type as a list of \texttt{Name}s. Metaprograms can retrieve the index count by finding the difference between \emph{cp} and the length of the constructor list. The parameters are common to all the constructors of a type. But the index values are different for each constructor. So we have to encode unique indices for each constructor. Also, some constructors might not take the same number of indices as the parent type. For example, in the case of {\tt Vec}, the constructor {\tt []} excludes the index {\tt Nat} from its type. We do not have any reflection primitive to retrieve the index count from a constructor name. A workaround is to pass the index count of each constructor explicitly to the automation tool.\todo{This paragraph is doing two things at once: discussing fragments of the schematic presentation of the eliminator type that should have been at the beginning of the section, and talking about how to find those things in Agda. First give the idea, then give it's implementation.}
+The variable {\tt c2} refers to the parameter and the index using de~Bruijn indices. During the construction of the output type {\tt c2}, the automation tool updates the de~Bruijn indices accordingly. The constructor {\tt data-type} contains the count \emph{cp} of parameters occurring in a defined type. It also encodes the constructors of the type as a list of \texttt{Name}s. Metaprograms can retrieve the index count by finding the difference between \emph{cp} and the length of the constructor list. Some constructors might not take the same number of indices as the parent type. For example, in the case of {\tt Vec}, the constructor {\tt []} excludes the index {\tt Nat} from its type. We do not have any reflection primitive to retrieve the index count from a constructor name. A workaround is to pass the index count of each constructor explicitly to the automation tool.\todo{This paragraph is doing two things at once: discussing fragments of the schematic presentation of the eliminator type that should have been at the beginning of the section, and talking about how to find those things in Agda. First give the idea, then give it's implementation.}
 
-Once we have the type of {\tt c2}\todo{Isn't c2 here a metavariable rather than a piece of Agda syntax? I'm not entirely sure what it is, especially because the type for it above is incorrect by ignoring params and indices}, we can build the type of the recursion rule for {\tt Vec}. To encode the mapping {\tt Vec → C} in the recursion type we need to declare {\tt C}. We can use the constructor {\tt agda-sort} to introduce the type {\tt (C : Set)}. The type of the recursion rule \emph{f} is given as follows.
+Once we have the AST of {\tt c2}, we can build the type of the recursion rule {\tt f} for {\tt Vec} (fig.\ref{fig:ast-d}). To encode the mapping {\tt Vec A n → C} in the recursion type, we need to declare {\tt C}. We can use the constructor {\tt agda-sort} to introduce the type {\tt (C : Set)}. The type of the recursion rule \emph{f} is given as follows.
 
 \begin{center}
 \begingroup
-\fontsize{7pt}{2pt}\selectfont
-\begin{Verbatim}
-f : ∀{a} {A : Set a} → {n : Nat} → (C : Set) → 
-    C → 
-    ({m : Nat} → (x : A) → (xs : Vec A m) → C → C) → 
-    Vec A n → C
-\end{Verbatim}
+%\fontsize{8pt}{2pt}\selectfont
+\begin{BVerbatim}
+f : {A : Set} → {n : Nat} → Vec A n → 
+  (C : Set) → 
+  (c1 : C) → 
+  (c2 : {m : Nat} → (x : A) → 
+        (xs : Vec A m) → C → C) → 
+  C
+\end{BVerbatim}
 \endgroup
 \end{center}
 
@@ -607,15 +646,15 @@ f : ∀{a} {A : Set a} → {n : Nat} → (C : Set) →
 %& \hspace {0.5cm} W \rightarrow P \nonumber
 %\end{align}
 
-The above type is declared using {\tt declareDef}. We can build the computation rule representing the action of function \emph{f} on {\tt c1} and {\tt c2} using {\tt clause} (fig.~\ref{fig:ast-cdef}). The first argument to {\tt clause} encodes variables corresponding to the above type, and it also includes the abstract representation of {\tt c1},{\tt c2} on which the pattern matching should occur. The second argument to clause, which is of type {\tt Term}, refers to the variables in the first argument using de~Bruijn indices, and it encodes the output of the action of function \emph{f} on {\tt c1},{\tt c2}. The constructor {\tt var} in {\tt Pattern} is used to introduce new variables in the {\tt clause} definition. The type {\tt Pattern} also has another constructor {\tt con} used to represent the pattern matching term. The type {\tt Term} has similar constructors {\tt var} and {\tt con}, but with different types, used to encode the output of the recursion rule. The computation rules corresponding to the above type is given as follows.\todo{This paragraph is also doing double duty: first extract the general description of the computation rules for an eliminator, put that earlier; and the talk about it's Agda realization as pattern matching, then how to write those patterns in metaprograms, goes here}
+The above type is declared using {\tt declareDef}. We can build the computation rule representing the action of function \emph{f} on {\tt []} and {\tt \_::\_} using {\tt clause} (fig.~\ref{fig:ast-cdef}). The first argument to {\tt clause} encodes variables corresponding to the above type, and it also includes the abstract representation of {\tt []},{\tt \_::\_} on which the pattern matching should occur. The second argument to clause, which is of type {\tt Term}, refers to the variables in the first argument using de~Bruijn indices, and it encodes the output of the action of function \emph{f} on {\tt []},{\tt \_::\_}. The constructor {\tt var} in {\tt Pattern} is used to introduce new variables in the {\tt clause} definition. The type {\tt Pattern} also has another constructor {\tt con} used to represent the pattern matching term. The type {\tt Term} has similar constructors {\tt var} and {\tt con}, but with different types, used to encode the output of the recursion rule. The computation rules corresponding to the above type is given as follows.\todo{This paragraph is also doing double duty: first extract the general description of the computation rules for an eliminator, put that earlier; and the talk about it's Agda realization as pattern matching, then how to write those patterns in metaprograms, goes here}
 
 \begin{center}
 \begingroup
-\fontsize{7pt}{2pt}\selectfont
-\begin{Verbatim}
-f C c1 c2 [] = c1
-f C c1 c2 (x :: xs) = c2 x xs (f xs C c1 c2)
-\end{Verbatim}
+%\fontsize{7pt}{2pt}\selectfont
+\begin{BVerbatim}
+f [] C c1 c2 = c1
+f (x :: xs) C c1 c2 = c2 x xs (f xs C c1 c2)
+\end{BVerbatim}
 \endgroup
 \end{center}
 
@@ -632,57 +671,82 @@ f C c1 c2 (x :: xs) = c2 x xs (f xs C c1 c2)
 \fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}[frame = single]
 (clause
-  (vArg (var "C") ::                           -- P
-   vArg (var "c2") ::                          -- d
-   vArg (con (quote _::_)                      -- _::_
+  (vArg (con (quote _::_)                      -- _::_
           (vArg (var "x") ::                   -- x
-           vArg (var "xs") :: [])) :: [])      -- xs
-  (var 2                                       -- c2
-    (vArg (var 1 []) ::                        -- x
-     vArg (var 0 []) ::                        -- xs
+           vArg (var "xs") :: []))             -- xs
+   vArg (var "C") ::                           -- C
+   vArg (var "c1") ::                          -- c1
+   vArg (var "c2") :: [])                      -- c2
+  (var 0                                       
+    (vArg (var 4 []) ::                        -- x
+     vArg (var 3 []) ::                        -- xs
      vArg (def f                               -- (f xs C c1 c2)
-       (vArg (var 0 [])                        -- xs
-        vArg (var 4 []) ::                     -- C
-        vArg (var 3 []) ::                     -- c1
-        vArg (var 2 []) :: [])))))             -- c2
+       (vArg (var 3 [])                        -- xs
+        vArg (var 2 []) ::                     -- C
+        vArg (var 1 []) ::                     -- c1
+        vArg (var 0 []) :: [])))))             -- c2
 
 \end{Verbatim}
 \endgroup
 \end{center}
-\caption{Clause definition for the computation rule of \texttt{Vec}}
+\caption{Clause definition for the computation rule of \texttt{\_::\_}}
 \label{fig:ast-cdef}
 \end{figure}
 
 \normalsize
 
-A clause definition, which evaluates to the above computation rule of {\tt Vec} pattern matching on {\tt \_::\_}, is given in figure~\ref{fig:ast-cdef}. The de~Bruijn index reference increments right to left starting from the last argument.  The above clause definition is defined using {\tt defineFun} primitive, and the function \emph{f} is brought into scope by {\tt unquotedecl}.\texttt{While de~Bruijn indices are a pain the butt, they may not be worthy of this much discussion in a paper. The point is not to document the library, it's to describe the most interesting ideas!}
+A clause definition, which evaluates to the above computation rule of {\tt Vec} pattern matching on {\tt \_::\_}, is given in figure~\ref{fig:ast-cdef}. The de~Bruijn index reference increments right to left starting from the last argument.  The above clause definition is defined using {\tt defineFun} primitive, and the function \emph{f} is brought into scope by {\tt unquotedecl}.
+\begin{figure}
+\begin{center}
+\begingroup
+\begin{BVerbatim}
+data W (A : Set) (B : A → Set) : Set where
+  sup : (a : A) → (B a → W A B) → W A B
+\end{BVerbatim}
+\endgroup
+\end{center}
+\caption{W-Type}
+\label{fig:W-type}
+\end{figure}
 
-Constructors with arguments of function type with the inductive type being defined as the codomain are handled differently.\todo{Is that the case? Aren't the previous rules the nullary case of what you're going to describe?} For example, consider a constructor $g$ of the following type.\todo{Give the actual Agda definition of the version of the W type that you're using. Also, the constructor should be called \texttt{sup}, which is PML's name (``suprememum'')}
-\begin{equation}
-g : (A \rightarrow W) \rightarrow (B \rightarrow C \rightarrow W) \rightarrow D \rightarrow W \rightarrow W \nonumber
-\end{equation}
-
-To define the action of a function \emph{f : W → P} on input \emph{g}, we need a function \emph{d} of the following type.
-\begin{align}
-& d : (A \rightarrow W) \rightarrow (A \rightarrow P) \rightarrow \nonumber \\
-& \hspace {0.6cm} (B \rightarrow C \rightarrow W) \rightarrow (B \rightarrow C \rightarrow P) \rightarrow \nonumber \\ 
-& \hspace {0.6cm} D \rightarrow W \rightarrow P \rightarrow P \nonumber
-\end{align}
-
-The first two arguments to $g$ are functions with codomain $W$. The type of $d$ is built by traversing the AST of $g$. During the traversal of the AST of $g$, when we identify a function {\tt f1} with codomain $W$, we add a new function {\tt f2}, with the same arguments as {\tt f1} and codomain $P$, to the tree. Given $\alpha : A \rightarrow W$, $\beta : B \rightarrow \rightarrow W$, $\delta : D$\todo{Why is this all suddenly in math font? Be consistent!} and $\omega : W$, the computation rule corresponding to the above type is given as follows.
-\begin{equation}
-f (P, d, g (\alpha, \beta, \delta, \omega)) \equiv d (\alpha, f \circ \alpha, \beta, f \circ \beta, \delta, \omega, f (\omega)) \nonumber
-\end{equation}
-
-The second argument $(f \circ \alpha)$ to $d$ is the composition of functions $f$ and $\alpha$. We can compose functions inside a lambda directly, using the \texttt{Term} constructor {\tt lam}. The arguments to {\tt lam} are referenced using de~Bruijn indices inside the lambda body. So, the de~Bruijn indices for referring variables outside the lambda body are updated accordingly. For example, inside the lambda body, the reference {\tt 0} refers to the lambda argument, and the index references to the variables outside the lambda body starts from 1 and increments towards the left.
-
-In the automation tool, {\tt generateRec} interface is used to generate the resursion rule $f$ for the type $W$. The implementation of {\tt generateRec} follows.
+Lets consider another example, the {\tt W}-type, to review the automation process for the recursion principle. {\tt W}-type has a constructor {\tt sup} given by the following type.
 
 \begin{center}
 \begingroup
-\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}
-generateRec : Arg Name → Name → (indexList : List Nat) → TC ⊤
+\begin{BVerbatim}
+sup : (a : A) → (B a → W A B) → W A B
+\end{BVerbatim}
+\endgroup
+\end{center}
+
+To define the action of a function {\tt f : W A B → C} on input {\tt sup}, we need a function {\tt d} of the following type.
+\begin{center}
+\begingroup
+\begin{BVerbatim}
+d : (a : A) → (B a → W A B) → (B a → C) → C
+\end{BVerbatim}
+\endgroup
+\end{center}
+
+The type of {\tt d} is built by traversing the AST of {\tt sup}. During the traversal of the AST of {\tt sup}, the first argument to {\tt sup}, which is a constant type {\tt A}, is copied directly into the AST of {\tt d}. The second argument {\tt (B a  → W A B)}, which is a function with co-domain {\tt W A B}, is modified to {\tt (B a  → W A B) → (B a → C)}. Finally, the co-domain {\tt W A B} of {\tt sup} is replaced by {\tt C}. The computation rule corresponding to {\tt sup} is given as follows.
+\begin{center}
+\begingroup
+\begin{BVerbatim}
+f (sup a b) C d = d a b (λ v → f (b v) C d)
+\end{BVerbatim}
+\endgroup
+\end{center}
+
+In the above computation rule, the third argument to {\tt d} is a composition of functions {\tt f} and {\tt b}. The automation tool composes functions inside a lambda directly, using the \texttt{Term} constructor {\tt lam}. The arguments to {\tt lam} are referenced using de~Bruijn indices inside the lambda body. So, the de~Bruijn indices for referring variables outside the lambda body are updated accordingly. For example, inside the lambda body, the reference {\tt 0} refers to the lambda argument {\tt v}, and the index references to the variables outside the lambda body start from 1 and increment towards the left.
+
+In the automation tool, {\tt generateRec} interface is used to generate the recursion rule $f$. The implementation of {\tt generateRec} is given as follows.
+
+\begin{center}
+\begingroup
+%\fontsize{7pt}{9pt}\selectfont
+\begin{BVerbatim}
+generateRec : Arg Name → Name → 
+  (indexList : List Nat) → TC ⊤
 generateRec (arg i f) t indLs =
   do indLs' ← getIndex t indLs
      cns ← getConstructors t
@@ -692,21 +756,22 @@ generateRec (arg i f) t indLs =
      funType ← getRtype t indLs' zero RTy
      declareDef (arg i f) funType
      defineFun f cls
-\end{Verbatim}
+\end{BVerbatim}
 \endgroup
 \end{center}
 
 \normalsize
 
-{\tt generateRec} uses {\tt getClause} and {\tt getRtype} to build the computation and elimination rules respectively. It takes three arguments: the name of the function to be defined (represented by an element of type {\tt Arg Name}), the quoted {\tt Name} of the type \emph{W}\texttt{Why W? Doesn't this work for any type at all? Metavariables should never be the same name as a normal name.} and a list containing the index count of the individual constructors. {\tt generateRec} can be used to automate the generation of recursion rules for inductive types. It can be used with the constructors of inductive types that take no arguments (eg. {\tt Bool}), one or multiple arguments (eg. coproduct, cartesian product) and constructors that take arguments from the inductive type being defined (eg. {\tt Nat}, {\tt List}, {\tt Vec}).\todo{This sentence reads more like a specification - shouldn't that be way back at the beginning of the discussion of the metaprogram?} The recursion rule generated by {\tt generateRec} is brought into scope using {\tt unquoteDecl} as follows.
+{\tt generateRec} uses {\tt getClause} and {\tt getRtype} to build the computation and elimination rules respectively. It takes three arguments: the name of the function to be defined (represented by an element of type {\tt Arg Name}), the quoted {\tt Name} of the type and a list containing the index count of the individual constructors. {\tt generateRec} can be used to automate the generation of recursion rules for inductive types having the general schema given at the beginning of this section. The recursion rule generated by {\tt generateRec} is brought into scope using {\tt unquoteDecl} as follows.
 
 \begin{center}
 \begingroup
-\fontsize{8pt}{9pt}\selectfont
-\begin{Verbatim}
-unquoteDecl recVec = generateRec (vArg recVec)
-                                 (quote Vec) (0 :: 1 :: [])
-\end{Verbatim}
+%\fontsize{8pt}{9pt}\selectfont
+\begin{BVerbatim}
+unquoteDecl f = generateRec (vArg f)
+                  (quote Vec) 
+                  (0 :: 1 :: [])
+\end{BVerbatim}
 \endgroup
 \end{center}
 
@@ -717,7 +782,21 @@ The third argument to {\tt generateRec} is a list consisting of the index count 
 \subsection{Dependent Eliminators}
 \label{sec:sec3.2}
 
-The dependent eliminator for a datatype, also known as the \emph{induction principle}, is used to eliminate elements of a datatype when the type resulting from the elimination mentions the very element being eliminated. For the inductive type $W$, the induction principle says that to define a mapping $f' : (w : W) \rightarrow P(w)$, it suffices to define the action of $f'$ on $g$. To define the action of $f'$ on $g$, we need an element of the following type.\todo{This is totally opaque to me - is this Martin-Löf's W, or is it something generic? And why is it in math notation?}
+The dependent eliminator for a datatype, also known as the \emph{induction principle}, is used to eliminate elements of a datatype when the type resulting from the elimination mentions the very element being eliminated. We can define the general schema for the induction principle as follows.
+\begin{center}
+\begingroup
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{align}
+& f' \, : \, \{x_1:P_1\}\ldots\{x_n:P_n\} \rightarrow \{k_1:Q_1\} \rightarrow\ldots\rightarrow \{k_n:Q_n\} \rightarrow \nonumber \\
+& \hspace{0.4cm} (d : D \, x_1 \dots x_n \, k_1 \ldots k_n) \rightarrow (C : D \rightarrow Set) \rightarrow \nonumber \\
+& \hspace{0.4cm} (c_1 : \{i_1:Q_1\} \rightarrow\ldots\rightarrow \{i_n:Q_n\} \rightarrow A{_1}^* \rightarrow C (g_1 ...)) \rightarrow \nonumber \\
+& \hspace{0.4cm} (c_n : \{j_1:Q_1\} \rightarrow\ldots\rightarrow \{j_n:Q_n\} \rightarrow A{_n}^* \rightarrow C (g_n ...)) \rightarrow C \, d \nonumber \\ \nonumber 
+\end{align}
+\endgroup
+\end{center}
+\normalsize
+
+For the inductive type $W$, the induction principle says that to define a mapping $f' : (w : W A B) \rightarrow P(w)$, it suffices to define the action of $f'$ on $g$. To define the action of $f'$ on $g$, we need an element of the following type.\todo{This is totally opaque to me - is this Martin-Löf's W, or is it something generic? And why is it in math notation?}
 \begin{equation}
 d' : \prod_{\alpha : A \rightarrow W} (\prod_{a : A} P(\alpha (a))) \rightarrow  \prod_{\beta : B} \prod_{\omega : W} P(\omega) \rightarrow P (g(\alpha, \beta, \omega)) \nonumber
 \end{equation}
