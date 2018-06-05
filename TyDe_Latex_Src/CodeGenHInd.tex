@@ -482,12 +482,12 @@ In general, the definition of an inductive datatype \emph{D} with constructors $
 \begin{center}
 \begingroup
 \fontsize{7.9pt}{0pt}\selectfont
-\begin{align}
-& \KW{data}  \hspace{0.2cm} D \hspace{0.2cm} (x_1:P_1)\ldots(x_n:P_n) : Q_1 \rightarrow\ldots\rightarrow Q_n \rightarrow \SET{} \, \, \KW{where} \nonumber \\
-& \hspace{0.3cm} g_1 : \{i_1 : Q_1\} \ldots \{i_n : Q_n\} \rightarrow A_1\rightarrow D \, x_1 \ldots x_n \, i_1 \ldots i_n \nonumber \\
-& \hspace{3.5cm} \vdots \nonumber \\
-& \hspace{0.3cm} g_n : \{j_1 : Q_1\} \ldots \{j_n : Q_n\} \rightarrow A_n\rightarrow D \, x_1 \dots x_n \, j_1 \ldots j_n \nonumber \\ \nonumber
-\end{align}
+\begin{align*}
+& \KW{data}  \hspace{0.2cm} D \hspace{0.2cm} (x_1:P_1)\ldots(x_n:P_n) : Q_1 \rightarrow\ldots\rightarrow Q_n \rightarrow \SET{} \, \, \KW{where}  \\
+& \hspace{0.3cm} g_1 : \{i_1 : Q_1\} \ldots \{i_n : Q_n\} \rightarrow A_1\rightarrow D \, x_1 \ldots x_n \, i_1 \ldots i_n  \\
+& \hspace{3.5cm} \vdots  \\
+& \hspace{0.3cm} g_n : \{j_1 : Q_1\} \ldots \{j_n : Q_n\} \rightarrow A_n\rightarrow D \, x_1 \dots x_n \, j_1 \ldots j_n  \\ 
+\end{align*}
 \endgroup
 \end{center}
 \normalsize
@@ -501,12 +501,12 @@ Based on the generic form of the inductive type given above, we can define the f
 \begin{center}
 \begingroup
 \fontsize{7.9pt}{0pt}\selectfont
-\begin{align}
-& f \, : \, \{x_1:P_1\}\ldots\{x_n:P_n\} \rightarrow \{k_1:Q_1\} \rightarrow\ldots\rightarrow \{k_n:Q_n\} \rightarrow \nonumber \\
-& \hspace{0.4cm} D \, x_1 \dots x_n \, k_1 \ldots k_n \rightarrow (C : Set) \rightarrow \nonumber \\
-& \hspace{0.4cm} (c_1 : \{i_1:Q_1\} \rightarrow\ldots\rightarrow \{i_n:Q_n\} \rightarrow A{_1}^* \rightarrow C) \rightarrow \ldots \nonumber \\
-& \hspace{0.4cm} (c_n : \{j_1:Q_1\} \rightarrow\ldots\rightarrow \{j_n:Q_n\} \rightarrow A{_n}^* \rightarrow C) \rightarrow C \nonumber \\ \nonumber 
-\end{align}
+\begin{align*}
+& f \, : \, \{x_1:P_1\}\ldots\{x_n:P_n\} \rightarrow \{k_1:Q_1\} \rightarrow\ldots\rightarrow \{k_n:Q_n\} \rightarrow  \\
+& \hspace{0.4cm} D \, x_1 \dots x_n \, k_1 \ldots k_n \rightarrow (C : Set) \rightarrow  \\
+& \hspace{0.4cm} (c_1 : \{i_1:Q_1\} \rightarrow\ldots\rightarrow \{i_n:Q_n\} \rightarrow A{_1}^* \rightarrow C) \rightarrow \ldots  \\
+& \hspace{0.4cm} (c_n : \{j_1:Q_1\} \rightarrow\ldots\rightarrow \{j_n:Q_n\} \rightarrow A{_n}^* \rightarrow C) \rightarrow C  \\  
+\end{align*}
 \endgroup
 \end{center}
 \normalsize
@@ -516,11 +516,11 @@ The type of $A{_i}^*$ in constructor $c_i$ depends on the type of $A_i$ in the  
 \begin{center}
 \begingroup
 \fontsize{8.9pt}{2pt}\selectfont
-\begin{align}
-& f \, (g_1 \, a_1 ... a_n) \, C \, c_1 \ldots c_n = c_1 ... \nonumber \\
-& \hspace{0.5cm} \vdots \nonumber \\
-& f \, (g_n \, a_1 ... a_n) \, C \, c_1 \ldots c_n = c_n ... \nonumber \\ \nonumber
-\end{align}
+\begin{align*}
+& f \, (g_1 \, a_1 ... a_n) \, C \, c_1 \ldots c_n = c_1 ...  \\
+& \hspace{0.5cm} \vdots  \\
+& f \, (g_n \, a_1 ... a_n) \, C \, c_1 \ldots c_n = c_n ...  \\ 
+\end{align*}
 \endgroup
 \end{center}
 \normalsize
