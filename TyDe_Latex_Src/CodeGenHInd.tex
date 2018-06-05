@@ -344,7 +344,6 @@ Thus, we sometimes specify a higher inductive type similarly to a traditional in
 \begin{figure}[h]
 \begin{center}
 \begingroup
-%\fontsize{7pt}{9pt}\selectfont
 \begin{BVerbatim}
 data Circle : Set where
   base : Circle
@@ -370,7 +369,6 @@ In Agda, we don't have built-in primitives to support the definition of higher i
 \begin{figure}
 \begin{center}
 \begingroup
-%\fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}
 module Circle where
   private
@@ -476,12 +474,16 @@ In Agda, constructors are given a function type. In Agda's reflection library, t
 \subsection{Non-dependent Eliminators}
 \label{sec:sec3.1}
 
-In Agda, we define an inductive type using {\tt data} keyword. The {\tt data} literal characterize a data type by declaring its type and specifying its constructors. Consider the following generic form for the definition of an inductive type \emph{D} with constructors $g_1 \ldots g_n$.
+\newcommand*{\KW}[1]{\textsf{\textbf{#1}}}
+\newcommand*{\SET}{\textsf{Set}}
+
+In Agda, we define an inductive type using {\tt data} keyword. A definition of an inductive datatype declares its type and specifies its constructors.
+In general, the definition of an inductive datatype \emph{D} with constructors $g_1 \ldots g_n$ has the following form:
 \begin{center}
 \begingroup
 \fontsize{7.9pt}{0pt}\selectfont
 \begin{align}
-& data \hspace{0.2cm} D \hspace{0.2cm} (x_1:P_1)\ldots(x_n:P_n) : Q_1 \rightarrow\ldots\rightarrow Q_n \rightarrow Set \, \, where \nonumber \\
+& \KW{data}  \hspace{0.2cm} D \hspace{0.2cm} (x_1:P_1)\ldots(x_n:P_n) : Q_1 \rightarrow\ldots\rightarrow Q_n \rightarrow \SET{} \, \, \KW{where} \nonumber \\
 & \hspace{0.3cm} g_1 : \{i_1 : Q_1\} \ldots \{i_n : Q_n\} \rightarrow A_1\rightarrow D \, x_1 \ldots x_n \, i_1 \ldots i_n \nonumber \\
 & \hspace{3.5cm} \vdots \nonumber \\
 & \hspace{0.3cm} g_n : \{j_1 : Q_1\} \ldots \{j_n : Q_n\} \rightarrow A_n\rightarrow D \, x_1 \dots x_n \, j_1 \ldots j_n \nonumber \\ \nonumber
