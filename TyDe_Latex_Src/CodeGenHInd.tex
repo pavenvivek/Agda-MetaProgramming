@@ -492,6 +492,24 @@ In general, the definition of an inductive datatype \emph{D} with constructors $
 \end{center}
 \normalsize
 
+
+\todo{I think this is a more accurate presentation of what's going on - what do you think?}In Agda, we define an inductive type using {\tt data} keyword. A definition of an inductive datatype declares its type and specifies its constructors.
+While Agda supports a variety of ways to define new datatypes, we will restrict our attention to the subset that correspond closely to Dyber's inductive families\todo{cite 1994 paper}. In general, the definition of an inductive datatype $D$ with constructors $c_1 \ldots c_n$ has the following form:
+\begin{center}
+\begingroup
+\fontsize{7.9pt}{0pt}\selectfont
+\begin{align*}
+&\KW{data}\ D\ (a_1 : A_1) \ldots (a_n:A_n) : (i_1 : I_1) \rightarrow\ldots\rightarrow (i_n : I_n) \rightarrow \SET{}\ \KW{where}  \\
+&\hspace{0.3cm} c_1 : \Delta_1 \rightarrow D \, a_1 \ldots a_n \, j_{11} \ldots j_{1m}  \\
+&\hspace{3.5cm} \vdots  \\
+&\hspace{0.3cm} c_n : \Delta_n \rightarrow D \, a_1 \ldots a_n \, j_{n1} \ldots j_{nm}  \\
+\end{align*}
+\endgroup
+\end{center}
+\normalsize
+where $j_{k1} \ldots j_{km}$ are bound in the telescope $\Delta_k$.
+
+
 The type of $A_i$ can take one of the three forms: a constant type {\tt B}, the inductive type $D$, or a function $B_1 \rightarrow \ldots \rightarrow B_n \rightarrow D$ with co-domain $D$. The parameters $(x_1:P_1)\ldots(x_n:P_n)$ are common to all the constructors, and the type of each constructor implicitly encodes the parameter references. However, the indices are different for each constructor. So, the type of each constructor explicitly exhibits the index declaration.
 
 While inductive datatypes are defined by their constructors, it must also be possible to \emph{eliminate} them. This section describes how to generate a non-dependent recursion principle for an inductive type; section~\ref{sec:sec3.2} generalizes this technique to fully-dependent induction principles.
