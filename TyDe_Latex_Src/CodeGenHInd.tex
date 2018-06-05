@@ -787,25 +787,32 @@ The third argument to {\tt generateRec} is a list consisting of the index count 
 The dependent eliminator for a datatype, also known as the \emph{induction principle}, is used to eliminate elements of a datatype when the type resulting from the elimination mentions the very element being eliminated. We can define the general schema for the induction principle as follows.
 \begin{center}
 \begingroup
-\fontsize{7.9pt}{2pt}\selectfont
+\fontsize{7.9pt}{0pt}\selectfont
 \begin{align}
-& f' \, : \, \{x_1:P_1\}\ldots\{x_n:P_n\} \rightarrow \{k_1:Q_1\} \rightarrow\ldots\rightarrow \{k_n:Q_n\} \rightarrow \nonumber \\
+& f \, : \, \{x_1:P_1\}\ldots\{x_n:P_n\} \rightarrow \{k_1:Q_1\} \rightarrow\ldots\rightarrow \{k_n:Q_n\} \rightarrow \nonumber \\
 & \hspace{0.4cm} (d : D \, x_1 \dots x_n \, k_1 \ldots k_n) \rightarrow (C : D \rightarrow Set) \rightarrow \nonumber \\
-& \hspace{0.4cm} (c_1 : \{i_1:Q_1\} \rightarrow\ldots\rightarrow \{i_n:Q_n\} \rightarrow A{_1}^* \rightarrow C (g_1 ...)) \rightarrow \nonumber \\
+& \hspace{0.4cm} (c_1 : \{i_1:Q_1\} \rightarrow\ldots\rightarrow \{i_n:Q_n\} \rightarrow A{_1}^* \rightarrow C (g_1 ...)) \rightarrow \ldots \nonumber \\
 & \hspace{0.4cm} (c_n : \{j_1:Q_1\} \rightarrow\ldots\rightarrow \{j_n:Q_n\} \rightarrow A{_n}^* \rightarrow C (g_n ...)) \rightarrow C \, d \nonumber \\ \nonumber 
 \end{align}
 \endgroup
 \end{center}
 \normalsize
 
-For the inductive type $W$, the induction principle says that to define a mapping $f' : (w : W A B) \rightarrow P(w)$, it suffices to define the action of $f'$ on $g$. To define the action of $f'$ on $g$, we need an element of the following type.\todo{This is totally opaque to me - is this Martin-Löf's W, or is it something generic? And why is it in math notation?}
-\begin{equation}
-d' : \prod_{\alpha : A \rightarrow W} (\prod_{a : A} P(\alpha (a))) \rightarrow  \prod_{\beta : B} \prod_{\omega : W} P(\omega) \rightarrow P (g(\alpha, \beta, \omega)) \nonumber
-\end{equation}
+Similar to the recursion principle, the type of $A{_i}^*$ in constructor $c_i$ depends on the type of $A_i$ in the  constructor $g_i$. If $A_i$ is a constant type $B$, the automation tool replaces $A{_i}^*$ with $B$. For inductive type $D$, the automation tool replaces $A{_i}^*$ with type $(d_1 : D) \rightarrow C \, d_1$. For function type $(B_1 \rightarrow\ldots\rightarrow B_n \rightarrow D)$, the automation tool replaces $A{_i}^*$ with $(y : B_1 \rightarrow\ldots\rightarrow B_n \rightarrow D) \rightarrow ((b_1 : B_1) \rightarrow\ldots\rightarrow (b_n : B_n) \rightarrow C (y \, b_1 \ldots b_n))$. The computation rules corresponding to the induction principle follows the same pattern as for the recursion rule.
 
-In the first argument of $d'$, the type $P$ depends on the action of the function $\alpha$\todo{This is usually reserved for paths - better not to use it here} on input $a : A$. In the second argument, it depends on the input element $\omega : W$. The output of function $d'$ depends on the action of constructor $g$ on inputs $\alpha$, $\beta$, and $\omega$.
+For the inductive type {\tt W}, the induction principle says that to define a mapping {\tt f : (w : W A B) → C w}, it suffices to define the action of {\tt f} on the constructor {\tt sup}. To define the action of {\tt f} on {\tt sup}, we need an element {\tt d} of the following type.
 
-To build the dependent eliminator, we need the type of the function $d'$. We can construct the abstract syntax tree of $d'$ using the static type information obtained from $g$. To construct $d'$, during the traversal of the abstract syntax tree of $g$, when we identify a function $\alpha$ with codomain \emph{W}, we add a new function with the same argument {\tt A} as in $\alpha$ and codomain \emph{P}, which depends on the action of $\alpha$ on {\tt (a : A)}. We copy the constant \emph{B} directly without any changes as in the case of the non-dependant eliminator. When we see $(\omega : W)$ in a non-codomain position, we add the type \emph{P}, which depends on the element $\omega$, next to it. Finally, the output type \emph{W} of the constructor $g$ is changed to \emph{P}, which depends on the action of the constructor $g$ on inputs $\alpha$, $\beta$ and $\omega$ (fig.~\ref{fig:ast-d'}).
+\begin{center}
+\begingroup
+\begin{BVerbatim}
+d : (a : A) → (y : B a → W A B) → 
+    (z : (v : B a) → C (y v)) → 
+    C (sup a y)
+\end{BVerbatim}
+\endgroup
+\end{center}
+
+To build the dependent eliminator, we need the type of the function {\tt d}. We can construct the AST of {\tt d} using the static type information obtained from {\tt sup}. To construct {\tt d}, during the traversal of the AST of {\tt sup}, we copy the constant {\tt (a : A)} directly without any changes as in the case of the non-dependant eliminator. When we identify a function {\tt y : B a → W A B} with codomain {\tt W A B}, we add a new function {\tt (z : (v : B a) → C (y v))} with the same arguments as in {\tt y} and codomain {\tt C (y v)}, which depends on the action of {\tt y} on {\tt v}. Finally, the co-domain \emph{W A B} of the constructor {\tt sup} is changed to {\tt C (sup a y)}, which depends on the action of the constructor {\tt sup} on inputs {\tt a} and {\tt y} (fig.~\ref{fig:ast-d'}).
 
 %%% For readability, the contents of a parenthesis should never be indented less than the opening paren. That makes it really hard to follow it with your eye and see the nesting structure. I rearranged this one, but it got longer, and should probably be rearranged better than I did - DTC
 
@@ -814,87 +821,84 @@ To build the dependent eliminator, we need the type of the function $d'$. We can
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}[frame = single]
-(pi (vArg
-     (pi (vArg `A) (abs "_" `W)))                -- α : A → W
- (abs "_"
-  (pi (vArg                          -- A → P(α(a))
-       (pi (vArg `A)                               -- a : A
-        (abs "_"
-         (var 2                             -- P(α(a))
-          (vArg
-           (var 1                                -- α ref
-            (vArg (var 0 []) :: [])) :: [])))))         -- a ref
-   (abs "_"
-    (pi (vArg `B)                      -- β : B
-     (abs "_"
-      (pi (vArg `W)                      -- ω : W
-       (abs "_"
-        (pi (vArg
-             (var 4                   -- P(ω)
-              (vArg (var 0 []) :: [])))                   -- ω ref
-         (abs "_"
-          (var 5                             -- P(g i β ω)
-           (vArg
-            (con (quote g)                        -- g ref
-             (vArg (var 4 []) ::                         -- α ref
-              vArg (var 2 []) ::                         -- β ref
-              vArg (var 1 []) :: [])) :: []))))))))))))  -- ω ref
+(agda-sort (lit 0) [ "A" h]⇒                  -- A
+ ((var 0 [] [ "_" v]⇒                         -- B : A → Set
+     agda-sort (lit 0)) [ "B" h]⇒
+  (def (quote W) (vArg (var 1 []) ::          -- c : W A B
+     vArg (var 0 []) :: []) [ "c" v]⇒
+   ((def (quote W) (vArg (var 2 []) ::        -- C : W A B → Set
+       vArg (var 1 []) :: []) [ "_" v]⇒
+     agda-sort (lit 0)) [ "C" v]⇒
+    ((var 3 [] [ "a" v]⇒                      -- a : A
+      ((var 3 (vArg (var 0 []) :: [])         -- y : B a → W A B
+        [ "_" v]⇒
+        def (quote W) (vArg (var 5 []) :: 
+          vArg (var 4 []) :: [])) [ "y" v]⇒
+       ((var 4 (vArg (var 1 []) :: [])        -- z : B a → C (y v)
+         [ "v" v]⇒
+         var 3 (vArg (var 1 (vArg (var 0 []) 
+         :: [])) :: []))
+        [ "z" v]⇒
+        var 3                                 -- C (sup a y)
+        (vArg
+         (con (quote sup)
+          (vArg (var 2 []) :: 
+           vArg (var 1 []) :: []))
+         :: []))))
+     [ "_" v]⇒ var 1 (vArg (var 2 []) :: []))))))  -- C c
 \end{Verbatim}
 \endgroup
 \end{center}
-\caption{Abstract syntax tree for constructor $d'$}
+\caption{Abstract syntax tree for the dependent eliminator of {\tt W}}
 \label{fig:ast-d'}
 \end{figure}
 
 \normalsize
 
-We can construct the type of the induction principle $f'$\texttt{Why should it be called f'? That seems needlessly opaque.} using $d'$ . The type \emph{P} \todo{Pick a consistent name for the motive - C or P, but not switching between them without a good reason} in the mapping $f'$ depends on the element of the input type \emph{W}. The following equation\todo{this is not an equation} gives the type of the induction principle $f'$.
-\begin{align}
-& f' : (P : W \rightarrow Set) \rightarrow \nonumber \\
-& \hspace {0.6cm} (d' : \prod_{\alpha : A \rightarrow W} (\prod_{a : A} P(\alpha (a))) \rightarrow \prod_{\beta : B} \prod_{\omega : W} P(\omega) \rightarrow \nonumber \\
-& \hspace {1.6cm} P (g(\alpha, \beta, \omega))) \rightarrow \nonumber \\
-& \hspace {0.6cm} (w : W) \rightarrow P (w) \nonumber
-\end{align}
+We can construct the type of the induction principle {\tt f} using {\tt d}. The type {\tt C} in the mapping {\tt f} depends on the element of the input type {\tt W A B}. The type of the induction principle {\tt f} (fig.~\ref{fig:ast-d'}) is given as follows.
+\begin{center}
+\begingroup
+\begin{BVerbatim}
+f : {A : Set} {B : A → Set} → 
+    (c : W A B) → (C : W A B → Set) → 
+    ((a : A) → (y : B a → W A B) → 
+     (z : (v : B a) → C (y v)) → 
+     C (sup x y)) → C c
+\end{BVerbatim}
+\endgroup
+\end{center}
 
-The computation rule corresponding to the above type is the same as the computation rule of the recursion principle of \emph{W}, except that the function \emph{f} and $d$ are changed to \emph{f'} and $d'$ respectively. It is constructed using {\tt clause} definitions following the same approach as the recursion principle. The computation rule corresponding to \emph{f'} is given as follows.
-\begin{equation}
-f' (P, d', g (\alpha, \beta, \omega)) \equiv d' (\alpha, f' \circ \alpha, \beta, \omega, f' (\omega)) \nonumber
-\end{equation}
-
-We can automate the generation of the induction rule $f'$ and its corresponding computation rules for the type \emph{W} using {\tt generateInd} interface. The following code gives the implementation of {\tt generateInd}.
+The computation rule corresponding to the above type is the same as the computation rule of the recursion principle of {\tt W}. It is constructed using {\tt clause} definitions following the same approach as the recursion principle.  We can automate the generation of the induction rule {\tt f} and its corresponding computation rules using {\tt generateInd} interface. The following code gives the implementation of {\tt generateInd}.
 
 \begin{center}
 \begingroup
-\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}
-generateInd : Arg Name → Name → (indexList : List Nat) → TC ⊤
+\begin{BVerbatim}
+generateInd : Arg Name → Name → 
+  (indexList : List Nat) → TC ⊤
 generateInd (arg i f) t indLs =
-  do indLs' ← getIndex t indLs
+  do id' ← getIndex t indLs
      cns ← getConstructors t
-     lcons ← getLength cns
-     cls ← getClauseDep lcons zero t f indLs' cns
+     lcns ← getLength cns
+     cls ← getClauseDep lcns zero t f id' cns
      RTy ← getType t
-     funType ← getRtypeInd t zero indLs' RTy
+     funType ← getRtypeInd t zero id' RTy
      declareDef (arg i f) funType
      defineFun f cls
-\end{Verbatim}
+\end{BVerbatim}
 \endgroup
 \end{center}
 
-\normalsize
-
-{\tt generateInd} uses {\tt getClauseDep} to generate the {\tt clause} definitions representing the computation rule of the type \emph{W}. The abstract representation of the type of \emph{W} is provided by {\tt getRtypeInd}. $f'$ generated by {\tt generateInd} is brought into scope by {\tt unquoteDecl} as follows.
+{\tt generateInd} uses {\tt getClauseDep} to generate the {\tt clause} definitions representing the computation rules. The abstract representation of the type is provided by {\tt getRtypeInd}. The function {\tt f} generated by {\tt generateInd} is brought into scope by {\tt unquoteDecl} as follows.
 \begin{center}
 \begingroup
-\fontsize{8pt}{9pt}\selectfont
-\begin{Verbatim}
-unquoteDecl f' = generateInd (vArg f') (quote W) []
-\end{Verbatim}
+\begin{BVerbatim}
+unquoteDecl f = generateInd (vArg f) 
+                  (quote W) []
+\end{BVerbatim}
 \endgroup
 \end{center}
-\normalsize
 
-We pass an empty list to {\tt generateInd}, because the type \emph{W} has no index. We can also pass an empty list if all the constructors of a type has the same number of index as the parent type. But if any one constructor has an index count different from the index count of the parent type, then we have to explicitly pass the index count of all the constructors.\todo{Remove the use of ``we'' from this paragraph.}
+An empty list is passed to {\tt generateInd} as {\tt W} has no index. An empty list can also be passed if all the constructors of a type has the same number of index as the parent type. But if any one constructor has an index count different from the index count of the parent type, then the index count of all the constructors should be passed explicitly.
 
 \section{Code Generation for Higher Inductive Types}
 \label{sec:sec4}
