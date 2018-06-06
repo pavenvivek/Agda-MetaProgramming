@@ -175,12 +175,12 @@ A metaprogram is a program used to create other programs. In dependently-typed p
 
 Agda is a proof-assistant based on Martin-Löf’s intensional type theory. Unlike Idris, which has a dedicated elaborator to convert the high-level syntax to its core language, Agda’s elaboration mechanism is a part of its type checker. Inspired by Idris’s elaborator reflection, Agda development team extended the reflection library of Agda by exposing its elaboration monad to its high-level metaprogramming instructions. The elaboration monad provides an interface to the Agda type checker through a set of primitive operations which can be used to retrieve static type information regarding various code segments. The primitive operations can also be used to build code fragments using constructs of an abstract syntax tree, and to convert an abstract syntax tree to its concrete syntax.
 
-In this paper, we discuss metaprogramming using elaborator reflection in Agda. By using the elaboration monad, we performed code generation for the elimination and computation rules of inductive types and higher inductive types. We also automated the code generation for the boiler-plate code segment used to define the higher inductive type. We discuss the construction process in detail and introduce new metaprogramming interfaces which build the code segments using elaborator reflection. The interfaces extensively use Agda’s reflection primitives and build the abstract syntax tree of the code segments with static type information obtained using the reflection primitives. The generated code is then brought into scope by another top-level reflection primitive.\todo{Insert a mention of Licata's method that we're automating}
+In this paper, we discuss metaprogramming using elaborator reflection in Agda. By using the elaboration monad, we performed code generation for the elimination and computation rules of inductive types and higher inductive types. We also automated the code generation for the boiler-plate code segment used to implement the higher inductive type defined using Dan Licata's method \cite{Licata-2011}. We discuss the construction process in detail and introduce new metaprogramming interfaces which build the code segments using elaborator reflection. The interfaces extensively use Agda’s reflection primitives and build the abstract syntax tree of the code segments with static type information obtained using the reflection primitives. The generated code is then brought into scope by another top-level reflection primitive.
 
 Elaborator reflection is a powerful mechanism which allows us to create more interesting metaprograms. By performing the above automation, we abstracted the difficulties involved in implementing and using inductive types and higher inductive types by automating the construction of their corresponding elimination and computation rules. We also achieved an extensive reduction in code size, and we demonstrated how to extend a language without modifying the compiler or depending on the language implementers. More specifically, we discuss the following contributions in this paper.\todo{Rewrite contributions list to focus on actually novel things - many people have automated eliminator generation before}
 
 \begin{itemize}
-\item We automate the construction of the recursion and the induction principles for inductive types with constructors taking zero arguments, one or more arguments, and the type being defined itself as an argument.
+\item We demonstrate using the Agda's new metaprogramming library, extended with support for elaborator reflection, and show how to automate the construction of the recursion and the induction principles for inductive types using the library.
 
 \item We discuss the automation of code generation of boiler-plate code for a higher inductive type defined inside a module. The boiler-plate code depends on a base type defined as private inside the module. The constructors of the private base type are not accessible outside the module.
 
@@ -457,9 +457,6 @@ apd : {A : Set} {B : A → Set} {x y : A} →
 \endgroup
 \end{center}
 
-\todo{This sentence does not clarify anything for me. What is a "total space"? No reader who knows what that is won't know what "ap" is. Can it be made more clear?}In the above type, the point {\tt (transport B p (f x))} lying in space {\tt B(y)} can be thought of as an endpoint of a path obtained by lifting the path p from {\tt f(x)} to a path in the total space $\sum_{(x:A)} B(x) \rightarrow A$. 
-
-
 The next section introduces the necessary automation features by describing the automatic generation of eliminators for a variant on Dybjer's inductive families.\todo{Check whether this is right - it might be a variation on Luo's inductive types instead.} Section 4 then generalizes this feature to automate the production of eliminators for higher inductive types using Licata's technique. Section 5 revisits \citeauthor{Angiuli-2014}'s encoding of Darcs's patch theory \citep{Angiuli-2014} and demonstrates that the higher inductive types employed in that paper can be generated succinctly using our library.
 
 \section{Code Generation for Inductive Types}
@@ -478,22 +475,6 @@ In Agda, constructors are given a function type. In Agda's reflection library, t
 \newcommand*{\SET}{\textsf{Set}}
 
 In Agda, we define an inductive type using {\tt data} keyword. A definition of an inductive datatype declares its type and specifies its constructors.
-In general, the definition of an inductive datatype \emph{D} with constructors $g_1 \ldots g_n$ has the following form:
-\begin{center}
-\begingroup
-\fontsize{7.9pt}{0pt}\selectfont
-\begin{align*}
-& \KW{data}  \hspace{0.2cm} D \hspace{0.2cm} (x_1:P_1)\ldots(x_n:P_n) : Q_1 \rightarrow\ldots\rightarrow Q_n \rightarrow \SET{} \, \, \KW{where}  \\
-& \hspace{0.3cm} g_1 : \{i_1 : Q_1\} \ldots \{i_n : Q_n\} \rightarrow A_1\rightarrow D \, x_1 \ldots x_n \, i_1 \ldots i_n  \\
-& \hspace{3.5cm} \vdots  \\
-& \hspace{0.3cm} g_n : \{j_1 : Q_1\} \ldots \{j_n : Q_n\} \rightarrow A_n\rightarrow D \, x_1 \dots x_n \, j_1 \ldots j_n  \\ 
-\end{align*}
-\endgroup
-\end{center}
-\normalsize
-
-
-\todo{I think this is a more accurate presentation of what's going on - what do you think?}In Agda, we define an inductive type using {\tt data} keyword. A definition of an inductive datatype declares its type and specifies its constructors.
 While Agda supports a variety of ways to define new datatypes, we will restrict our attention to the subset that correspond closely to Dyber's inductive families\todo{cite 1994 paper}. In general, the definition of an inductive datatype $D$ with constructors $c_1 \ldots c_n$ has the following form:
 \begin{center}
 \begingroup
@@ -510,54 +491,41 @@ While Agda supports a variety of ways to define new datatypes, we will restrict 
 where $j_{k1} \ldots j_{kp}$ are bound in the telescope $\Delta_k$.
 
 
-The type of $A_i$ can take one of the three forms: a constant type {\tt B}, the inductive type $D$, or a function $B_1 \rightarrow \ldots \rightarrow B_n \rightarrow D$ with co-domain $D$. The parameters $(x_1:P_1)\ldots(x_n:P_n)$ are common to all the constructors, and the type of each constructor implicitly encodes the parameter references. However, the indices are different for each constructor. So, the type of each constructor explicitly exhibits the index declaration.
+%The type of $A_i$ can take one of the three forms: a constant type {\tt B}, the inductive type $D$, or a function $B_1 \rightarrow \ldots \rightarrow B_n \rightarrow D$ with co-domain $D$. The parameters $(x_1:P_1)\ldots(x_n:P_n)$ are common to all the constructors, and the type of each constructor implicitly encodes the parameter references. However, the indices are different for each constructor. So, the type of each constructor explicitly exhibits the index declaration.
 
 While inductive datatypes are defined by their constructors, it must also be possible to \emph{eliminate} them. This section describes how to generate a non-dependent recursion principle for an inductive type; section~\ref{sec:sec3.2} generalizes this technique to fully-dependent induction principles.
 
 Based on the generic form of the inductive type given above, we can define the following schematic representation for the non-dependent eliminator.
 
-\begin{center}
-\begingroup
-\fontsize{7.9pt}{0pt}\selectfont
 \begin{align*}
-& f \, : \, \{x_1:P_1\}\ldots\{x_n:P_n\} \rightarrow \{k_1:Q_1\} \rightarrow\ldots\rightarrow \{k_n:Q_n\} \rightarrow  \\
-& \hspace{0.4cm} D \, x_1 \dots x_n \, k_1 \ldots k_n \rightarrow (C : Set) \rightarrow  \\
-& \hspace{0.4cm} (c_1 : \{i_1:Q_1\} \rightarrow\ldots\rightarrow \{i_n:Q_n\} \rightarrow A{_1}^* \rightarrow C) \rightarrow \ldots  \\
-& \hspace{0.4cm} (c_n : \{j_1:Q_1\} \rightarrow\ldots\rightarrow \{j_n:Q_n\} \rightarrow A{_n}^* \rightarrow C) \rightarrow C  \\  
-\end{align*}
-\endgroup
-\end{center}
-\normalsize
-
-  \begin{align*}
-D_{\mathit{elim}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
-& \begin{array}{@{}l@{}l}(\mathit{mot} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & D\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
-& (\mathit{f_1} : \Delta_1 \to  \Delta_1^\prime \to \mathit{mot}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
-& (\mathit{f_r} : \Delta_r \to  \Delta_r^\prime \to \mathit{mot}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
+D_{\mathit{rec}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
 & (\mathit{tgt} : D\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
-& \mathit{mot}\ i_1\ \ldots\ i_n\ \mathit{tgt}
-  \end{align*}
+& (\mathit{C} : \SET{}) \to \\
+& (\mathit{f_1} : \Delta_1 \to  \Delta_1^\prime \to \mathit{C}) \to \\
+& (\mathit{f_r} : \Delta_r \to  \Delta_r^\prime \to \mathit{C}) \to \\
+& \mathit{C}
+\end{align*}
 
-where $\overline{\Psi}$ represents the sequence of variables bound in the telescope $\Psi$, and $j_{ij}$ are bound in $\Delta_i$.
+where $j_{ij}$ are bound in $\Delta_i$.
 
-The type of $A{_i}^*$ in constructor $c_i$ depends on the type of $A_i$ in the  constructor $g_i$. If $A_i$ is a constant type $B$, the automation tool replaces $A{_i}^*$ with $B$. For inductive type $D$, the automation tool replaces $A{_i}^*$ with type $D \rightarrow C$. For function type $(B_1 \rightarrow\ldots\rightarrow B_n \rightarrow D)$, the automation tool replaces $A{_i}^*$ with $(B_1 \rightarrow\ldots\rightarrow B_n \rightarrow D) \rightarrow (B_1 \rightarrow\ldots\rightarrow B_n \rightarrow C)$. The parameter and the index to type $D$ must be reflected in the type of function $f$. We can retrieve information about the parameter and the index of $D$ from its type. The constructors refer to the parameter and the index using de~Bruijn indices. The general schema for the computation rules corresponding to $f$ and constructors $g_1, \ldots, g_n$ is given as follows.
+The type of $f_i$, which is the method for constructor $c_i$ in $D_\mathit{rec}$, depends on the type of constructor $c_i$. If $c_i$ has an argument $(y : B)$, the automation tool copies the constant type argument $(y : B)$ directly to $f_i$. For an argument $(y : D)$ in $c_i$, the automation tool adds $(y : D) \to C$ to $f_i$. For function type with co-domain $D$ such as $(y : B_1 \to\ldots\to B_n \to D)$, the automation tool adds $(y : B_1 \to\ldots\to B_n \to D) \to (B_1 \to\ldots\to B_n \to C)$ to the type of $f_i$. The parameter and the index to type $D$ must be reflected in the type of function $D_\mathit{rec}$. We can retrieve information about the parameter and the index of $D$ from its type. The constructor {\tt data-type} contains the count \emph{cp} of parameters occurring in a defined type. It also encodes the constructors of the type as a list of \texttt{Name}s. Metaprograms can retrieve the index count by finding the difference between \emph{cp} and the length of the constructor list. The constructors of $D$ refer to the parameter and the index using de~Bruijn indices. The general schema for the computation rules corresponding to $D_\mathit{rec}$ and constructors $c_1, \ldots, c_n$ is given as follows.
 
 \begin{center}
 \begingroup
 \fontsize{8.9pt}{2pt}\selectfont
 \begin{align*}
-& f \, (g_1 \, a_1 ... a_n) \, C \, c_1 \ldots c_n = c_1 ...  \\
+& D_\mathit{rec} \, (c_1 \, a_1 ... a_n) \, C \, f_1 \ldots f_n = f_1 ...  \\
 & \hspace{0.5cm} \vdots  \\
-& f \, (g_n \, a_1 ... a_n) \, C \, c_1 \ldots c_n = c_n ...  \\ 
+& D_\mathit{rec} \, (c_n \, a_1 ... a_n) \, C \, f_1 \ldots f_n = f_n ...  \\ 
 \end{align*}
 \endgroup
 \end{center}
 \normalsize
 
-The value of $c_i$ on the right-hand side of the above computation rules depends on the type of $g_i$. If $g_i$ takes zero arguments, then the corresponding computation rule for $g_i$ evaluates to $c_i$. If $g_i$ takes one or more arguments $(g_i \, a_1 \ldots a_n)$, then the computation rule evaluates to $(c_i \, a_1 \ldots a_n)$. If $g_i$ takes the inductive type $D$ as an argument $(g_i \, \ldots \, d_i \, \ldots)$, then the computation rule evaluates to $(c_i \, \ldots \, (f \, \ldots) \ldots)$, encoding the recursor $f$ to evaluate the value for the substructure $d_i$ of $D$. If $g_i$ takes a function with co-domain $D$ as an argument such as $(g_i \, \ldots \, d{_i}^* \, \ldots)$, we need a composite function $(f \circ d{_i}^*)$ to evaluate the value for the substructure $d{_i}^*$. The automation tool handles composites by using a lambda function $(\lambda \, a \, \ldots \, \rightarrow (f \ldots (d{_i}^* a \ldots) \ldots))$.
+The value of $f_i$ on the right-hand side of the above computation rules depends on the type of constructor $c_i$. If $c_i$ takes zero arguments, then the corresponding computation rule for $c_i$ evaluates to $f_i$. If $c_i$ takes one or more arguments $(c_i \, a_1 \ldots a_n)$, then the computation rule evaluates to $(f_i \, a_1 \ldots a_n)$. If $c_i$ takes the inductive type $(d_i : D)$ as an argument $(c_i \, \ldots \, d_i \, \ldots)$, then the computation rule evaluates to $(f_i \, \ldots \, (D_\mathit{rec} \, d_i \, \ldots) \ldots)$, encoding the recursor $D_\mathit{rec}$ to evaluate the value for the substructure of type $D$ introduced by $d_i$. If $c_i$ takes a function with co-domain $D$, say $(d{_i}^* : A \to D)$, as an argument such as $(c_i \, \ldots \, d{_i}^* \, \ldots)$, we need a composite function $(f_{com} : D_\mathit{rec} \circ d{_i}^*)$ to evaluate the value for the substructure introduced by $d{_i}^*$. The automation tool handles composites by using a lambda function $(\lambda \, a \, \ldots \, \rightarrow (D_\mathit{rec} \ldots (d{_i}^* a \ldots) \ldots))$.
 
-The Agda datatype \texttt{Vec} represents lists of a known length. It is defined in figure~\ref{fig:vec}. For {\tt Vec}, the recursion principle says that to define a mapping {\tt f : Vec A n → C}, it suffices to define the action of \emph{f} on inputs {\tt []} and {\tt \_::\_}.
+The Agda datatype \texttt{Vec} represents lists of a known length. It is defined in figure~\ref{fig:vec}. For {\tt Vec}, the recursion principle says that to define a mapping {\tt f : Vec A n → C}, it suffices to define the action of {\tt f} on inputs {\tt []} and {\tt \_::\_}.
 
 \begin{figure}
 \begin{center}
@@ -575,7 +543,7 @@ data Vec (A : Set) : Nat → Set where
 \label{fig:vec}
 \end{figure}
 
-To define the action of \emph{f} on inputs {\tt []} and {\tt \_::\_}, we need elements {\tt c1} and {\tt c2} of the following type.\todo{The usual presentation instead quantifies the parameters over the entire eliminator, and then the index separately over the motive, instantiating the index as necessary for each method, and then quantifies once more for the target of elimination.}
+To define the action of {\tt f} on inputs {\tt []} and {\tt \_::\_}, we need elements {\tt c1} and {\tt c2} of the following type.
 
 \begin{center}
 \begingroup
@@ -637,11 +605,12 @@ During the traversal of abstract syntax tree of the type of {\tt \_::\_}, when t
      vArg (var 0 []) :: []) [ "_" v]⇒
    (agda-sort (lit 0) [ "C" v]⇒                 -- C
     (var 0 [] [ "_" v]⇒                         -- c1
-     ((def (quote Nat) [] [ "m" h]⇒             -- c2
+     ((def (quote Nat) [] [ "n" h]⇒             -- c2
        (var 5 [] [ "x" v]⇒                      -- x
-        (def (quote Vec) (vArg (var 6 []) ::     -- xs : Vec A m
+        (def (quote Vec) (vArg (var 6 []) ::     -- Vec A n → C
            vArg (var 1 []) :: []) [ "xs" v]⇒  
-             (var 4 [] [ "_" v]⇒ var 5 []))))   -- C → C
+             (var 4 [] [ "_" v]⇒ 
+              var 5 []))))                       -- C
       [ "_" v]⇒ var 2 []))))))                  -- C
 \end{Verbatim}
 \endgroup
@@ -649,10 +618,9 @@ During the traversal of abstract syntax tree of the type of {\tt \_::\_}, when t
 \caption{Abstract syntax tree for recursor {\tt f} on Vec}
 \label{fig:ast-d}
 \end{figure}
-
 \normalsize
 
-The variable {\tt c2} refers to the parameter and the index using de~Bruijn indices. During the construction of the output type {\tt c2}, the automation tool updates the de~Bruijn indices accordingly. The constructor {\tt data-type} contains the count \emph{cp} of parameters occurring in a defined type. It also encodes the constructors of the type as a list of \texttt{Name}s. Metaprograms can retrieve the index count by finding the difference between \emph{cp} and the length of the constructor list. Some constructors might not take the same number of indices as the parent type. For example, in the case of {\tt Vec}, the constructor {\tt []} excludes the index {\tt Nat} from its type. We do not have any reflection primitive to retrieve the index count from a constructor name. A workaround is to pass the index count of each constructor explicitly to the automation tool.\todo{This paragraph is doing two things at once: discussing fragments of the schematic presentation of the eliminator type that should have been at the beginning of the section, and talking about how to find those things in Agda. First give the idea, then give it's implementation.}
+The element {\tt c2}, which represents the method for the constructor {\tt \_::\_} in {\tt Vec}, refers to the parameter and the index using de~Bruijn indices. During the construction of the type of {\tt c2}, the automation tool updates the de~Bruijn indices accordingly. Some constructors might not take the same number of indices as the parent type. For example, in the case of {\tt Vec}, the constructor {\tt []} excludes the index {\tt Nat} from its type. We do not have any reflection primitive to retrieve the index count from a constructor name. A workaround is to pass the index count of each constructor explicitly to the automation tool.
 
 Once we have the AST of {\tt c2}, we can build the type of the recursion rule {\tt f} for {\tt Vec} (fig.\ref{fig:ast-d}). To encode the mapping {\tt Vec A n → C} in the recursion type, we need to declare {\tt C}. We can use the constructor {\tt agda-sort} to introduce the type {\tt (C : Set)}. The type of the recursion rule \emph{f} is given as follows.
 
@@ -663,8 +631,8 @@ Once we have the AST of {\tt c2}, we can build the type of the recursion rule {\
 f : {A : Set} → {n : Nat} → Vec A n → 
   (C : Set) → 
   (c1 : C) → 
-  (c2 : {m : Nat} → (x : A) → 
-        (xs : Vec A m) → C → C) → 
+  (c2 : {n : Nat} → (x : A) → 
+        (xs : Vec A n) → C → C) → 
   C
 \end{BVerbatim}
 \endgroup
@@ -678,7 +646,7 @@ f : {A : Set} → {n : Nat} → Vec A n →
 %& \hspace {0.5cm} W \rightarrow P \nonumber
 %\end{align}
 
-The above type is declared using {\tt declareDef}. We can build the computation rule representing the action of function \emph{f} on {\tt []} and {\tt \_::\_} using {\tt clause} (fig.~\ref{fig:ast-cdef}). The first argument to {\tt clause} encodes variables corresponding to the above type, and it also includes the abstract representation of {\tt []},{\tt \_::\_} on which the pattern matching should occur. The second argument to clause, which is of type {\tt Term}, refers to the variables in the first argument using de~Bruijn indices, and it encodes the output of the action of function \emph{f} on {\tt []},{\tt \_::\_}. The constructor {\tt var} in {\tt Pattern} is used to introduce new variables in the {\tt clause} definition. The type {\tt Pattern} also has another constructor {\tt con} used to represent the pattern matching term. The type {\tt Term} has similar constructors {\tt var} and {\tt con}, but with different types, used to encode the output of the recursion rule. The computation rules corresponding to the above type is given as follows.\todo{This paragraph is also doing double duty: first extract the general description of the computation rules for an eliminator, put that earlier; and the talk about it's Agda realization as pattern matching, then how to write those patterns in metaprograms, goes here}
+The above type is declared using {\tt declareDef}. We can build the computation rule representing the action of function \emph{f} on {\tt []} and {\tt \_::\_} using {\tt clause} (fig.~\ref{fig:ast-cdef}). The first argument to {\tt clause} encodes variables corresponding to the above type, and it also includes the abstract representation of {\tt []},{\tt \_::\_} on which the pattern matching should occur. The second argument to clause, which is of type {\tt Term}, refers to the variables in the first argument using de~Bruijn indices, and it encodes the output of the action of function \emph{f} on {\tt []},{\tt \_::\_}. The constructor {\tt var} in {\tt Pattern} is used to introduce new variables in the {\tt clause} definition. The type {\tt Pattern} also has another constructor {\tt con} used to represent the pattern matching term. The type {\tt Term} has similar constructors {\tt var} and {\tt con}, but with different types, used to encode the output of the recursion rule. The computation rules corresponding to the above type is given as follows.
 
 \begin{center}
 \begingroup
@@ -815,20 +783,17 @@ The third argument to {\tt generateRec} is a list consisting of the index count 
 \label{sec:sec3.2}
 
 The dependent eliminator for a datatype, also known as the \emph{induction principle}, is used to eliminate elements of a datatype when the type resulting from the elimination mentions the very element being eliminated. We can define the general schema for the induction principle as follows.
-\begin{center}
-\begingroup
-\fontsize{7.9pt}{0pt}\selectfont
-\begin{align}
-& f \, : \, \{x_1:P_1\}\ldots\{x_n:P_n\} \rightarrow \{k_1:Q_1\} \rightarrow\ldots\rightarrow \{k_n:Q_n\} \rightarrow \nonumber \\
-& \hspace{0.4cm} (d : D \, x_1 \dots x_n \, k_1 \ldots k_n) \rightarrow (C : D \rightarrow Set) \rightarrow \nonumber \\
-& \hspace{0.4cm} (c_1 : \{i_1:Q_1\} \rightarrow\ldots\rightarrow \{i_n:Q_n\} \rightarrow A{_1}^* \rightarrow C (g_1 ...)) \rightarrow \ldots \nonumber \\
-& \hspace{0.4cm} (c_n : \{j_1:Q_1\} \rightarrow\ldots\rightarrow \{j_n:Q_n\} \rightarrow A{_n}^* \rightarrow C (g_n ...)) \rightarrow C \, d \nonumber \\ \nonumber 
-\end{align}
-\endgroup
-\end{center}
-\normalsize
+\begin{align*}
+D_{\mathit{ind}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+& (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
+& (\mathit{tgt} : D\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
+& \begin{array}{@{}l@{}l}(\mathit{C} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & D\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
+& (\mathit{f_1} : \Delta_1 \to  \Delta_1^\prime \to \mathit{C}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
+& (\mathit{f_r} : \Delta_r \to  \Delta_r^\prime \to \mathit{C}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
+& \mathit{C}\ i_1\ \ldots\ i_n\ \mathit{tgt}
+\end{align*}
 
-Similar to the recursion principle, the type of $A{_i}^*$ in constructor $c_i$ depends on the type of $A_i$ in the  constructor $g_i$. If $A_i$ is a constant type $B$, the automation tool replaces $A{_i}^*$ with $B$. For inductive type $D$, the automation tool replaces $A{_i}^*$ with type $(d_1 : D) \rightarrow C \, d_1$. For function type $(B_1 \rightarrow\ldots\rightarrow B_n \rightarrow D)$, the automation tool replaces $A{_i}^*$ with $(y : B_1 \rightarrow\ldots\rightarrow B_n \rightarrow D) \rightarrow ((b_1 : B_1) \rightarrow\ldots\rightarrow (b_n : B_n) \rightarrow C (y \, b_1 \ldots b_n))$. The computation rules corresponding to the induction principle follows the same pattern as for the recursion rule.
+Similar to the recursion principle, the type of $f_i$ depends on the type of constructor $c_i$ of $D$. If $c_i$ has an argument $(y : B)$, the automation tool copies $(y : B)$ directly to $f_i$. For an argument $(y : D)$ with inductive type $D$ in $c_i$, the automation tool adds $(y : D) \to C \, y$ to $f_i$. For function type with co-domain $D$ such as $(y : B_1 \to\ldots\to B_n \to D)$, the automation tool adds $(y : B_1 \to \ldots \to B_n \to D) \to ((b_1 : B_1) \to \ldots \to (b_n : B_n) \to C (y \, b_1 \ldots b_n))$ to the type of $f_i$. The computation rules corresponding to the induction principle follows the same pattern as for the recursion rule.
 
 For the inductive type {\tt W}, the induction principle says that to define a mapping {\tt f : (w : W A B) → C w}, it suffices to define the action of {\tt f} on the constructor {\tt sup}. To define the action of {\tt f} on {\tt sup}, we need an element {\tt d} of the following type.
 
@@ -843,8 +808,6 @@ d : (a : A) → (y : B a → W A B) →
 \end{center}
 
 To build the dependent eliminator, we need the type of the function {\tt d}. We can construct the AST of {\tt d} using the static type information obtained from {\tt sup}. To construct {\tt d}, during the traversal of the AST of {\tt sup}, we copy the constant {\tt (a : A)} directly without any changes as in the case of the non-dependant eliminator. When we identify a function {\tt y : B a → W A B} with codomain {\tt W A B}, we add a new function {\tt (z : (v : B a) → C (y v))} with the same arguments as in {\tt y} and codomain {\tt C (y v)}, which depends on the action of {\tt y} on {\tt v}. Finally, the co-domain \emph{W A B} of the constructor {\tt sup} is changed to {\tt C (sup a y)}, which depends on the action of the constructor {\tt sup} on inputs {\tt a} and {\tt y} (fig.~\ref{fig:ast-d'}).
-
-%%% For readability, the contents of a parenthesis should never be indented less than the opening paren. That makes it really hard to follow it with your eye and see the nesting structure. I rearranged this one, but it got longer, and should probably be rearranged better than I did - DTC
 
 \begin{figure}
 \begin{center}
@@ -882,7 +845,6 @@ To build the dependent eliminator, we need the type of the function {\tt d}. We 
 \caption{Abstract syntax tree for the dependent eliminator of {\tt W}}
 \label{fig:ast-d'}
 \end{figure}
-
 \normalsize
 
 We can construct the type of the induction principle {\tt f} using {\tt d}. The type {\tt C} in the mapping {\tt f} depends on the element of the input type {\tt W A B}. The type of the induction principle {\tt f} (fig.~\ref{fig:ast-d'}) is given as follows.
@@ -897,7 +859,6 @@ f : {A : Set} {B : A → Set} →
 \end{BVerbatim}
 \endgroup
 \end{center}
-
 The computation rule corresponding to the above type is the same as the computation rule of the recursion principle of {\tt W}. It is constructed using {\tt clause} definitions following the same approach as the recursion principle.  We can automate the generation of the induction rule {\tt f} and its corresponding computation rules using {\tt generateInd} interface. The following code gives the implementation of {\tt generateInd}.
 
 \begin{center}
@@ -939,50 +900,37 @@ In Agda, there are no built-in primitives to support the definition of higher in
 \subsection{Higher Inductive Type Definition}
 \label{sec:sec4.1}
 
-In Agda,\todo{This looks more like Dybjer's or Luo's presentations of datatypes, not Agda's...} we define an inductive type using the {\tt data} keyword\todo{Totally unnecessary to give the keyword - anyone who can read up to here either knows this or can work it out.}. A datatype declaration characterizes a datatype by declaring its type and specifying its constructors. Consider the following generic form for the definition of an inductive type \emph{W} \todo{Use a better metavariable} with constructors $g_1 \ldots g_n$\todo{Why not c for constructors?}.\todo{This more schematic presentation should come much earlier}
-\begin{center}
-\begingroup
-\fontsize{7.9pt}{0pt}\selectfont
-\begin{align}
-& data \hspace{0.2cm} W^* \hspace{0.2cm} (x_1:P_1)\ldots(x_n:P_n) : Q_1 \rightarrow\ldots\rightarrow Q_n \rightarrow Set \, \ell \, \, where \nonumber \\
-& \hspace{0.3cm} g_1^* : \{i_1 : Q_1\} \ldots \{i_n : Q_n\} \rightarrow Type_1\rightarrow W^* x_1 \ldots x_n \, i_1 \ldots i_n \nonumber \\
-& \hspace{3.5cm} \vdots \nonumber \\
-& \hspace{0.3cm} g_n^* : \{j_1 : Q_1\} \ldots \{j_n : Q_n\} \rightarrow Type_n\rightarrow W^* x_1 \dots x_n \, j_1 \ldots j_n \nonumber \\ \nonumber
-\end{align}
-\endgroup
-\end{center}
-\normalsize
-
-The parameters $(x_1:P_1)\ldots(x_n:P_n)$ are common to all the constructors, and the type of each constructor implicitly encodes the parameter references. However, the indices may be different for each constructor. So, the type of each constructor explicitly exhibits \todo{What does ``exhibits'' mean here?} the index declaration. During the construction of a higher inductive type, we have to represent the parameters and the indices as explicit arguments in the types of the constructors. We define a higher inductive type $W$ as a top-level definition using a base type $W^*$ similar to the module {\tt Circle} in section 2.1. The reflection type {\tt Definition} provides us the type and the constructors of the base type $W^*$. We copy the type of $W^*$ to $W$ and for the constructors $g_1 \ldots g_n$ of $W$, we traverse the abstract representation of the type of $g_1^* \ldots g_n^*$ respectively replacing the occurrence of $W^*$ to $W$ in every strictly positive position.\todo{These sentences are mixing the description of what a datatype is with techniques for encoding HITs with Agda metaprograms. Tease them apart!} Consider a constructor $g_i^*$ that has the following type.
+We define a higher inductive type $G$ as a top-level definition using a base type $D$ similar to the module {\tt Circle} in section 2.1. The reflection type {\tt Definition} provides us the type and the constructors of the base type $D$. We copy the type of $D$ to $G$ and for the constructors $g_1 \ldots g_n$ of $G$, we traverse the AST of the type of $c_1 \ldots c_n$ respectively replacing the occurrence of $D$ to $G$ in every strictly positive position. Consider a constructor $c_i$ that has the following type.
 \begin{equation}
-g_i^* : (A \rightarrow W^*) \rightarrow (B \rightarrow W^*) \rightarrow C \rightarrow W^* \rightarrow W^* \nonumber
+c_i : (A \rightarrow D) \rightarrow (B \rightarrow D) \rightarrow C \rightarrow D \rightarrow D \nonumber
 \end{equation}
 
-We\todo{Not ``we'' here} built the type of $g_i$ by traversing the abstract syntax tree of $g_i^*$ and replacing the base type $W^*$ with the higher inductive type $W$. The abstract syntax tree of $g_i^*$ incorporates the type of the parameters and the indices if present. We have to retain the parameters and the indices explicitly during the construction of $g_i$. The following equation \todo{This is not an equation.} represents the type of the constructor $g_i$.
+The automation tool built the type of $g_i$ by traversing the AST of $c_i$ and replacing the base type $D$ with the higher inductive type $G$. The AST of $c_i$ incorporates the type of the parameters and the indices if present. We have to retain the parameters and the indices explicitly during the construction of $g_i$. The following represents the type of the constructor $g_i$.
 \begin{equation}
-g_i : (A \rightarrow W) \rightarrow (B \rightarrow W) \rightarrow C \rightarrow W \rightarrow W \nonumber
+g_i : (A \rightarrow G) \rightarrow (B \rightarrow G) \rightarrow C \rightarrow G \rightarrow G \nonumber
 \end{equation}
 
-We explicitly pass the types of the path constructors to the automation tool. The higher inductive type definition of {\tt Circle} in section 2.1 represents the path constructors as propositional equalities. The automation tool takes the path types as input and declares them as propositional equalities using the reflection primitive {\tt declarePostulate}. We introduce a new data type {\tt ArgPath}\todo{Get rid of math mode in its definition} to input the path types to the automation tool.
+We explicitly pass the types of the path constructors to the automation tool. The higher inductive type definition of {\tt Circle} in section 2.1 represents the path constructors as propositional equalities. The automation tool takes the path types as input and declares them as propositional equalities using the reflection primitive {\tt declarePostulate}. We introduce a new data type {\tt ArgPath} to input the path types to the automation tool.
+
 \begin{center}
 \begingroup
-\fontsize{7.9pt}{0pt}\selectfont
-\begin{align}
-& data \hspace {0.1cm} ArgPath \hspace {0.1cm} \{\ell_1\} : Set \hspace {0.1cm} (lsuc \hspace {0.1cm} \ell_1) \hspace {0.1cm} where \nonumber \\
-& \hspace {0.4cm} argPath : Set \hspace {0.1cm} \ell_1 \rightarrow ArgPath \nonumber \\ \nonumber
-\end{align}
+\begin{BVerbatim}
+
+data ArgPath {ℓ₁} : Set (lsuc ℓ₁) where
+  argPath : Set ℓ₁ → ArgPath
+\end{BVerbatim}
 \endgroup
 \end{center}
-\normalsize
 
-The constructor $argPath$ takes the type of a path constructor as input. We define the generic form of a higher inductive type as follows.\todo{Use Agda syntax the same as in the rest of the paper}
+The constructor {\tt argPath} takes the type of a path constructor as input. We define the generic form of a higher inductive type as follows.
+
 \begin{center}
 \begingroup
 \fontsize{7.9pt}{0pt}\selectfont
 \begin{align}
-& data{\text -}hit \hspace {0.1cm} (quote \hspace {0.1cm} W^*) \hspace {0.1cm} W \nonumber \\
-  & \hspace {0.3cm} Wpoints \hspace {0.2cm} (g_1 ::  \ldots :: g_n :: []) \nonumber \\
-  & \hspace {0.3cm} Wpaths  \hspace {0.2cm} (p_1 :: \ldots :: p_n :: []) \nonumber \\
+& data{\text -}hit \hspace {0.1cm} (quote \hspace {0.1cm} D) \hspace {0.1cm} G \nonumber \\
+  & \hspace {0.3cm} Gpoints \hspace {0.2cm} (g_1 ::  \ldots :: g_n :: []) \nonumber \\
+  & \hspace {0.3cm} Gpaths  \hspace {0.2cm} (p_1 :: \ldots :: p_n :: []) \nonumber \\
   & \hspace {0.3cm} (argPath \nonumber \\
   & \hspace {0.6cm} (\{x_1:P_1\} \rightarrow \ldots \rightarrow \{x_n:P_n\} \rightarrow \nonumber \\
   & \hspace {0.7cm} \{i_1:Q_1\} \rightarrow \ldots \rightarrow \{i_n:Q_n\} \rightarrow Type_1 \rightarrow \nonumber \\
@@ -997,41 +945,41 @@ The constructor $argPath$ takes the type of a path constructor as input. We defi
 \end{center}
 \normalsize
 
-We define holders $Wpoints$ for point constructors and $Wpaths$ for path constructors as part of the higher inductive type definition of $W$. We cannot retrieve the constructors of the higher inductive type $W$ using {\tt Definition}. Therefore, $Wpoints$ and $Wpaths$ act as the only references for the constructors of $W$. The elements of the $argPath$ list represent the type of the path constructors $p_1 \ldots p_n$ respectively. We explicitly include the parameter references $\{x_1 : P_1\} \ldots \{x_n : P_n\}$ and the index references $\{k_1 : Q_1\} \ldots \{k_n : Q_n\}$ in the type of the arguments to $argPath$. The points $g_1 \ldots g_n$ are not in scope when used in the identity type passed to $argPath$. The automation tool uses the base type constructors $g_1^* \ldots g_n^*$ as dummy arguments in the place of $g_1 \ldots g_n$ respectively. The automation tool implements the interface {\tt data-hit} as follows.
+We define holders $Gpoints$ for point constructors and $Gpaths$ for path constructors as part of the higher inductive type definition of $G$. We cannot retrieve the constructors of the higher inductive type $G$ using {\tt Definition}. Therefore, $Gpoints$ and $Gpaths$ act as the only references for the constructors of $G$. The elements of the {\tt argPath} list represent the type of the path constructors $p_1 \ldots p_n$ respectively. We explicitly include the parameter references $\{x_1 : P_1\} \ldots \{x_n : P_n\}$ and the index references $\{k_1 : Q_1\} \ldots \{k_n : Q_n\}$ in the type of the arguments to {\tt argPath}. The points $g_1 \ldots g_n$ are not in scope when used in the identity type passed to {\tt argPath}. The automation tool uses the base type constructors $c_1 \ldots c_n$ as dummy arguments in the place of $g_1 \ldots g_n$ respectively. The automation tool implements the interface {\tt data-hit} as follows.
 
 \begin{center}
 \begingroup
-\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}
-data-hit : ∀{ℓ₁} (baseType : Name) → (indType : Name) →
+\begin{BVerbatim}
+data-hit : ∀{ℓ₁} 
+  (baseType : Name) → (indType : Name) →
   (pointHolder : Name) → (lcons : List Name) →
   (pathHolder : Name) → (lpaths : List Name) →
   (lpathTypes : (List (ArgPath {ℓ₁}))) → TC ⊤
-data-hit baseType indType pointHolder lcons pathHolder lpaths lpathTypes =
-  do defineHindType baseType indType
-     lcons' ← getConstructors baseType
-     defineHitCons baseType indType lcons' lcons
-     lpathTypes' ← getPathTypes baseType indType lcons' lcons lpathTypes
-     defineHitPathCons lpaths lpathTypes'
-     definePointHolder pointHolder lcons
-     definePathHolder pathHolder lpaths
-\end{Verbatim}
+data-hit base ind h1 lcons h2 lpaths pTy =
+  do defineHindType base ind
+     cns ← getConstructors base
+     defineHitCons base ind cns lcons
+     pTy' ← getPathTypes base ind cns lcons pTy
+     defineHitPathCons lpaths pTy'
+     definePointHolder h1 lcons
+     definePathHolder h2 lpaths
+\end{BVerbatim}
 \endgroup
 \end{center}
 
-The higher inductive type $W$, the points $g_1 \ldots g_n$, the paths $p_1 \ldots p_n$, and the holders $Wpoints$ and $Wpaths$ are brought into scope by {\tt unquoteDecl}. In the above implementation of {\tt data-hit}, {\tt defineHindType} defines the higher inductive type as a top-level definition using the base type. {\tt defineHitCons} specifies the point constructors of the higher inductive type using the type information obtained from the constructors of the base type, and {\tt defineHitPathCons} builds the paths constructors of the higher inductive type using the {\tt argPath} list. The following code automates the generation of the higher inductive type definition for {\tt Circle} given in section 2.1.
+The higher inductive type $G$, the points $g_1 \ldots g_n$, the paths $p_1 \ldots p_n$, and the holders $Gpoints$ and $Gpaths$ are brought into scope by {\tt unquoteDecl}. In the above implementation of {\tt data-hit}, {\tt defineHindType} defines the higher inductive type as a top-level definition using the base type. {\tt defineHitCons} specifies the point constructors of the higher inductive type using the type information obtained from the constructors of the base type, and {\tt defineHitPathCons} builds the paths constructors of the higher inductive type using the {\tt argPath} list. The following code automates the generation of the higher inductive type definition for {\tt Circle} given in section 2.1.
 \begin{center}
 \begingroup
-\fontsize{8pt}{9pt}\selectfont
-\begin{Verbatim}
+\begin{BVerbatim}
 
-  unquoteDecl S Spoints base Spaths loop =
-    data-hit (quote S*) S
-      Spoints (base :: []) -- point constructors
-      Spaths (loop :: [])  -- path constructors
-      (argPath (base* ≡ base*) :: []) -- base replaces base*
+unquoteDecl S Spoints base Spaths loop =
+  data-hit (quote S*) S
+    Spoints (base :: []) -- point constructors
+    Spaths (loop :: [])  -- path constructors
+    (argPath (base* ≡ base*) :: []) 
+    -- base replaces base*
 
-\end{Verbatim}
+\end{BVerbatim}
 \endgroup
 \end{center}
 
@@ -1040,9 +988,36 @@ The identity type input {\tt (base* ≡ base*)} to argPath represents the type o
 \subsection{Non-dependent Eliminator}
 \label{sec:sec4.2}
 
-Non-dependent eliminator or the recursion principle of a higher inductive type $W$ maps the points and paths of $W$ to an output type $P$. Let $g_1 : A \rightarrow W$ and $g_2 : B \rightarrow W$ be the point constructors, and $l : (\alpha : A) \rightarrow (\beta : B) \rightarrow (g_1 \, \alpha) \equiv (g_2 \, \beta)$ be the path constructor of $W$. To define a mapping $f : W \rightarrow P$, we need points $d_1 : A \rightarrow P$ and $d_2 : B \rightarrow P$ and a path $h : (\alpha : A) \rightarrow (\beta : B) \rightarrow (d_1 \, \alpha) \equiv (d_2 \, \beta)$ in the space $P$. The path constructor $l$ can take arguments of any type including the higher inductive type $W$ but for simplicity we will consider only arguments of constant type.
+Non-dependent eliminator or the recursion principle of a higher inductive type $G$ maps the points and paths of $G$ to an output type $C$. We extend the general schema of the recursion principle given in section \eqref{sec:sec3.1} by adding methods for path constructors as follows.
 
-To construct the recursion principle $f$, we need to build the type of points $d1, d2$ and path $h$. The type of $d1$ and $d2$ are built from the abstract syntax tree of points $g1$ and $g2$ respectively using the approach described in section \eqref{sec:sec3.1}. We build the type of $h$ by traversing the abstract syntax tree of $l$. During the traversal, we replace the points $g_1$ and $g_2$, which are arguments to the identity type, in the co-domain of the path $l$ by the points $d_1$ and $d_2$ respectively. In figure \eqref{fig:ast-f}, the arguments of the identity type in the abstract syntax tree of $h$ references the points $d_1$ and $d_2$ using de~Bruijn index 3 and 2 respectively. We copy the other two arguments of $l$, which are of constant type $A$ and $B$, without any changes into the type of $h$.
+\begin{align*}
+G_{\mathit{rec}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+& (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
+& (\mathit{tgt} : G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
+& (\mathit{C} : \SET{}) \to \\
+& (\mathit{f_1} : \Delta_1 \to  \Delta_1^\prime \to \mathit{C}) \to \\
+& (\mathit{f_r} : \Delta_r \to  \Delta_r^\prime \to \mathit{C}) \to \\
+& (\mathit{k_1} : \Delta_1 \to  \Delta_1^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& (\mathit{k_r} : \Delta_r \to  \Delta_r^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \mathit{C}
+\end{align*}
+ 
+In the schema definition above, we have given only one-dimensional paths. The automation tool currently supports one-dimensional paths, and we are planning to improve the tool to support higher-dimensional paths in the future. 
+
+The type of $f_i$, method for the point constructor $g_i$ in $G_{rec}$, is built the same way as for the normal inductive type $D$. The automation tool builds the type of $k_i$, method for path constructor $p_i$ in $G_{rec}$, by traversing the AST of $p_i$. During the traversal, the references to point constructors $g_i$ of $G$ in the co-domain of $p_i$ are replaced by $f_i$. The arguments of $k_i$ are handled the same way as for $f_i$. The schema for the computation rules corresponding to points $g_i$ is similar to the computation rules corresponding to constructors $c_i$ of the inductive type $D$ except that it has additional variables to represent paths. The schema for the computation rules corresponding to paths $p_i$ is given as follows.
+\begin{align*}
+\beta G_{rec} :  & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+& (\mathit{C} : \SET{}) \to \\
+& (\mathit{f_1} : \Delta_1 \to  \Delta_1^\prime \to \mathit{C}) \to \\
+& (\mathit{f_r} : \Delta_r \to  \Delta_r^\prime \to \mathit{C}) \to \\
+& (\mathit{k_1} : \Delta_1 \to  \Delta_1^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& (\mathit{k_r} : \Delta_r \to  \Delta_r^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \mathit{ap} \, (\lambda \, x \to G_{rec} \, x \, C \, f_1 \, f_r \, k_1 \, k_r) \, (p_i \ldots) \equiv (k_i \ldots)
+\end{align*}
+
+The computation rule $\beta G_{rec}$ exists only as propositional equality. The automation tool builds the type of $\beta G_{rec}$ using the same approach as for the recursion rule $G_{rec}$. The type of $G_{rec}$ and $\beta G_{rec}$ is similar except for the mapping $G \to C$ in $G_{rec}$ which is replaced by the term representing the action of function $G_{rec}$ on the path $(p_i \, \ldots)$. The function {\tt ap} (sec. \ref{sec:sec2.2}) applies $G_{rec}$, which is nested inside a lambda function, on the path $(p_i \ldots)$. The tool uses the constructor {\tt lam} of {\tt Term} to introduce a lambda function.
+
+Lets consider the higher inductive type {\tt S} (sec \ref{sec:sec2.1}), which represents the {\tt Circle}. To define a mapping {\tt recS : S → C}, we need a point {\tt cbase : C} and a path {\tt cloop : C ≡ C} in the space {\tt C}. To construct the recursion principle {\tt recS}, we need to build the type of point {\tt cbase} and path {\tt cloop}. The type of {\tt cbase} is built from the AST of points {\tt base} using the approach described in section \eqref{sec:sec3.1}. The automation tool builds the type of {\tt cloop} by traversing the AST of {\tt loop}. During the traversal, the tool replaces the point {\tt base}, which forms the two arguments to the identity type, in the co-domain of the path {\tt loop} by the point {\tt cbase}.
 
 \begin{figure}
 \begin{center}
@@ -1050,56 +1025,52 @@ To construct the recursion principle $f$, we need to build the type of points $d
 \fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}[frame = single]
 
-   (pi (vArg (agda-sort (lit 0)))                  -- P
-      (abs "P"
-   (pi (vArg (pi (vArg (def (quote A) []))         -- d₁ : A → P
-      (abs "_" (var 1 []))))                       -- P ref
-      (abs "d₁"
-   (pi (vArg (pi (vArg (def (quote B) []))         -- d₂ : B → P
-      (abs "_" (var 2 []))))                       -- P ref
-      (abs "d₂"
-   (pi (vArg                                       -- h
-      (pi (vArg (def (quote A) []))                -- α : A
-      (abs "α"
-      (pi (vArg (def (quote B) []))                -- β : B
-      (abs "β"
-      (def (quote _≡_)
-         vArg (var 3                               -- d₁ ref
-            (vArg (var 1 []) :: [])) ::            -- α ref
-         vArg (var 2                               -- d₂ ref
-            (vArg (var 0 []) :: [])) :: []))))))   -- β ref
-      (abs "h"
-   (pi (vArg (def (quote W) []))                   -- W → P
-      (abs "_" (var 4 [])))))))))))
-
+(def (quote S) [] [ "_" v]⇒                 -- S
+ (agda-sort (lit 0) [ "C" v]⇒               -- C : Set
+  (var 0 [] [ "cbase" v]⇒                   -- cbase
+   (def (quote _≡_)                         -- cloop
+    (vArg (var 0 []) ::
+     vArg (var 0 []) :: [])
+    [ "cloop" v]⇒ var 2 []))))
+    
 \end{Verbatim}
 \endgroup
 \end{center}
-\caption{Abstract syntax tree for constructor $f$}
+\caption{Abstract syntax tree for {\tt recS}}
 \label{fig:ast-f}
 \end{figure}
 
-The recursion rule $f$ corresponding to figure \eqref{fig:ast-f} is given by the following equation\todo{This is not an equation}.
-\begin{align}
-& f : (P : Set) \rightarrow (d_1 : A \rightarrow P) \rightarrow (d_2 : B \rightarrow P) \rightarrow \nonumber \\
-& \hspace {0.4cm} (h : (\alpha : A) \rightarrow (\beta : B) \rightarrow (d_1 \, \alpha) \equiv (d_2 \, \beta)) \rightarrow \nonumber \\
-& \hspace {0.4cm} W \rightarrow P \nonumber
-\end{align}
-The computation rules for constructors $g_1$ and $g_2$ give the action of eliminator $f$ on input $g_1 (\alpha)$ and $g_2 (\beta)$ respectively. The computation rules say that the function $f$ maps the points $g_1 (\alpha)$ and $g_2 (\beta)$ to the points $d_1 (\alpha)$ and $d_2 (\beta)$ respectively in the output type $P$. We specify the clause definition to build the computation rules for $g_1$ and $g_2$ in the same way as for a regular inductive type (sec.~\ref{sec:sec3.1}) except that the clause definition for the higher inductive type $W$ has an additional reference variable to the path $h$. The following definitional equalities give the computation rules for $g_1$ and $g_2$.
-\begin{align}
-f (P, d_1, d_2, h, g_1 (\alpha)) \equiv d_1 (\alpha) \nonumber \\
-f (P, d_1, d_2, h, g_2 (\beta)) \equiv d_2 (\beta) \nonumber
-\end{align}
+The recursion rule {\tt recS} corresponding to figure \eqref{fig:ast-f} is given as follows.
 
-The computation rule for the path constructor $l$ defines the action of function $f$ on the path $(l \, \alpha \, \beta)$. In type theory, the functions are functorial, and they preserve the path structures in their mapping to the output type \citep{HoTT-2013}. The function $ap_f$ \eqref{eq:ap} defines the action of the non-dependent eliminator $f$ on the path $l$. Using \eqref{eq:ap}, we can build the computation rule for the path $l$ as follows.
-\begin{align}
-& \beta_f : (P : Set) \rightarrow (d_1 : A \rightarrow P) \rightarrow (d_2 : B \rightarrow P) \rightarrow \nonumber \\
-& \hspace {0.4cm} (h : (\alpha : A) \rightarrow (\beta : B) \rightarrow (d_1 \,  \alpha) \equiv (d_2 \, \beta)) \rightarrow \nonumber \\
-& \hspace {0.4cm} \{\alpha : A\} \rightarrow \{\beta : B\} \rightarrow \nonumber \\
-& \hspace {0.4cm} ap_{(\lambda x \rightarrow f(P, d_1, d_2, h, x))}(l \, \alpha \, \beta) \equiv (h \, \alpha \, \beta) \nonumber
-\end{align}
+\begin{center}
+\begingroup
+\begin{BVerbatim}
 
-The computation rule $\beta_f$ exists only as propositional equality. We build the type of $\beta_f$ using the same approach as for the recursion rule $f$. The type of $f$ and $\beta_f$ is identical except for the mapping $W \rightarrow P$ in $f$ which is replaced by the term representing the action of function $f$ on the path $(l \, \alpha \, \beta)$. The function $ap$ applies $f$, which is nested inside a lambda function, on the arguments $(g_1 \, \alpha)$ and $(g_2 \, \beta)$ of the path $(l \, \alpha \, \beta)$. We use the constructor {\tt lam} of {\tt Term} to introduce the lambda function with argument {\tt x} (fig.~\ref{fig:ast-beta-f}). Inside the lambda body, the argument {\tt x} gets a de~Bruijn index reference of zero and we update the remaining de~Bruijn indices accordingly. The application of function $f$ to the path $(l \, \alpha \, \beta)$ substitutes the points $(g_1 \, \alpha)$ and $(g_2 \, \beta)$ for the lambda argument {\tt x}, and it evaluates to the path $(h \, \alpha \, \beta)$ in the output type $P$. We implement the {\tt generateRecHit} interface as follows.
+  recS : S → 
+    (C : Set) →
+    (cbase : C) →
+    (cloop : cbase ≡ cbase) →
+    C
+
+\end{BVerbatim}
+\endgroup
+\end{center}
+
+The automation tool builds the computation rule for the point constructor {\tt base} using the same approach as described in sec.~\ref{sec:sec3.1}. Additionally, it includes variables in the {\tt clause} definition for the path constructor {\tt loop}. The tool builds the computation rule for the path constructor {\tt loop} using {\tt ap} as follows.
+
+\begin{center}
+\begingroup
+\begin{BVerbatim}
+
+    βrecS : (C : Set) → (cbase : C) → 
+      (cloop : cbase ≡ cbase) → 
+      ap (λ x → recS x C cbase cloop) loop 
+      ≡ cloop
+\end{BVerbatim}
+\endgroup
+\end{center}
+
+The application of function {\tt recS} to the path {\tt loop} substitutes the point {\tt base} for the lambda argument {\tt x}, and it evaluates to the path {\tt cloop} in the output type {\tt C}. The automation tool uses {\tt declarePostulate} primitive to introduce {\tt βrecS} as a postulate. We implement the {\tt generateRecHit} interface as follows.
 
 \begin{figure}
 \begin{center}
@@ -1107,68 +1078,71 @@ The computation rule $\beta_f$ exists only as propositional equality. We build t
 \fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}[frame = single]
 
-   (def (quote _≡_)
-      (vArg (def (quote ap)                        -- ap
-         (vArg (lam visible (abs "x"               -- x
-            (def (quote f)                         -- f
-               (vArg (var 6 []) ::                 -- P ref
-                vArg (var 5 []) ::                 -- d₁ ref
-                vArg (var 4 []) ::                 -- d₂ ref
-                vArg (var 3 []) ::                 -- h ref
-                vArg (var 0 []) :: [])))) ::       -- x ref
-          vArg (def (quote l)                      -- l
-             (vArg (var 1 []) ::                   -- α ref
-              vArg (var 0 []) :: [])) :: [])) ::   -- β ref
-          vArg (var 2                              -- h ref
-             (vArg (var 1 []) ::                   -- α ref
-              vArg (var 0 []) :: [])) :: []))      -- β ref
+(agda-sort (lit 0) [ "C" v]⇒
+ (var 0 [] [ "cbase" v]⇒
+  (def (quote _≡_)
+   (vArg (var 0 []) :: vArg (var 0 []) :: [])
+   [ "cloop" v]⇒
+   def (quote _≡_)
+   (vArg
+    (def (quote ap)
+     (vArg
+      (lam visible
+       (abs "x"
+        (def (quote recS)
+         (vArg (var 0 []) ::
+          vArg (var 3 []) :: vArg (var 2 []) :: 
+          vArg (var 1 []) :: []))))
+      :: vArg (def (quote loop) []) :: []))
+    :: vArg (var 0 []) :: []))))
 
 \end{Verbatim}
 \endgroup
 \end{center}
-\caption{Abstract syntax tree for the term representing the action of function $f$ on path $l$}
+\caption{AST representing the action of function {\tt recS} on path {\tt loop}}
 \label{fig:ast-beta-f}
 \end{figure}
 
 \begin{center}
 \begingroup
-\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = lines, rulecolor=\color{blue}, numbers = left, numbersep = 0pt]
-generateRecHit : Arg Name → List (Arg Name) →
+%\fontsize{7pt}{9pt}\selectfont
+\begin{BVerbatim}
+generateRecHit : 
+  Arg Name → List (Arg Name) →
   (baseType : Name) → (indexList : List Nat) →
   (baseRec : Name) → (indType : Name) →
-  (points : List Name) → (paths : List Name) → TC ⊤
-generateRecHit (arg i f) argD baseType indLs baseRec indType points paths =
-  do lcons ← getConstructors baseType
-     lpoints ← getLength points
-     lpaths ← getLength paths
-     clauses ← getPathClause lpoints lpaths baseRec
+  (points : List Name) → 
+  (paths : List Name) → TC ⊤
+generateRecHit (arg i f) argD b il br i p1 p2 =
+  do lcons ← getConstructors b
+     lpoints ← getLength p1
+     lpaths ← getLength p2
+     clauses ← getPathClause lpoints lpaths br
      RTy ← getType baseType
-     funTypePath ← getRtypePath baseType indType baseRec indLs paths zero RTy
-     declareDef (arg i f) funTypePath
+     fTy ← getRtypePath b i br il p2 zero RTy
+     declareDef (arg i f) fTy
      defineFun f clauses
-     generateβRecHit argD baseType indLs baseRec indType f points paths
-\end{Verbatim}
+     generateβRecHit argD b il br i f p1 p2
+\end{BVerbatim}
 \endgroup
 \end{center}
 
-{\tt generateRecHit} takes the base type recursion rule as input and uses that to map the points $g_1 (\alpha)$ and $g_2 (\beta)$ to $d_1 (\alpha)$ and $d_2 (\beta)$ respectively in the abstract syntax tree of the path $(l \, \alpha \, \beta)$. The second argument {\tt argD} is a list of terms representing the computation rules for the path constructors. The {\tt generateβRecHit} interface takes {\tt argD} as input and builds the computation rule for the path constructor $l$. Other inputs to {\tt generateRecHit} are the point and path holders declared during the higher inductive type definition of $W$. The following automation code generates the recursion rule and the computation rules for {\tt Circle}.
+{\tt generateRecHit} takes the base type recursion rule as input and uses that to eliminate the points in the AST of the path methods in the recursor $G_{rec}$. The second argument {\tt argD} is a list of terms representing the computation rules for the path constructors. The {\tt generateβRecHit} interface takes {\tt argD} as input and builds the computation rule for the path constructors. Other inputs to {\tt generateRecHit} are the point and path holders declared during the higher inductive type definition. The following automation code generates the recursion rule and the computation rules for {\tt Circle}.
 
 \begin{center}
 \begingroup
-\fontsize{8pt}{9pt}\selectfont
-\begin{Verbatim}
+\begin{BVerbatim}
 
-  unquoteDecl recS₁* = generateRec (vArg recS₁*)
-                          (quote S₁*) (0 :: [])
+unquoteDecl recS₁* = generateRec (vArg recS₁*)
+                        (quote S₁*) (0 :: [])
 
-  unquoteDecl recS₁ βrecS₁ = generateRecHit (vArg recS₁)
-                                ((vArg βrecS₁) :: [])
-                                (quote S₁*) (0 :: [])
-                                (quote recS₁*)
-                                (quote S₁) S₁points S₁paths
-
-\end{Verbatim}
+unquoteDecl recS₁ βrecS₁ = 
+    generateRecHit (vArg recS₁)
+      ((vArg βrecS₁) :: [])
+      (quote S₁*) (0 :: [])
+      (quote recS₁*)
+      (quote S₁) S₁points S₁paths
+\end{BVerbatim}
 \endgroup
 \end{center}
 
@@ -1177,146 +1151,111 @@ The term {\tt βrecS₁} represents the computation rule for the path constructo
 \subsection{Dependent Eliminator}
 \label{sec:sec4.3}
 
-Dependent eliminator or the induction principle of a higher inductive type $W$ is a dependent function that maps an element $\omega$ of $W$ to an output type $P \, \omega$. For the type $W$ with point constructors $g_1 : A \rightarrow W$ and $g_2 : B \rightarrow W$ and path constructor $l : (\alpha \rightarrow A) \rightarrow (\beta \rightarrow B) \rightarrow (g_1 \, \alpha) \equiv (g_2 \, \beta)$, to define a mapping $f' : (\omega : W) \rightarrow P \, \omega$, we need $d_1 : (\alpha : A) \rightarrow P \, \alpha$, $d_2 : (\beta : B) \rightarrow P \, \beta$, and $h : (\alpha \rightarrow A) \rightarrow (\beta : B) \rightarrow transport \, P \, (l \, \alpha \, \beta) \, (d_1 \, \alpha) \equiv (d_2 \, \beta)$, where $(h \, \alpha \, \beta)$ is a heterogeneous path transported over $(l \, \alpha \, \beta)$ lying in the space $P \, \beta$. Equation\todo{Not an equation, just do a page ref} \eqref{eq:transport} gives the type of $transport$.
+Dependent eliminator or the induction principle of a higher inductive type $G$ is a dependent function that maps an element $g$ of $G$ to an output type $C \, g$. The general schema for the induction principle of $G$ is given as follows.
 
-\begin{figure}
+\begin{align*}
+G_{\mathit{ind}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+& (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
+& (\mathit{tgt} : G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
+& \begin{array}{@{}l@{}l}(\mathit{C} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
+& (\mathit{f_1} : \Delta_1 \to  \Delta_1^\prime \to \mathit{C}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
+& (\mathit{f_r} : \Delta_r \to  \Delta_r^\prime \to \mathit{C}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
+& (\mathit{k_1} : \Delta_1 \to  \Delta_1^\prime \to transport \, \mathit{C} \, p_1 \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& (\mathit{k_r} : \Delta_r \to  \Delta_r^\prime \to transport \, \mathit{C} \, p_r \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \mathit{C}\ i_1\ \ldots\ i_n\ \mathit{tgt}
+\end{align*}
+
+Similar to $G_{rec}$, the type of $f_i$ is built the same way as for the normal inductive type $D$. The automation tool builds the type of $k_i$, method for path constructor $p_i$ in $G_{ind}$, by traversing the AST of $p_i$. During the traversal, the references to point constructors $g_i$ of $G$ in the co-domain of $p_i$ are replaced by $f_i$. In the first argument to the identity type in the co-domain of $k_i$, the automation tool adds the quoted {\tt name} of {\tt transport}, reference to the motive {\tt C}, and the path $p_i$. The arguments of $k_i$ are handled the same way as for $f_i$. The schema for the computation rules corresponding to paths $p_i$ is given as follows.
+
+\begin{align*}
+\beta G_i : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+& \begin{array}{@{}l@{}l}(\mathit{C} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
+& (\mathit{f_1} : \Delta_1 \to  \Delta_1^\prime \to \mathit{C}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
+& (\mathit{f_r} : \Delta_r \to  \Delta_r^\prime \to \mathit{C}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
+& (\mathit{k_1} : \Delta_1 \to  \Delta_1^\prime \to transport \, \mathit{C} \, p_1 \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& (\mathit{k_r} : \Delta_r \to  \Delta_r^\prime \to transport \, \mathit{C} \, p_r \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \mathit{apd} \, (\lambda \, x \to G_{ind} \, x \, C \, f_1 \, f_r \, k_1 \, k_r) \, (p_i \ldots) \equiv (k_i \ldots)
+\end{align*}
+
+The automation tool builds the type of $\beta G_{ind}$ using the same approach as for the induction rule $G_{ind}$. The type of $G_{ind}$ and $\beta G_{ind}$ is similar except for the mapping $(g : G) \to C g$ in $G_{ind}$ which is replaced by the term representing the action of function $G_{ind}$ on the path $(p_i \, \ldots)$. The function {\tt apd} (sec. \ref{sec:sec2.2}) applies $G_{ind}$, which is nested inside a lambda function, on the path $(p_i \ldots)$.
+
+For the type {\tt S} with point constructor {\tt base} and path constructor {\tt loop}, to define a mapping {\tt indS : (x : S) → C x}, we need {\tt cbase : C} and {\tt cloop : C}, where {\tt cloop} is a heterogeneous path transported over {\tt loop}. The automation tool builds the type of {\tt cloop} by traversing the abstract syntax tree of {\tt loop} and adding relevant type information into it. For the codomain of {\tt cloop}, which is an identity type, we insert the quoted {\tt name} of {\tt transport} with arguments {\tt C}, {\tt loop} and {\tt cbase}. The automation tool applies the base eliminator to the arguments of the path {\tt loop} during the construction of the co-domain of {\tt cloop}. The following declaration gives the type of {\tt indS}.
+
 \begin{center}
 \begingroup
-\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = single]
+\begin{BVerbatim}
 
-  (pi (vArg (`W `⇒ agda-sort (lit 0)))
-     (abs "P"
-  (pi (vArg
-     (pi (vArg `A)
-     (abs "α"
-     (var 1 (vArg (con (quote g₁)
-              (vArg (var 0 []) :: [])) :: [])))))
-     (abs "d₁"
-  (pi (vArg
-     (pi (vArg `B)
-     (abs "β"
-     (var 2 (vArg (con (quote g₂)
-              (vArg (var 0 []) :: [])) :: [])))))
-     (abs "d₂"
-  (pi (vArg
-     (pi (vArg `A)
-     (abs "α"
-     (pi (vArg `B)
-     (abs "β"
-     (def (quote _≡_)
-       (vArg (def (quote transport)
-         (vArg (var 4 []) ::
-          vArg (def (quote l) (vArg (var 1 []) ::
-          vArg (var 0 []) :: [])) ::
-          vArg (var 3 (vArg (var 1 []) :: [])) :: [])) ::
-       vArg (var 2 (vArg (var 0 []) :: [])) :: [])))))))
-     (abs "h"
-  (pi (vArg `W)
-     (abs "ω" (var 4 (vArg (var 0 []) :: [])))))))))))
+indS : (circle : S) → 
+  (C : S → Set) →
+  (cbase : C base) →
+  (cloop : transport C loop cbase ≡ cbase) →
+  C circle
 
-\end{Verbatim}
+\end{BVerbatim}
 \endgroup
 \end{center}
-\caption{Abstract syntax tree of function $f'$}
-\label{fig:ast-ind-f'}
-\end{figure}
 
-In the abstract syntax tree of $f'$ (fig. \ref{fig:ast-ind-f'}), the type of constructors $d_1$ and $d_2$ are built from the type of $g_1$ and $g_2$ respectively using the same approach as in section \eqref{sec:sec3.2}. When building the type of $d_1$, we copy the constant argument $A$ directly into the abstract syntax tree of $d_1$, and for the codomain P, which depends on the action of constructor $g_1$ on the constant argument $\alpha : A$, we pass the de~Bruijn index reference of $\alpha$ as an argument to the constructor $g_1$ built using the reflection construct {\tt con}. Similarly, for $d_2$, we copy the type $B$ directly into the abstract syntax tree of $d_2$ and pass the de~Bruijn index of $\beta : B$ to the constructor $g_2$ in the co-domain. We build the type of path $h$ by traversing the abstract syntax tree of $l$ and adding relevant type information into it. We copy the constant arguments of type $A$ and $B$ without modification. For the codomain of $l$, which is the identity type $(g_1 \, \alpha) \equiv (g_2 \, \beta)$, we insert the quoted {\tt name} of function $transport$ with arguments $P$, the path $(l \, \alpha \, \beta)$ and $(d_1 \, \alpha)$. We apply the base eliminator to the arguments of the path $(l \, \alpha \, \beta)$ to form the elements $(d_1 \, \alpha)$ and $(d_2 \, \beta)$. The following declaration gives the type of $f'$ corresponding to figure \eqref{fig:ast-ind-f'}.
-\begin{align}
-& f' : (P : W \rightarrow Set) \rightarrow \nonumber \\
-& \hspace {0.6cm} (d_1 : (\alpha : A) \rightarrow P (g_1 \, \alpha)) \rightarrow (d_2 : (\beta : B) \rightarrow P (g_2 \, \beta)) \rightarrow \nonumber \\
-& \hspace {0.6cm} (h : (\alpha : A) \rightarrow (\beta : B) \rightarrow \nonumber \\
-& \hspace {1.2cm} transport \, P \, (l \, \alpha \, \beta) (d_1 \, \alpha) \equiv (d_2 \, \beta)) \rightarrow \nonumber \\
-& \hspace {0.6cm} (\omega : W) \rightarrow P (\omega) \nonumber
-\end{align}
+The computation rule for {\tt base}, which defines the action of {\tt indS} on {\tt base}, is built using the same approach as for the non-dependent eliminator {\tt recS}. The computation rule {\tt βindS} for the path {\tt loop} is built using {\tt apd} which gives the action of dependent function {\tt indS} on the path {\tt loop}.
 
-We build the computation rules corresponding to the mapping $f'$ for the point constructors $g_1$ and $g_2$ using the same approach as for the non-dependent eliminator $f$. The following equations give the computation rules for the point constructors $g_1$ and $g_2$.
-\begin{align}
-f' (P, d_1, d_2, h, g_1 (\alpha)) \equiv d_1 (\alpha) \nonumber \\
-f' (P, d_1, d_2, h, g_2 (\beta)) \equiv d_2 (\beta) \nonumber
-\end{align}
-
-The computation rule $\beta_{f'}$ for the heterogeneous path $h$ depends on $apd$ \eqref{eq:apd} which gives the action of dependent function $f'$ on the path $h$. We build the type of $\beta_{f'}$ using \eqref{eq:apd} as follows.
-\begin{align}
-&\beta_{f'} : (P : W \rightarrow Set) \rightarrow \nonumber \\
-& \hspace {0.6cm} (d_1 : (\alpha : A) \rightarrow P (g_1 \, \alpha)) \rightarrow (d_2 : (\beta : B) \rightarrow P (g_2 \, \beta)) \rightarrow \nonumber \\
-& \hspace {0.6cm} (h : (\alpha : A) \rightarrow (\beta : B) \rightarrow \nonumber \\
-& \hspace {1.2cm} transport \, P \, (l \, \alpha \, \beta) (d_1 \, \alpha) \equiv (d_2 \, \beta)) \rightarrow \nonumber \\
-& \hspace {0.6cm} apd_{(\lambda x \rightarrow f'(P, d_1, d_2, h, x))}(l \, \alpha \, \beta) \equiv (h \, \alpha \, \beta) \nonumber
-\end{align}
-
-\begin{figure}
 \begin{center}
 \begingroup
-\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = single]
+\begin{BVerbatim}
 
-   (def (quote _≡_)
-      (vArg (def (quote apd)                       -- apd
-         (vArg (lam visible (abs "x"               -- x
-            (def (quote f')                        -- f
-               (vArg (var 6 []) ::                 -- P ref
-                vArg (var 5 []) ::                 -- d₁ ref
-                vArg (var 4 []) ::                 -- d₂ ref
-                vArg (var 3 []) ::                 -- h ref
-                vArg (var 0 []) :: [])))) ::       -- x ref
-          vArg (def (quote l)                      -- l
-             (vArg (var 1 []) ::                   -- α ref
-              vArg (var 0 []) :: [])) :: [])) ::   -- β ref
-          vArg (var 2                              -- h ref
-             (vArg (var 1 []) ::                   -- α ref
-              vArg (var 0 []) :: [])) :: []))      -- β ref
+βindS : (C : S → Set) → 
+  (cbase : C base) → 
+  (cloop : transport C loop cbase ≡ cbase) → 
+  apd (λ x → indS x C cbase cloop) loop ≡ cloop
 
-\end{Verbatim}
+\end{BVerbatim}
 \endgroup
-\end{center}
-\caption{Abstract syntax tree for the term representing the action of dependent function $f'$ on path $l$}
-\label{fig:ast-beta-f'}
-\end{figure}
-
-We build the abstract syntax tree for the computation rule $\beta_{f'}$ in the same way as for induction principle $f'$. In the codomain of $\beta_{f'}$ (fig.~\ref{fig:ast-beta-f'}), which is an identity type, we insert the abstract representation of the function $apd$ with arguments $f'$, nested inside a lambda body, and the path $(l \, \alpha \, \beta)$. We pass the path $(h \, \alpha \, \beta)$, built using de~Bruijn indices, as the second argument to the identity type. The following code gives the implementation of the {\tt generateIndHit} interface in the automation tool.
+\end{center}      
+      
+The following code gives {\tt generateIndHit} interface in the automation tool.
 
 \begin{center}
 \begingroup
-\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}
+\begin{BVerbatim}
+
 generateIndHit : Arg Name → List (Arg Name) →
   (baseType : Name) → (indLs : List Nat) →
   (baseElm : Name) → (indType : Name) →
-  (points : List Name) → (paths : List Name) → TC ⊤
-generateIndHit (arg i f) argD baseType indLs baseRec indType points paths =
-  do indLs' ← getIndex baseType indLs
-     lcons ← getConstructors baseType
-     lpoints ← getLength points
-     lpaths ← getLength paths
-     clauses ← getPathClauseDep lpoints lpaths baseType baseRec indLs' lcons
-     RTy ← getType baseType
-     funTypePath ← getRtypePathDep baseType indType baseRec points paths zero indLs' RTy
-     declareDef (arg i f) funTypePath
+  (points : List Name) → 
+  (paths : List Name) → TC ⊤
+generateIndHit (arg i f) argD b il br i p1 p2 =
+  do il' ← getIndex b il
+     lcons ← getConstructors b
+     lp1 ← getLength p1
+     lp2 ← getLength p2
+     clauses ← (getPathClauseDep lp1 lp2 b 
+                 br il' lcons)
+     RTy ← getType b
+     fTy ← (getRtypePathDep b i br p1 p2 
+             zero il' RTy)
+     declareDef (arg i f) fTy
      defineFun f clauses
-     generateβIndHit argD baseType indLs baseRec indType f points paths
-\end{Verbatim}
+     generateβIndHit argD b il br i f p1 p2
+
+\end{BVerbatim}
 \endgroup
 \end{center}
 
-The interface {\tt generateIndHit} takes the base eliminator as an argument and uses that to map the point constructors $g_1$ and $g_2$ to output $d_1$ and $d_2$ when building the codomain of the path constructor $h$. {\tt generateβIndHit} builds the computation rule for the path constructor $h$. The following code builds the induction principle and the computation rules for {\tt Circle}.
+{\tt generateβIndHit} builds the computation rule for the path constructors. The following code builds the induction principle and the computation rules for {\tt Circle}.
 
 \begin{center}
 \begingroup
-\fontsize{8pt}{9pt}\selectfont
-\begin{Verbatim}
+\begin{BVerbatim}
 
-  unquoteDecl indS₁* = generateInd (vArg indS₁*)
-                          (quote S₁*) []
+unquoteDecl indS₁* = generateInd (vArg indS₁*)
+                       (quote S₁*) []
 
-  unquoteDecl indS₁ βindS₁ = generateIndHit (vArg indS₁)
-                                ((vArg βindS₁) :: [])
-                                (quote S₁*) []
-                                (quote indS₁*)
-                                (quote S₁) S₁points S₁paths
+unquoteDecl indS₁ βindS₁ = 
+  generateIndHit (vArg indS₁)
+    ((vArg βindS₁) :: [])
+    (quote S₁*) []
+    (quote indS₁*)
+    (quote S₁) S₁points S₁paths
 
-\end{Verbatim}
+\end{BVerbatim}
 \endgroup
 \end{center}
 
