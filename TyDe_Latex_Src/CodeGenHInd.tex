@@ -498,7 +498,7 @@ While inductive datatypes are defined by their constructors, it must also be pos
 Based on the generic form of the inductive type given above, we can define the following schematic representation for the non-dependent eliminator.
 
 \begin{align*}
-D_{\mathit{rec}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+D_{\mathit{rec}} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
 & (\mathit{tgt} : D\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
 & (\mathit{C} : \SET{}) \to \\
@@ -521,19 +521,40 @@ The constructor {\tt data-type} contains the count \emph{cp} of parameters occur
 
 The general schema for the computation rules corresponding to $D_{\mathit{rec}}$ and constructors $c_1, \ldots, c_n$ is given as follows.
 
+\newcommand*{\RHSap}[2]{\ensuremath{\mathsf{RHS}\left(#1, #2\right)}}
+\newcommand*{\RHS}[1]{\RHSap{f_{#1}}{\Delta_{#1}^\prime}}
+
+
 \begin{center}
 \begingroup
 \fontsize{8.9pt}{2pt}\selectfont
 \begin{align*}
-& D_\mathit{rec} \, (c_1 \, a_1 ... a_n) \, C \, f_1 \ldots f_n = f_1 ...  \\
-& \hspace{0.5cm} \vdots  \\
-& D_\mathit{rec} \, (c_n \, a_1 ... a_n) \, C \, f_1 \ldots f_n = f_n ...  \\ 
+& D_\mathit{rec}\ a_1\ \ldots\ a_n\ i_1\ \ldots\ i_m\ (c_1\ {\Delta_1}) \, C \, f_1 \ldots f_r = \\
+&\hspace{0.5cm}\RHS{1}\\
+& \vdots  \\
+& D_\mathit{rec}\ a_1\ \ldots\ a_n\ i_1\ \ldots\ i_m\ (c_r\ {\Delta_r}) \, C \, f_1 \ldots f_r = \\
+&\hspace{0.5cm}\RHS{r}\\ 
 \end{align*}
 \endgroup
 \end{center}
 \normalsize
 
-The value of $f_i$ on the right-hand side of the above computation rules depends on the type of constructor $c_i$. If $c_i$ takes zero arguments, then the corresponding computation rule for $c_i$ evaluates to $f_i$. If $c_i$ takes one or more arguments $(c_i \, a_1 \ldots a_n)$, then the computation rule evaluates to $(f_i \, a_1 \ldots a_n)$. If $c_i$ takes the inductive type $(d_i : D)$ as an argument $(c_i \, \ldots \, d_i \, \ldots)$, then the computation rule evaluates to $(f_i \, \ldots \, (D_\mathit{rec} \, d_i \, \ldots) \ldots)$, encoding the recursor $D_\mathit{rec}$ to evaluate the value for the substructure of type $D$ introduced by $d_i$. If $c_i$ takes a function with co-domain $D$, say $(d{_i}^* : A \to D)$, as an argument such as $(c_i \, \ldots \, d{_i}^* \, \ldots)$, we need a composite function $(f_{com} : D_\mathit{rec} \circ d{_i}^*)$ to evaluate the value for the substructure introduced by $d{_i}^*$. The automation tool handles composites by using a lambda function $(\lambda \, a \, \ldots \, \rightarrow (D_\mathit{rec} \ldots (d{_i}^* a \ldots) \ldots))$.
+Here, $\overline{\Delta_j}$ is the sequence of variables bound in $\Delta_j$.
+$\mathsf{RHS}$ constructs the application of the method $f_j$ to the arguments of $c_j$, such that $C$ is satisfied.
+It is defined by recursion on $\Delta_j$.
+$\RHSap{f_j}{\cdot}$ is $f_j$, because all arguments have been accounted for.
+$\RHSap{f_j}{(y : B)\Delta_k}$ is $\RHSap{f_j\ y}{\Delta_k}$ when $B$ does not mention $D$.
+$\RHSap{f_j}{(y : D) (y^\prime : C)\Delta_k}$ is $\RHSap{f_j\ y\ \left(D_{\mathit{rec}}\ \ldots y \ldots\right)}{\Delta_k}$, where the recursive use of $D_{\mathit{rec}}$ is applied to the recursive constructor argument as well as the appropriate indices, and the parameters, result type, and methods remain constant.
+Higher-order recursive arguments are a generalization of first-order arguments.
+Finally,
+\begin{displaymath}
+\RHSap{f_j}{(y : \Psi \to D) (y^\prime : \Psi \to C)\Delta_k}
+\end{displaymath}
+is
+\begin{displaymath}
+\RHSap{f_j\ y\ \left(\lambda \overline{\Psi} . D_{\mathit{rec}}\ \ldots \left(y\ \overline{\Psi} \right) \ldots\right)}{\Delta_k}
+\end{displaymath}
+where the recursive use of $D_{\mathit{rec}}$ is as before.
 
 The Agda datatype \texttt{Vec} represents lists of a known length. It is defined in figure~\ref{fig:vec}. For {\tt Vec}, the recursion principle says that to define a mapping {\tt f : Vec A n → C}, it suffices to define the action of {\tt f} on inputs {\tt []} and {\tt \_::\_}.
 
