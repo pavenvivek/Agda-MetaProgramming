@@ -621,7 +621,6 @@ pattern _[_h]⇒_ a s b = pi (hArg a) (abs s b)
 \label{fig:ast-g}
 \end{figure}
 
-\normalsize
 
 During the traversal of abstract syntax tree of the type of {\tt \_::\_}, when the type {\tt Vec} occurs directly in a non-codomain position, we add the type {\tt C} next to it. For example, in figure~\ref{fig:ast-g}, a new function is built from the argument {\tt (xs : Vec A n)} by modifying it to {\tt (Vec A n) → C} (fig.~\ref{fig:ast-d}). Constant types require no modifications. Therefore, we copy {\tt (x : A)} into the new type without any changes. Finally, we change the codomain {Vec A (suc n)} of {\tt \_::\_} to \emph{C} resulting in an abstract syntax tree representation of the type {\tt c2}. We repeat this process for each of the constructors.
 
