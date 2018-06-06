@@ -481,14 +481,14 @@ While Agda supports a variety of ways to define new datatypes, we will restrict 
 \fontsize{7.9pt}{0pt}\selectfont
 \begin{align*}
 &\KW{data}\ D\ (a_1 : A_1) \ldots (a_n:A_n) : (i_1 : I_1) \rightarrow\ldots\rightarrow (i_m : I_m) \rightarrow \SET{}\ \KW{where}  \\
-&\hspace{0.3cm} c_1 : \Delta_1 \rightarrow D \, a_1 \ldots a_n \, j_{11} \ldots j_{1p}  \\
+&\hspace{0.3cm} c_1 : \Delta_1 \rightarrow D \, a_1 \ldots a_n \, e_{11} \ldots e_{1m}  \\
 &\hspace{3.5cm} \vdots  \\
-&\hspace{0.3cm} c_r : \Delta_n \rightarrow D \, a_1 \ldots a_n \, j_{n1} \ldots j_{nq}  \\
+&\hspace{0.3cm} c_r : \Delta_n \rightarrow D \, a_1 \ldots a_n \, e_{r1} \ldots e_{rm}  \\
 \end{align*}
 \endgroup
 \end{center}
 \normalsize
-where $j_{k1} \ldots j_{kp}$ are bound in the telescope $\Delta_k$.
+where the index instantiations $e_{k1} \ldots e_{km}$ are expressions in the scope induced by the telescope $\Delta_k$. Every expression in the definition must also be well-typed according to the provided declarations.
 
 
 %The type of $A_i$ can take one of the three forms: a constant type {\tt B}, the inductive type $D$, or a function $B_1 \rightarrow \ldots \rightarrow B_n \rightarrow D$ with co-domain $D$. The parameters $(x_1:P_1)\ldots(x_n:P_n)$ are common to all the constructors, and the type of each constructor implicitly encodes the parameter references. However, the indices are different for each constructor. So, the type of each constructor explicitly exhibits the index declaration.
@@ -502,14 +502,24 @@ D_{\mathit{rec}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
 & (\mathit{tgt} : D\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
 & (\mathit{C} : \SET{}) \to \\
-& (\mathit{f_1} : \Delta_1 \to  \Delta_1^\prime \to \mathit{C}) \to \\
-& (\mathit{f_r} : \Delta_r \to  \Delta_r^\prime \to \mathit{C}) \to \\
+& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}) \to \ldots \to (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}) \to \\
 & \mathit{C}
 \end{align*}
 
-where $j_{ij}$ are bound in $\Delta_i$.
+The type of $f_i$, which is the method for fulfilling the desired type $C$ when eliminating the constructor $c_i$ in $D_\mathit{rec}$, is determined by the type of $c_i$.
+The telescope $\Delta_i^\prime$ is the same as $\Delta_i$ for non-recursive constructor arguments.
+However, $\Delta_i^\prime$ binds additional variables when there are recursive occurrences of $D$ in the arguments.
+If $\Delta_i$ has an argument $(y : B)$, where $B$ is not an application of $D$ or a function returning such an application, $\Delta_i^\prime$ binds $(y : B)$ directly.
+If $B$ is an application of $D$, then an additional binding $(y^\prime : C)$ is inserted following $y$.
+Finally, if $B$ is a function type $\Psi \to D$, the additional binding is $(y^\prime : \Psi \to C)$. 
 
-The type of $f_i$, which is the method for constructor $c_i$ in $D_\mathit{rec}$, depends on the type of constructor $c_i$. If $c_i$ has an argument $(y : B)$, the automation tool copies the constant type argument $(y : B)$ directly to $f_i$. For an argument $(y : D)$ in $c_i$, the automation tool adds $(y : D) \to C$ to $f_i$. For function type with co-domain $D$ such as $(y : B_1 \to\ldots\to B_n \to D)$, the automation tool adds $(y : B_1 \to\ldots\to B_n \to D) \to (B_1 \to\ldots\to B_n \to C)$ to the type of $f_i$. The parameter and the index to type $D$ must be reflected in the type of function $D_\mathit{rec}$. We can retrieve information about the parameter and the index of $D$ from its type. The constructor {\tt data-type} contains the count \emph{cp} of parameters occurring in a defined type. It also encodes the constructors of the type as a list of \texttt{Name}s. Metaprograms can retrieve the index count by finding the difference between \emph{cp} and the length of the constructor list. The constructors of $D$ refer to the parameter and the index using de~Bruijn indices. The general schema for the computation rules corresponding to $D_\mathit{rec}$ and constructors $c_1, \ldots, c_n$ is given as follows.
+
+When automating the production of $D_{\mathit{rec}}$, all the information that is needed to produce the type signature is available in the \texttt{TC} monad by looking up $D$'s definition.
+The constructor {\tt data-type} contains the count \emph{cp} of parameters occurring in a defined type. It also encodes the constructors of the type as a list of \texttt{Name}s. Metaprograms can retrieve the index count by finding the difference between \emph{cp} and the length of the constructor list. The constructors of $D$ refer to the parameter and the index using de~Bruijn indices.
+
+
+
+The general schema for the computation rules corresponding to $D_{\mathit{rec}}$ and constructors $c_1, \ldots, c_n$ is given as follows.
 
 \begin{center}
 \begingroup
