@@ -545,7 +545,7 @@ is
 \end{displaymath}
 where the recursive use of $D_{\mathit{rec}}$ is as before.
 
-The Agda datatype \texttt{Vec} represents lists of a known length. It is defined in figure~\ref{fig:vec}. For {\tt Vec}, the recursion principle says that to define a mapping {\tt f : Vec A n → C}, it suffices to define the action of {\tt f} on inputs {\tt []} and {\tt \_::\_}.
+The Agda datatype \texttt{Vec} represents lists of a known length. It is defined in figure~\ref{fig:vec}. For {\tt Vec}, the recursion principle says that, in order to eliminate a \texttt{Vec A n}, one must provide a result for the empty \texttt{Vec} and a means for transforming the head and tail of a non-empty \texttt{Vec} combined with the result of recursion onto a tail into the desired answer for the entire \texttt{Vec}.
 
 \begin{figure}
 \begin{center}
