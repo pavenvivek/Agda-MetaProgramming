@@ -1269,9 +1269,9 @@ A formal specification of a cryptographic construction promises correctness of p
 
 \section{Related Work}
 
-There are several other works which uses the Agda's reflection library for performing different meta-programming tasks. \emph{Auto in Agda} \cite{Kokke-2015} implements a library for proof search using Agda's reflection primitives. It discusses implementing a \emph{Prolog} interpreter in the style of Stutterheim et al \cite{Stutterheim-2013}. It employs a \emph{hint} database, associated with a customizable depth-first traversal, with lemmas to assist in the proof search.
+There are other works which use the Agda's reflection library for performing different meta-programming tasks. \emph{Auto in Agda} \cite{Kokke-2015} implements a library for proof search using Agda's reflection primitives. It discusses implementing a \emph{Prolog} interpreter in the style of Stutterheim et al \cite{Stutterheim-2013}. It employs a \emph{hint} database, associated with a customizable depth-first traversal, with lemmas to assist in the proof search. The implementation of \emph{Auto in Agda} used an older version of Agda's reflection library which does not include the support for elaborator reflection. 
 
-The work of \cite{Walt-2013} \cite{Walt-2012} discusses automating certain categories of proofs using \emph{proof by reflection}. It gives an overview of the older version of Agda's reflection library and also sites its limitations such as the inability to introduce top-level definitions. However, the new Agda reflection library have addressed a lot of those limitations.
+The work of \cite{Walt-2013} \cite{Walt-2012} discusses automating specific categories of proofs using \emph{proof by reflection}. It presents \emph{Autoquote}, an Agda library, for translation of a quoted expression, based on a conversion table, to a representation defined by the user using a non-dependent datatype. It gives an overview of a prior version of Agda's reflection library and also sites its limitations such as the inability to introduce top-level definitions. However, the new Agda reflection library has addressed a lot of those limitations.
 
 \section{Conclusion and Future Work}
 
