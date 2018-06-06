@@ -598,7 +598,7 @@ The recursor {\tt f} maps the constructor {\tt []}, which takes zero arguments, 
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = single]
+\begin{Verbatim}
 pattern _[_v]⇒_ a s b = pi (vArg a) (abs s b)
 pattern _[_h]⇒_ a s b = pi (hArg a) (abs s b)
 
@@ -629,7 +629,7 @@ During the traversal of abstract syntax tree of the type of {\tt \_::\_}, when t
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = single]
+\begin{Verbatim}
 (agda-sort (lit 0) [ "A" h]⇒                    -- A
  (def (quote Nat) [] [ "n" h]⇒                  -- n
   (def (quote Vec) (vArg (var 1 []) ::           -- Vec A n
@@ -700,7 +700,7 @@ f (x :: xs) C c1 c2 = c2 x xs (f xs C c1 c2)
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = single]
+\begin{Verbatim}
 (clause
   (vArg (con (quote _::_)                      -- _::_
           (vArg (var "x") ::                   -- x
@@ -844,7 +844,7 @@ To build the dependent eliminator, we need the type of the function {\tt d}. We 
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = single]
+\begin{Verbatim}
 (agda-sort (lit 0) [ "A" h]⇒                  -- A
  ((var 0 [] [ "_" v]⇒                         -- B : A → Set
      agda-sort (lit 0)) [ "B" h]⇒
@@ -1054,7 +1054,7 @@ Lets consider the higher inductive type {\tt S} (sec \ref{sec:sec2.1}), which re
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = single]
+\begin{Verbatim}
 
 (def (quote S) [] [ "_" v]⇒                 -- S
  (agda-sort (lit 0) [ "C" v]⇒               -- C : Set
@@ -1107,7 +1107,7 @@ The application of function {\tt recS} to the path {\tt loop} substitutes the po
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}[frame = single]
+\begin{Verbatim}
 
 (agda-sort (lit 0) [ "C" v]⇒
  (var 0 [] [ "cbase" v]⇒
