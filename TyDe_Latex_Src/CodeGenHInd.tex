@@ -923,7 +923,7 @@ The automation tool defines a higher inductive type $G$ as a top-level definitio
 c_i : (A \rightarrow D) \rightarrow (B \rightarrow D) \rightarrow C \rightarrow D \rightarrow D \nonumber
 \end{equation}
 
-The automation tool built the type of $g_i$ by traversing the AST of $c_i$ and replacing the base type $D$ with the higher inductive type $G$. The AST of $c_i$ incorporates the type of the parameters and the indices if present. The tool retains the parameters and the indices explicitly during the construction of $g_i$. The following represents the type of the constructor $g_i$.
+The automation tool builts the type of $g_i$ by traversing the AST of $c_i$ and replacing the base type $D$ with the higher inductive type $G$. The AST of $c_i$ incorporates the type of the parameters and the indices if present. The tool retains the parameters and the indices explicitly during the construction of $g_i$. The following represents the type of the constructor $g_i$.
 \begin{equation}
 g_i : (A \rightarrow G) \rightarrow (B \rightarrow G) \rightarrow C \rightarrow G \rightarrow G \nonumber
 \end{equation}
@@ -965,7 +965,7 @@ We define the generic form of a higher inductive type as follows.
 \end{center}
 \normalsize
 
-We define holders $Gpoints$ for point constructors and $Gpaths$ for path constructors as part of the higher inductive type definition of $G$. We cannot retrieve the constructors of the higher inductive type $G$ using {\tt Definition}. Therefore, $Gpoints$ and $Gpaths$ act as the only references for the constructors of $G$. The elements of the {\tt argPath} list represent the type of the path constructors $p_1 \ldots p_n$ respectively. We explicitly include the parameter references $\{x_1 : P_1\} \ldots \{x_n : P_n\}$ and the index references $\{k_1 : Q_1\} \ldots \{k_n : Q_n\}$ in the type of the arguments to {\tt argPath}. The points $g_1 \ldots g_n$ are not in scope when used in the identity type passed to {\tt argPath}. The automation tool uses the base type constructors $c_1 \ldots c_n$ as dummy arguments in the place of $g_1 \ldots g_n$ respectively. The automation tool implements the interface {\tt data-hit} as given in fig.\eqref{fig:data-hit}.
+We define holders $Gpoints$ for point constructors and $Gpaths$ for path constructors as part of the higher inductive type definition of $G$. We cannot retrieve the constructors of the higher inductive type $G$ using {\tt Definition}. Therefore, $Gpoints$ and $Gpaths$ act as the only references for the constructors of $G$. The elements of the {\tt argPath} list represent the type of the path constructors $p_1 \ldots p_n$ respectively. We explicitly include the parameter references $\{x_1 : P_1\} \ldots \{x_n : P_n\}$ and the index references $\{k_1 : Q_1\} \ldots \{k_n : Q_n\}$ in the type of the arguments to {\tt argPath}. The constructor $g_i$ is not in scope when used in the path type passed to {\tt argPath}. Therefore, we use the base type constructor $c_i$ as a dummy argument in the place of $g_i$. The automation tool implements the interface {\tt data-hit} as given in fig.\eqref{fig:data-hit}.
 
 %\begin{center}
 %\begingroup
@@ -1000,7 +1000,7 @@ data-hit base ind h1 lcons h2 lpaths pTy =
 %\endgroup
 %\end{center}
 
-The higher inductive type \emph{G}, the points $g_1 \ldots g_n$, the paths $p_1 \ldots p_n$, and the holders \emph{Gpoints} and \emph{Gpaths} are brought into scope by {\tt unquoteDecl}. In the above implementation of {\tt data-hit}, {\tt defineHindType} defines the higher inductive type as a top-level definition using the base type. The interface {\tt defineHitCons} specifies the point constructors of the higher inductive type using the type information obtained from the constructors of the base type, and the interface {\tt defineHitPathCons} builds the paths constructors of the higher inductive type using the {\tt argPath} list. The following code automates the generation of the higher inductive type definition for {\tt Circle} given in section 2.1.
+The higher inductive type \emph{G}, the points $g_1 \ldots g_n$, the paths $p_1 \ldots p_n$, and the holders \emph{Gpoints} and \emph{Gpaths} are brought into scope by {\tt unquoteDecl}. In the implementation of {\tt data-hit} in fig.\eqref{fig:data-hit}, {\tt defineHindType} defines the higher inductive type as a top-level definition using the base type. The interface {\tt defineHitCons} specifies the point constructors of the higher inductive type using the type information obtained from the constructors of the base type, and the interface {\tt defineHitPathCons} builds the paths constructors of the higher inductive type using the {\tt argPath} list. The following code automates the generation of the higher inductive type definition for {\tt Circle} given in section 2.1.
 \begin{center}
 \begingroup
 \begin{BVerbatim}
