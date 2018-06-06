@@ -787,16 +787,21 @@ The third argument to {\tt generateRec} is a list consisting of the index count 
 
 The dependent eliminator for a datatype, also known as the \emph{induction principle}, is used to eliminate elements of a datatype when the type resulting from the elimination mentions the very element being eliminated. We can define the general schema for the induction principle as follows.
 \begin{align*}
-D_{\mathit{ind}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+D_{\mathit{ind}} : &\ (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
-& (\mathit{tgt} : D\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
+& (\mathit{tgt} : D\ a_1 \ldots a_n\ i_1\ \ldots\ i_m) \to\\
 & \begin{array}{@{}l@{}l}(\mathit{C} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & D\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
-& (\mathit{f_1} : \Delta_1 \to  \Delta_1^\prime \to \mathit{C}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
-& (\mathit{f_r} : \Delta_r \to  \Delta_r^\prime \to \mathit{C}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
+& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}\ e_{11} \ldots e_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
+& (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}\ e_{r1} \ldots e_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
 & \mathit{C}\ i_1\ \ldots\ i_n\ \mathit{tgt}
 \end{align*}
 
-Similar to the recursion principle, the type of $f_i$ depends on the type of constructor $c_i$ of $D$. If $c_i$ has an argument $(y : B)$, the automation tool copies $(y : B)$ directly to $f_i$. For an argument $(y : D)$ with inductive type $D$ in $c_i$, the automation tool adds $(y : D) \to C \, y$ to $f_i$. For function type with co-domain $D$ such as $(y : B_1 \to\ldots\to B_n \to D)$, the automation tool adds $(y : B_1 \to \ldots \to B_n \to D) \to ((b_1 : B_1) \to \ldots \to (b_n : B_n) \to C (y \, b_1 \ldots b_n))$ to the type of $f_i$. The computation rules corresponding to the induction principle follows the same pattern as for the recursion rule.
+Similarly to the non-dependent recursion principle $D_{\mathit{rec}}$, the type of each method $f_i$ is derived from the type of the constructor $c_i$---the method argument telescope $\Delta_k^\prime$ is similar, except the arguments that represent the result of recursion now apply the motive $C$ to appropriate arguments.
+If $\Delta_i$ has an argument $(y : B)$, where $B$ is not an application of $D$ or a function returning such an application, $\Delta_i^\prime$ still binds $(y : B)$ directly.
+If $B$ is an application of $D$ to parameters $a\ldots$ and indices $e\ldots$, then an additional binding $(y^\prime : C\ e\ldots\ y)$ is inserted following $y$.
+Finally, if $B$ is a function type $\Psi \to D\ a\ldots\ e\ldots$, the additional binding is $(y^\prime : \Psi \to C\ e\ldots (y\ \overline{\Psi}))$. 
+
+The computation rules for the induction principle are the same as for the recursion principle.
 
 For the inductive type {\tt W}, the induction principle says that to define a mapping {\tt f : (w : W A B) → C w}, it suffices to define the action of {\tt f} on the constructor {\tt sup}. To define the action of {\tt f} on {\tt sup}, we need an element {\tt d} of the following type.
 
