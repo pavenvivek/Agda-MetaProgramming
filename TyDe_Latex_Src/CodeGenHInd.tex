@@ -422,7 +422,7 @@ module Circle where
 %\normalsize
 
 Inside the module {\tt Circle}, the type {\tt S} is defined using a private datatype {\tt S*}.
-The constructor {\tt base} is defined using {\tt base*} and the path {\tt loop} is given as a postulated propositional equality.
+The constructor {\tt base} is defined using {\tt base*} and the path {\tt loop} is given as a postulated identification.
 The recursion and induction principles are defined by pattern matching on the constructor {\tt base*} of the type {\tt S*}, and thus compute as expected.
 The clients of {\tt Circle} will not have access to the constructor {\tt base*} of the private type {\tt S*}, as it is not visible outside the module, which prevents them from writing functions that distinguish between multiple constructors of a higher inductive type that may be identified by additional path constructors.
 The client's \emph{only} access to the constructor is through the provided elimination rules. The following code gives the non-dependent eliminator (sometimes called the \emph{recursion rule}) {\tt recS}.
@@ -970,10 +970,12 @@ The first step is to generate the private base type.
 After this, public definitions are created to provide access to the constructors, and the paths are postulated.
 Finally, the elimination principles are generated, and their actions on paths are postulated.
 
-The first step is to copy the type constructor $D$'s type, re-using it for the declaration of $G$.
-Next, the library copies the type of each constructors $c_i$ to a corresponding definition $g_i$, except each reference to $D$ is replaced by a reference to $G$.
+The first step is to copy the type former $D$'s type signature, re-using it for the declaration of $G$.
+Next, the library copies the type of each constructor $c_i$ to a definition $g_i$, except each reference to $D$ is replaced by a reference to $G$.
 
-We explicitly pass the types of the path constructors to the automation tool. The higher inductive type definition of {\tt Circle} in section 2.1 represents the path constructors as propositional equalities. The automation tool takes the path types as input and declares them as propositional equalities using the reflection primitive {\tt declarePostulate}. We introduce a new data type {\tt ArgPath} (figure~\ref{fig:argPath}) to input the path types to the automation tool. The constructor {\tt argPath} takes the type of a path constructor as input.
+Unlike the type former and the point constructors, which can be copied from the base type, the paths in $G$ must be provided explicitly.
+The automation tool takes the path constructor types as input and postulates them as identifications using the reflection primitive {\tt declarePostulate}.
+The data type {\tt ArgPath} in figure~\ref{fig:argPath} represents paths as their types.
 
 \begin{figure}
 \begin{center}
@@ -988,7 +990,7 @@ data ArgPath {ℓ₁} : Set (lsuc ℓ₁) where
 \label{fig:argPath}
 \end{figure}
 
-We define the generic form of a higher inductive type as follows.
+HITs are defined by invoking the \texttt{data-hit} metaprogram with a syntax reminiscent of ordinary data declarations and the putative HIT syntax from figure~\ref{fig:circle}.
 \begin{center}
 \begingroup
 \fontsize{10pt}{0pt}\selectfont
@@ -1010,7 +1012,24 @@ We define the generic form of a higher inductive type as follows.
 \end{center}
 \normalsize
 
-We define holders $Gpoints$ for point constructors and $Gpaths$ for path constructors as part of the higher inductive type definition of $G$. We cannot retrieve the constructors of the higher inductive type $G$ using {\tt Definition}. Therefore, $Gpoints$ and $Gpaths$ act as the only references for the constructors of $G$. The elements of the {\tt argPath} list represent the type of the path constructors $p_1 \ldots p_n$ respectively. We explicitly include the parameter references $\{x_1 : P_1\} \ldots \{x_n : P_n\}$ and the index references $\{k_1 : Q_1\} \ldots \{k_n : Q_n\}$ in the type of the arguments to {\tt argPath}. The constructor $g_i$ is not in scope when used in the path type passed to {\tt argPath}. Therefore, we use the base type constructor $c_i$ as a dummy argument in the place of $g_i$. The automation tool implements the interface {\tt data-hit} as given in figure~\ref{fig:data-hit}.
+\texttt{data-hit} defines top-level definitions \texttt{Gpoints} for point constructors and \texttt{Gpaths} for path constructors as part of the definition of the encoded higher inductive type \texttt{G}.
+This is because Agda does not natively support these definitions, so there is no way to retrieve the constructors of the $G$ using the ordinary reflection mechanisms, so an additional registry is needed.
+This parallels the use of compile-time bindings in Racket~\citep{compilemacro} to store structure type metadata.
+
+
+%%% TODO: I think this para has the misunderstanding about indices in it... - DTC
+The elements of the {\tt argPath} list represent the type of the path constructors $p_1 \ldots p_q$.
+The parameter references
+\begin{displaymath}
+\{a_1 : A_1\} \ldots \{a_n : A_n\}
+\end{displaymath}
+and the index references
+\begin{displaymath}
+\{i_1 : I_1\} \ldots \{i_m : I_m\}
+\end{displaymath}
+in the types of the arguments to {\tt argPath}.
+The constructor $g_i$ is not in scope when used in the path type passed to {\tt argPath}, so the base types' constructors are used instead.
+Figure~\ref{fig:data-hit} contains the implementation of \texttt{data-hit}.
 
 %\begin{center}
 %\begingroup
@@ -1043,8 +1062,7 @@ data-hit base ind h1 lcons h2 lpaths pTy =
 %\end{BVerbatim}
 %\endgroup
 %\end{center}
-
-The higher inductive type \texttt{G}, the points $g_1 \ldots g_n$, the paths $p_1 \ldots p_n$, and the holders \texttt{Gpoints} and \texttt{Gpaths} are brought into scope by {\tt unquoteDecl}. In the implementation of {\tt data-hit} in figure~\ref{fig:data-hit}, {\tt defineHindType} defines the higher inductive type as a top-level definition using the base type. The interface {\tt defineHitCons} specifies the point constructors of the higher inductive type using the type information obtained from the constructors of the base type, and the interface {\tt defineHitPathCons} builds the paths constructors of the higher inductive type using the {\tt argPath} list. The following code automates the generation of the higher inductive type definition for {\tt Circle} given in section 2.1.
+In the implementation of {\tt data-hit} in figure~\ref{fig:data-hit}, the helper \texttt{defineHindType} defines the higher inductive type as a top-level definition using the base type. \texttt{defineHitCons} is a helper that specifies the point constructors of the higher inductive type using the type information obtained from the constructors of the base type, and the interface {\tt defineHitPathCons} builds the path constructors of the higher inductive type using the {\tt argPath} list. For example, {\tt Circle} from section~\ref{sec:sec2.1} is defined thusly:
 \begin{center}
 \begingroup
 \begin{BVerbatim}
@@ -1058,12 +1076,12 @@ unquoteDecl S Spoints base Spaths loop =
 \endgroup
 \end{center}
 
-The identity type input {\tt (base* ≡ base*)} to argPath represents the type of the path {\tt loop}, and it uses the inductive type constructor {\tt base*} as a dummy argument in the place of the higher inductive type constructor {\tt base}. The constructor {\tt base} comes into scope only during the execution of {\tt unquoteDecl}, and so cannot be used in the identity type reference in {\tt argPath}. We use the constructor {\tt base*} of type {\tt S*} as dummy argument because the type of {\tt base*} is similar to {\tt base}, and has the same references for the common arguments. The automation tool traverses the abstract syntax tree of {\tt loop} and replaces the occurrences of {\tt base*} with {\tt base}.
+The identity type input {\tt (base* ≡ base*)} to argPath represents the type of the path {\tt loop}, and it uses the inductive type constructor {\tt base*} as a dummy argument in the place of the higher inductive type constructor {\tt base}. The constructor {\tt base} comes into scope only during the execution of {\tt unquoteDecl}, and so cannot be used in the identity type reference in {\tt argPath}. The references to \texttt{base*} in the type of the path \texttt{loop} are replaced by \texttt{base} once it is defined.
 
-\subsection{Non-dependent Eliminator}
+\subsection{Non-dependent Eliminators for HITs}
 \label{sec:sec4.2}
 
-Non-dependent eliminator or the recursion principle of a higher inductive type $G$ maps the points and paths of $G$ to an output type $C$. We extend the general schema of the recursion principle given in section \ref{sec:sec3.1} by adding methods for path constructors as follows.
+The the recursion principle of a higher inductive type $G$ maps the points and paths of $G$ to points and paths in an output type $C$. We extend the general schema of the recursion principle given in section~\ref{sec:sec3.1} by adding methods for path constructors as follows.
 \begin{align*}
 G_{\mathit{rec}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
@@ -1076,7 +1094,7 @@ G_{\mathit{rec}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & \mathit{C}
 \end{align*}
  
-In the schema definition above, we have given only one-dimensional paths. The automation tool currently supports one-dimensional paths, and we are planning to improve the tool to support higher-dimensional paths in the future. 
+In the schema definition above, we have given only one-dimensional paths. The automation tool currently supports one-dimensional paths,\todo{THIS IS A MAJOR LIMITATION THAT NEEDS TO BE IN THE INTRODUCTION!!!!!!!!!!!} and we are planning to improve the tool to support higher-dimensional paths in the future. 
 
 The type of $f_i$, method for the point constructor $g_i$ in $G_{rec}$, is built the same way as for the normal inductive type $D$ (sec.\ref{sec:sec3.1}). The automation tool builds the type of $k_i$, method for path constructor $p_i$ in $G_{rec}$, by traversing the AST of $p_i$. The arguments of $k_i$ are handled the same way as for the point constructor $f_i$. During the traversal, the automation tool uses the base type recursor $D_{rec}$ to map the point constructors $g_i$ of $G$ in the codomain of $p_i$ to $f_i$. The schema for the computation rules corresponding to points $g_i$ is similar to the computation rules corresponding to constructors $c_i$ of the inductive type $D$ except that it has additional variables to represent paths. The schema for the computation rules corresponding to paths $p_i$ is given as follows.
 \begin{align*}
