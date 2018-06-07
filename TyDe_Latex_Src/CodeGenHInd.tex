@@ -810,9 +810,9 @@ The third argument to {\tt generateRec} is a list consisting of the index count\
 \subsection{Dependent Eliminators}
 \label{sec:sec3.2}
 
-The dependent eliminator for a datatype, also known as the \emph{induction principle}, is used to eliminate elements of a datatype when the type resulting from the elimination mentions the very element being eliminated. We can define the general schema for the induction principle as follows.
+The dependent eliminator for a datatype, also known as the \emph{induction principle}, is used to eliminate elements of a datatype when the type resulting from the elimination mentions the very element being eliminated. The type of the induction principle for $D$ is:
 \begin{align*}
-D_{\mathit{ind}} : &\ (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+D_{\mathit{ind}} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
 & (\mathit{tgt} : D\ a_1 \ldots a_n\ i_1\ \ldots\ i_m) \to\\
 & \begin{array}{@{}l@{}l}(\mathit{C} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & D\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
@@ -821,7 +821,9 @@ D_{\mathit{ind}} : &\ (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & \mathit{C}\ i_1\ \ldots\ i_n\ \mathit{tgt}
 \end{align*}
 
-Similarly to the non-dependent recursion principle $D_{\mathit{rec}}$, the type of each method $f_i$ is derived from the type of the constructor $c_i$---the method argument telescope $\Delta_k^\prime$ is similar, except the arguments that represent the result of recursion now apply the motive $C$ to appropriate arguments.
+Unlike the non-dependent recursion principle $D_{\mathit{rec}}$, the result type is now computed from the target and its indices.
+Because it expresses the reason that the target must be eliminated, the function $C$ is often referred to as the \emph{motive}.
+Similarly to  $D_{\mathit{rec}}$, the type of each method $f_i$ is derived from the type of the constructor $c_i$---the method argument telescope $\Delta_k^\prime$ is similar, except the arguments that represent the result of recursion now apply the motive $C$ to appropriate arguments.
 If $\Delta_i$ has an argument $(y : B)$, where $B$ is not an application of $D$ or a function returning such an application, $\Delta_i^\prime$ still binds $(y : B)$ directly.
 If $B$ is an application of $D$ to parameters $a\ldots$ and indices $e\ldots$, then an additional binding $(y^\prime : C\ e\ldots\ y)$ is inserted following $y$.
 Finally, if $B$ is a function type $\Psi \to D\ a\ldots\ e\ldots$, the additional binding is $(y^\prime : \Psi \to C\ e\ldots (y\ \overline{\Psi}))$. 
@@ -831,53 +833,68 @@ Following these rules, the induction principle for \texttt{W} can be seen in fig
 
 \begin{figure}
 \begin{Verbatim}
-indW : (A : Set) -> (B : A -> Set) ->
-       (tgt : W A B) ->
-       (mot : W A B -> Set) ->
-       (f-sup : (x : A) ->
-                (f : B x -> W A B) ->
-                (f' : (b : B x) -> mot (f b)) ->
-                mot (sup x f)) ->
+indW : {A : Set} → {B : A → Set} →
+       (tgt : W A B) →
+       (mot : W A B → Set) →
+       (step : (x : A) →
+               (f : B x → W A B) →
+               (f' : (b : B x) → mot (f b)) →
+               mot (sup x f)) →
        mot tgt
-indW A B (sup x f) mot f-sup =
-  f-sup x f (λ b -> indW A B (f b) mot f-sup)
+indW (sup x f) mot step =
+  step x f (λ b -> indW (f b) mot step)
 \end{Verbatim}
   \caption{The induction principle for \texttt{W}}
   \label{fig:w-ind}
 \end{figure}
 
-To build the dependent eliminator, we need the type of the function {\tt d}. We can construct the AST of {\tt d} using the static type information obtained from {\tt sup}. To construct {\tt d}, during the traversal of the AST of {\tt sup}, we copy the constant {\tt (a : A)} directly without any changes as in the case of the non-dependent eliminator. When we identify a function {\tt y : B a → W A B} with codomain {\tt W A B}, we add a new function {\tt (z : (v : B a) → C (y v))} with the same arguments as in {\tt y} and codomain {\tt C (y v)}, which depends on the action of {\tt y} on {\tt v}. Finally, the codomain \texttt{W A B} of the constructor {\tt sup} is changed to {\tt C (sup a y)}, which depends on the action of the constructor {\tt sup} on inputs {\tt a} and {\tt y} (figure~\ref{fig:ast-d'}).
+Automating the production of the dependent eliminator is an extension of the procedure for automating the production of the non-dependent eliminator.
+
+We can construct the AST of {\tt d} using the static type information obtained from {\tt sup}.
+To construct \texttt{indW}, during the traversal of the AST of \texttt{sup}'s type, the argument {\tt (a : A)} is copied without any changes, just as it is in the case of the non-dependent eliminator.
+The next argument, however, is a function that returns a \texttt{W}.
+An additional argument, representing the induction hypothesis, is needed.
+The induction hypothesis {\tt (f' : (b : B x) → mot (f b))} takes the same arguments as {\tt f}, but it returns the motive instantiated at the application of \texttt{f}.
+The final return type is found by applying the motive to the target and its indices (figure~\ref{fig:ast-d'}).
 
 \begin{figure}
 \begin{center}
 \begingroup
 \fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}
-(agda-sort (lit 0) [ "A" h]⇒                  -- A
- ((var 0 [] [ "_" v]⇒                         -- B : A → Set
+(agda-sort (lit 0) [ "A" h]⇒               -- A
+ ((var 0 [] [ "_" v]⇒                      -- B : A → Set
      agda-sort (lit 0)) [ "B" h]⇒
-  (def (quote W) (vArg (var 1 []) ::          -- c : W A B
-     vArg (var 0 []) :: []) [ "c" v]⇒
-   ((def (quote W) (vArg (var 2 []) ::        -- C : W A B → Set
+  (def (quote W)
+       (vArg (var 1 []) ::                 -- tgt : W A B
+        vArg (var 0 []) :: []) [ "tgt" v]⇒
+   ((def (quote W)
+      (vArg (var 2 []) ::                  -- mot : W A B → Set
        vArg (var 1 []) :: []) [ "_" v]⇒
-     agda-sort (lit 0)) [ "C" v]⇒
-    ((var 3 [] [ "a" v]⇒                      -- a : A
-      ((var 3 (vArg (var 0 []) :: [])         -- y : B a → W A B
+     agda-sort (lit 0)) [ "mot" v]⇒
+    ((var 3 [] [ "x" v]⇒                   -- x : A
+      ((var 3
+        (vArg (var 0 []) :: [])             -- f : B x → W A B
         [ "_" v]⇒
-        def (quote W) (vArg (var 5 []) :: 
-          vArg (var 4 []) :: [])) [ "y" v]⇒
-       ((var 4 (vArg (var 1 []) :: [])        -- z : B a → C (y v)
-         [ "v" v]⇒
-         var 3 (vArg (var 1 (vArg (var 0 []) 
-         :: [])) :: []))
+        def (quote W)
+         (vArg (var 5 []) :: 
+          vArg (var 4 []) :: [])) [ "f" v]⇒
+       ((var 4 (vArg (var 1 []) ::          -- f' : B x → mot (f x)
+                [])
+         [ "f'" v]⇒
+         var 3
+          (vArg (var 1 (vArg (var 0 []) ::
+                        [])) ::
+                []))
         [ "z" v]⇒
-        var 3                                 -- C (sup a y)
+        var 3                               -- mot (sup x f)
         (vArg
          (con (quote sup)
           (vArg (var 2 []) :: 
            vArg (var 1 []) :: []))
          :: []))))
-     [ "_" v]⇒ var 1 (vArg (var 2 []) :: []))))))  -- C c
+     [ "_" v]⇒ var 1 (vArg (var 2 []) ::    -- mot tgt
+                      []))))))
 \end{Verbatim}
 \endgroup
 \end{center}
@@ -886,19 +903,10 @@ To build the dependent eliminator, we need the type of the function {\tt d}. We 
 \end{figure}
 \normalsize
 
-We can construct the type of the induction principle {\tt f} using {\tt d}. The type {\tt C} in the mapping {\tt f} depends on the element of the input type {\tt W A B}. The type of the induction principle {\tt f} (figure~\ref{fig:ast-d'}) is given as follows.
-\begin{center}
-\begingroup
-\begin{BVerbatim}
-f : {A : Set} {B : A → Set} → 
-    (c : W A B) → (C : W A B → Set) → 
-    ((a : A) → (y : B a → W A B) → 
-     (z : (v : B a) → C (y v)) → 
-     C (sup x y)) → C c
-\end{BVerbatim}
-\endgroup
-\end{center}
-The computation rule corresponding to the above type is the same as the computation rule of the recursion principle of {\tt W}. It is constructed using {\tt clause} definitions following the same approach as the recursion principle.  We can automate the generation of the induction rule {\tt f} and its corresponding computation rules using {\tt generateInd} interface. The implementation of {\tt generateInd} can be found in figure~\ref{fig:generateInd}.
+We can construct the type of the induction principle {\tt f} using {\tt d}. The type {\tt C} in the mapping {\tt f} depends on the element of the input type {\tt W A B}.
+Operationally, the induction principle computes just like the recursion principle.
+It is constructed using {\tt clause} definitions following the same approach.
+The generation of induction principles is carried out using {\tt generateInd}, in figure~\ref{fig:generateInd}.
 
 %The following code gives the implementation of {\tt generateInd}.
 
@@ -907,8 +915,6 @@ The computation rule corresponding to the above type is the same as the computat
 %\begin{BVerbatim}
 \begin{figure}
 \begin{center}
-\begingroup
-\fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}
 generateInd : Arg Name → Name → 
   (indexList : List Nat) → TC ⊤
@@ -922,7 +928,7 @@ generateInd (arg i f) t indLs =
      declareDef (arg i f) funType
      defineFun f cls
 \end{Verbatim}
-\endgroup
+
 \end{center}
 \caption{Implementation for {\tt generateInd}}
 \label{fig:generateInd}
@@ -933,18 +939,21 @@ generateInd (arg i f) t indLs =
 %\endgroup
 %\end{center}
 
-{\tt generateInd} uses {\tt getClauseDep} to generate the {\tt clause} definitions representing the computation rules. The abstract representation of the type is provided by {\tt getRtypeInd}. The function {\tt f} generated by {\tt generateInd} is brought into scope by {\tt unquoteDecl} as follows.
+{\tt generateInd} uses {\tt getClauseDep} to generate the {\tt clause} definitions representing the computation rules. The abstract representation of the type is provided by {\tt getRtypeInd}.
+A version of the induction principle called {\tt indW'} generated by {\tt generateInd} is brought into scope by {\tt unquoteDecl} as follows:
 \begin{center}
 \begingroup
 \begin{BVerbatim}
-unquoteDecl f = generateInd (vArg f) 
-                  (quote W) []
+unquoteDecl indW' = generateInd (vArg f) 
+                      (quote W) []
 \end{BVerbatim}
 \endgroup
 \end{center}
 
-An empty list is passed to {\tt generateInd} as {\tt W} has no index. An empty list can also be passed if all the constructors of a type has the same number of index as the parent type. But if any one constructor has an index count different from the index count of the parent type, then the index count of all the constructors should be passed explicitly.
-
+% TODO: This makes no sense to DTC, so it is commented out for now
+% An empty list is passed to {\tt generateInd}, because {\tt W} has no indices.
+% An empty list can also be passed if all the constructors of a type has the same number of index as the parent type. But if any one constructor has an index count different from the index count of the parent type, then the index count of all the constructors should be passed explicitly.
+%
 \section{Code Generation for Higher Inductive Types}
 \label{sec:sec4}
 
@@ -1229,7 +1238,6 @@ The automation tool builds the type of $\beta G_{ind}$ using the same approach a
 For the type {\tt S} with point constructor {\tt base} and path constructor {\tt loop}, to define a mapping {\tt indS : (x : S) → C x}, we need {\tt cbase : C base} and {\tt cloop : transport C loop cbase ≡ cbase}, where {\tt cloop} is a heterogeneous path transported over {\tt loop}. The automation tool builds the type of {\tt cloop} by traversing the abstract syntax tree of {\tt loop} and adding relevant type information into it. For the codomain of {\tt cloop}, which is an identity type, we insert the quoted {\tt name} of {\tt transport} with arguments {\tt C}, {\tt loop} and {\tt cbase}. The automation tool applies the eliminator of base type {\tt S*} to map {\tt base} to {\tt cbase} during the construction of the codomain of {\tt cloop}. The following declaration gives the type of {\tt indS}.
 \begin{center}
 \begin{BVerbatim}
-
 indS : (circle : S) → 
   (C : S → Set) →
   (cbase : C base) →
@@ -1245,7 +1253,6 @@ The computation rule for {\tt base}, which defines the action of {\tt indS} on {
   (cbase : C base) → 
   (cloop : transport C loop cbase ≡ cbase) → 
   apd (λ x → indS x C cbase cloop) loop ≡ cloop
-
 \end{BVerbatim}
 \end{center}
 
