@@ -991,26 +991,22 @@ data ArgPath {ℓ₁} : Set (lsuc ℓ₁) where
 \end{figure}
 
 HITs are defined by invoking the \texttt{data-hit} metaprogram with a syntax reminiscent of ordinary data declarations and the putative HIT syntax from figure~\ref{fig:circle}.
-\begin{center}
-\begingroup
-\fontsize{10pt}{0pt}\selectfont
+
 \begin{align*}
 & \texttt{data-hit (quote D) G}\\
-  & \hspace {0.3cm} \texttt{Gpoints ($g_1$ :: $\ldots$ :: $g_n$ :: [])} \\
-  & \hspace {0.3cm} \texttt{Gpaths ($p_1$ :: $\ldots$ :: $p_n$ :: [])} \\
+  & \hspace {0.3cm} \texttt{Gpoints ($g_1$ :: $\ldots$ :: $g_r$ :: [])} \\
+  & \hspace {0.3cm} \texttt{Gpaths ($p_1$ :: $\ldots$ :: $p_s$ :: [])} \\
   & \hspace {0.3cm} \texttt{(argPath} \\
-  & \hspace {0.6cm} (\{x_1:P_1\} \rightarrow \ldots \rightarrow \{x_n:P_n\} \rightarrow \\
-  & \hspace {0.7cm} \{i_1:Q_1\} \rightarrow \ldots \rightarrow \{i_n:Q_n\} \rightarrow \Delta_1 \rightarrow \\
-  & \hspace {0.7cm} (c_i \{x_1\} \ldots \{x_n\} \{i_1\} \ldots \{i_n\} \ldots) \equiv (c_j \ldots))\ \texttt{::} \\
+  & \hspace {0.6cm} (\{a_1:A_1\} \rightarrow \ldots \rightarrow \{a_n:A_n\} \rightarrow \\
+  & \hspace {0.7cm} \Delta_1 \rightarrow \\
+  & \hspace {0.7cm} (c_i\ e \ldots) \equiv (c_j\ e \ldots))\ \texttt{::} \\
   & \hspace {3cm} \vdots \\
   & \hspace {0.4cm} \texttt{argPath} \\
   & \hspace {0.6cm} (\{x_1:P_1\} \rightarrow \ldots \rightarrow \{x_n:P_n\} \rightarrow \\
-  & \hspace {0.7cm} \{j_1:Q_1\} \rightarrow \ldots \rightarrow \{j_n:Q_n\} \rightarrow \Delta_n \rightarrow \\
-  & \hspace {0.7cm} (c_i \{x_1\} \ldots \{x_n\} \{j_1\} \ldots \{j_n\} \ldots) \equiv (c_j \ldots))\ \texttt{:: [])}\\ \nonumber
+  & \hspace {0.7cm} \Delta_s \rightarrow \\
+  & \hspace {0.7cm} (c_i\ e \ldots) \equiv (c_j\ e \ldots))\ \texttt{:: [])}\\ \nonumber
 \end{align*}
-\endgroup
-\end{center}
-\normalsize
+
 
 \texttt{data-hit} defines top-level definitions \texttt{Gpoints} for point constructors and \texttt{Gpaths} for path constructors as part of the definition of the encoded higher inductive type \texttt{G}.
 This is because Agda does not natively support these definitions, so there is no way to retrieve the constructors of the $G$ using the ordinary reflection mechanisms, so an additional registry is needed.
@@ -1096,7 +1092,8 @@ G_{\mathit{rec}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
  
 In the schema definition above, we have given only one-dimensional paths. The automation tool currently supports one-dimensional paths,\todo{THIS IS A MAJOR LIMITATION THAT NEEDS TO BE IN THE INTRODUCTION!!!!!!!!!!!} and we are planning to improve the tool to support higher-dimensional paths in the future. 
 
-The type of the method $f_i$ for the point constructor $g_i$ in $G_{rec}$ is built the same way as for the normal inductive type $D$ (see section~\ref{sec:sec3.1}). The automation tool builds the type of $k_i$, method for path constructor $p_i$ in $G_{rec}$, by traversing the AST of $p_i$. The arguments of $k_i$ are handled the same way as for the point constructor $f_i$. During the traversal, the automation tool uses the base type recursor $D_{rec}$ to map the point constructors $g_i$ of $G$ in the codomain of $p_i$ to $f_i$. The schema for the computation rules corresponding to points $g_i$ is similar to the computation rules corresponding to constructors $c_i$ of the inductive type $D$ except that it has additional variables to represent paths. The schema for the computation rules corresponding to paths $p_i$ is given as follows.
+The type of the method $f_i$ for the point constructor $g_i$ in $G_{rec}$ is built the same way as for the normal inductive type $D$, as described in section~\ref{sec:sec3.1}.
+The automation tool builds the type of $k_i$, method for path constructor $p_i$ in $G_{rec}$, by traversing the AST of $p_i$. The arguments of $k_i$ are handled the same way as for the point constructor $f_i$. During the traversal, the automation tool uses the base type recursor $D_{rec}$ to map the point constructors $g_i$ of $G$ in the codomain of $p_i$ to $f_i$. The schema for the computation rules corresponding to points $g_i$ is similar to the computation rules corresponding to constructors $c_i$ of the inductive type $D$ except that it has additional variables to represent paths. The schema for the computation rules corresponding to paths $p_i$ is given as follows.
 \begin{align*}
 \beta G_{rec} :  & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & (\mathit{C} : \SET{}) \to \\
