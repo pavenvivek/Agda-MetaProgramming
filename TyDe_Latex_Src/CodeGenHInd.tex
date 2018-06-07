@@ -181,7 +181,7 @@ In particular, higher inductive types provide a natural encoding of many otherwi
 Homotopy type theory, however, is not yet done.
 We do not yet have a mature theory or a mature implementation.
 
-While work proceeds on prototype implementations of higher-dimensional type theories~\todo{Cite Coquand's group and Harper's group}, much work remains before they will be as convenient for experimentation with new ideas as Coq, Agda, or Idris is today.
+While work proceeds on prototype implementations of higher-dimensional type theories~\citep{cohen, Angiuli-2017}, much work remains before they will be as convenient for experimentation with new ideas as Coq, Agda, or Idris is today.
 In the meantime, it is useful to be able to experiment with ideas from higher-dimensional type theory in our existing systems.
 If one is willing to put up with some boilerplate code, it is possible to encode higher inductive types and univalence using a mixture of postulated identities and traditional datatypes.
 We use a technique developed by Licata~\cite{Licata-2011}.
@@ -192,13 +192,13 @@ An elaborator is the part of the implementation that translates a convenient lan
 Elaborator reflection directly exposes the primitive components of the elaborator to metaprograms written in the language being elaborated, allowing them to put these components to new uses.
 
 
-Using Agda's elaborator reflection, we automatically generate the support code for higher inductive types, including datatype definitions, postulated paths, induction principles, and their computational behavior.
-\citeauthor{Angiuli-2014}'s encoding of patch theory as a higher inductive type~\citep{Angiuli-2014} requires approximately 1500 lines of code. Using our library, the encoding can be expressed in just 70 lines.
+Using Agda's elaborator reflection, we automatically generate the support code for many useful higher inductive types, specifically those that include additional paths between constructors, but not paths between paths. We automate the production of the datatype definitions, postulated paths, induction principles, and their computational behavior.
+\citeauthor{Angiuli-2014}'s encoding of patch theory as a higher inductive type~\citep{Angiuli-2014} requires approximately 1500 lines of code when represented using Licata's technique. Using our library, the encoding can be expressed in just 70 lines.
 
 
 This paper makes the following contributions:
 \begin{itemize}
-\item We describe the design and implementation of a metaprogram that automates an encoding of higher inductive types using Agda's new metaprogramming system.
+\item We describe the design and implementation of a metaprogram that automates an encoding of higher inductive types with one path dimension using Agda's new metaprogramming system.
 \item We demonstrate applications of this metaprogram to examples from the literature, including both standard textbook examples of higher inductive types as well as larger systems, including both patch theory and specifying cryptographic schemes.
 \item This metaprogram serves as an example of the additional power available in Agda's elaborator reflection relative to earlier metaprogramming APIs.
 \end{itemize}
@@ -338,7 +338,7 @@ Homotopy type theory~\cite{HoTT-2013} is a research program that aims to develop
 A type theory is \emph{univalent} when equivalences between types are considered equivalent to identifications between types; it is \emph{higher-dimensional} when we allow non-trivial identifications that every structure in the theory must nevertheless respect.
 Identifications between elements of a type are considered to be at the lowest dimension, while identifications between identifications at dimension $n$ are at dimension $n+1$.
 Voevodsky added univalence  to type theories as an axiom, asserting new identifications without providing a means to compute with them.
-While more recent work arranges the computational mechanisms of the type theory such that univalence can be derived, as is done in cubical type theories~\citep\citep{cohen, Angiuli-2017}, we are concerned with modeling concepts from homotopy type theory in existing, mature implementations of type theory, so we follow \citet{HoTT-2013} in modeling paths using Martin-Löf's identity type.
+While more recent work arranges the computational mechanisms of the type theory such that univalence can be derived, as is done in cubical type theories~\citep{cohen, Angiuli-2017}, we are concerned with modeling concepts from homotopy type theory in existing, mature implementations of type theory, so we follow \citet{HoTT-2013} in modeling paths using Martin-Löf's identity type.
 Higher-dimensional structure can arise from univalence, but it can also be introduced by defining new type formers that introduce not only introduction and elimination principles, but also new non-trivial identifications.
 
 In homotopy type theories, one tends to think of types not as collections of distinct elements, but rather through the metaphor of topological spaces.
@@ -347,7 +347,7 @@ The individual elements of the type correspond with points in the topological sp
 
 % In homotopy type theory, an element of an \emph{identity type} is used to model the notion of a path in a topological space or a morphism in a groupoid. An element of an identity type $a =_A b$ states that $a$ and $b$ are propositionally equal. In type theory, \emph{propositional equality} is a proof-relevant notion of equality, internal to the theory, expressed by identity types. We also have a proof-irrelevant notion of equality, external to the theory, known as \emph{judgmental equality} or \emph{definitional equality}. Definitional equality is used to express equality by definition. For instance, when we have a function $f : Nat \rightarrow Nat$ defined as $f(x) = x^2$ then the expression $f(3)$ is definitionally equal to $3^2$.
 
-While there is not yet a general schematic characterization of a broad class of higher inductive types along the lines of Dybjer's inductive families,\todo{cite 1994 paper} it is convenient to syntactically represent the higher inductive types that we know are acceptable as if we had such a syntax.
+While there is not yet a general schematic characterization of a broad class of higher inductive types along the lines of Dybjer's inductive families~\citep{Dybjer1994}, it is convenient to syntactically represent the higher inductive types that we know are acceptable as if we had such a syntax.
 Thus, we sometimes specify a higher inductive type similarly to a traditional inductive type by providing its constructors (\textit{i.e.} its points); we additionally specify the higher-dimensional structure by providing additional constructors for paths. For example, figure~\ref{fig:circle} describes \Verb|Circle|, which is a higher inductive type with one point constructor \Verb|base| and one non-trivial path constructor \Verb|loop|.
 
 \begin{figure}[h]
@@ -366,11 +366,11 @@ data Circle : Set where
 %\normalsize
 
 
-Agda \todo{Cite Ulf's thesis + official wiki page} is a programming language that was originally an implementation of Luo's UTT \todo{cite Luo's book} extended with primitive dependent pattern matching, itself a derivative of the Calculus of Constructions and Martin-Löf's intensional type theory.
-Agda's type theory has since gained a number of new features, among them the ability to restrict pattern matching to that subset that does not imply Streicher's Axiom K \todo{Cite Cockx et al}, which is inconsistent with univalence.
+Agda~\citep{norell:thesis} is a functional programming language with full dependent types and dependent pattern matching.
+Agda's type theory has gained a number of new features over the years, among them the ability to restrict pattern matching to that subset that does not imply Streicher's Axiom K~\citep{Cockx2014}, which is inconsistent with univalence.
 The convenience of programming in Agda, combined with the ability to avoid axiom K, makes it a good laboratory for experimenting with the idioms and techniques of univalent programming while more practical implementations of univalent type theories are under development.
 
-In Agda, we don't have built-in primitives to support the definition of higher inductive type such as {\tt Circle}. One approach is to use Agda's rewrite rules \todo{cite Cockx and Abel, extended abstract at TYPES 2016} mechanism to define higher inductive types. In this approach, we define the dependent and non-dependent eliminators of a higher inductive type as paramterized modules inside which we declare the computation rules for points as rewrite rules using \Verb|{-# REWRITE , ...#-}| pragma. However, Agda's reflection library do not have interfaces to support introducing new pragmas and defining new modules. Another approach to define higher inductive types is to use Licata's method \cite{Licata-2011}. According to this method, a higher inductive type is defined using type abstraction inside a module. The module consists of a boiler-plate code segment which defines the higher inductive type using a private base type. Inside the module, the recursion and the induction principles acts on the constructors of the private base type. The abstract type is then exported allowing the reduction rules for point constructors to hold definitionally. For example, {\tt Circle} is defined using Licata's method as follows.
+In Agda, we don't have built-in primitives to support the definition of higher inductive type such as {\tt Circle}. One approach is to use Agda's rewrite rules~\citep{Cockx16} mechanism to define higher inductive types. In this approach, we define the dependent and non-dependent eliminators of a higher inductive type as paramterized modules inside which we declare the computation rules for points as rewrite rules using \Verb|{-# REWRITE , ...#-}| pragma. However, Agda's reflection library do not have interfaces to support introducing new pragmas and defining new modules. Another approach to define higher inductive types is to use Licata's method \cite{Licata-2011}. According to this method, a higher inductive type is defined using type abstraction inside a module. The module consists of a boiler-plate code segment which defines the higher inductive type using a private base type. Inside the module, the recursion and the induction principles acts on the constructors of the private base type. The abstract type is then exported allowing the reduction rules for point constructors to hold definitionally. For example, {\tt Circle} is defined using Licata's method as follows.
 
 \begin{figure}
 \begin{center}
@@ -459,7 +459,7 @@ apd : {A : Set} {B : A → Set} {x y : A} →
 %\endgroup
 \end{center}
 
-The next section introduces the necessary automation features by describing the automatic generation of eliminators for a variant on Dybjer's inductive families.\todo{Check whether this is right - it might be a variation on Luo's inductive types instead.} Section 4 then generalizes this feature to automate the production of eliminators for higher inductive types using Licata's technique. Section 5 revisits \citeauthor{Angiuli-2014}'s encoding of Darcs's patch theory \citep{Angiuli-2014} and demonstrates that the higher inductive types employed in that paper can be generated succinctly using our library.
+The next section introduces the necessary automation features by describing the automatic generation of eliminators for a variant on Dybjer's inductive families. Section 4 then generalizes this feature to automate the production of eliminators for higher inductive types using Licata's technique. Section 5 revisits \citeauthor{Angiuli-2014}'s encoding of Darcs's patch theory \citep{Angiuli-2014} and demonstrates that the higher inductive types employed in that paper can be generated succinctly using our library.
 
 \section{Code Generation for Inductive Types}
 \label{sec:sec3}
@@ -476,7 +476,7 @@ In Agda, constructors are given a function type. In Agda's reflection library, t
 \newcommand*{\SET}{\textsf{Set}}
 
 In Agda, we define an inductive type using {\tt data} keyword. A definition of an inductive datatype declares its type and specifies its constructors.
-While Agda supports a variety of ways to define new datatypes, we will restrict our attention to the subset that correspond closely to Dyber's inductive families\todo{cite 1994 paper}. In general, the definition of an inductive datatype $D$ with constructors $c_1 \ldots c_n$ has the following form:
+While Agda supports a variety of ways to define new datatypes, we will restrict our attention to the subset that correspond closely to Dyber's inductive families. In general, the definition of an inductive datatype $D$ with constructors $c_1 \ldots c_n$ has the following form:
 \begin{center}
 \begingroup
 \fontsize{7.9pt}{0pt}\selectfont
@@ -602,8 +602,8 @@ The constructor {\tt data-type} contains the number of parameters occurring in a
 The method {\tt step} for the constructor {\tt \_::\_} in {\tt Vec}, refers to the parameter and the index using de~Bruijn indices.
 During the construction of the type of {\tt step}, the recursor generator updates the de~Bruijn indices accordingly.
 Note that not all indices occur as arguments to a constructor: in {\tt Vec}, the constructor {\tt []} instantiates the index with a constant.
-Agda does not provide a reflection primitive to retrieve the index count from a constructor name.
-A workaround is to pass the index count of each constructor explicitly to the metaprogram.\todo{What do these last 2 sentences mean? What is an index count?}
+%Agda does not provide a reflection primitive to retrieve the index count from a constructor name.
+%A workaround is to pass the index count of each constructor explicitly to the metaprogram.\todo{What do these last 2 sentences mean? What is an index count?}
 
 Once the AST for {\tt step}'s type has been found, it is possible to build the type of {\tt recVec} in figure~\ref{fig:ast-d}.
 To quantify over the return type \texttt{(C : Set)}, the \texttt{Term} constructor \texttt{agda-sort} refers to \texttt{Set)}. 
@@ -795,7 +795,9 @@ generateRec (arg i f) t indLs =
 \end{figure}
 
 Figure~\ref{fig:generateRec} demonstrates the implementation of {\tt generateRec}, which constructs recursors.
-{\tt generateRec} uses {\tt getClause} and {\tt getRtype} to build the computation and elimination rules respectively. It takes three arguments: the name of the function to be defined (represented by an element of type {\tt Arg Name}), the quoted {\tt Name} of the datatype, and a list containing the index count\todo{What is an index count?} of the individual constructors. {\tt generateRec} can be used to automate the generation of recursion rules for inductive types having the general schema given at the beginning of this section. The recursion rule generated by {\tt generateRec} is brought into scope using {\tt unquoteDecl} as follows.
+{\tt generateRec} uses {\tt getClause} and {\tt getRtype} to build the computation and elimination rules respectively. It takes three arguments: the name of the function to be defined (represented by an element of type {\tt Arg Name}), the quoted {\tt Name} of the datatype, and a list containing the index count
+%%%\todo{What is an index count?}
+of the individual constructors. {\tt generateRec} can be used to automate the generation of recursion rules for inductive types having the general schema given at the beginning of this section. The recursion rule generated by {\tt generateRec} is brought into scope using {\tt unquoteDecl} as follows.
 
 \begin{center}
 \begin{BVerbatim}
@@ -805,7 +807,9 @@ unquoteDecl f = generateRec (vArg f)
 \end{BVerbatim}
 \end{center}
 
-The third argument to {\tt generateRec} is a list consisting of the index count\todo{What is this?} for the constructors. It is required to pass the index count for each constructor explicitly as the Agda reflection library does not have built-in primitives to retrieve the index value.
+The third argument to {\tt generateRec} is a list consisting of the index count
+%%%\todo{What is this?}
+for the constructors. It is required to pass the index count for each constructor explicitly as the Agda reflection library does not have built-in primitives to retrieve the index value.
 
 \subsection{Dependent Eliminators}
 \label{sec:sec3.2}
@@ -974,7 +978,7 @@ The first step is to copy the type former $D$'s type signature, re-using it for 
 Next, the library copies the type of each constructor $c_i$ to a definition $g_i$, except each reference to $D$ is replaced by a reference to $G$.
 
 Unlike the type former and the point constructors, which can be copied from the base type, the paths in $G$ must be provided explicitly.
-The automation tool takes the path constructor types as input and postulates them as identifications using the reflection primitive {\tt declarePostulate}.
+The code generator takes the path constructor types as input and postulates them as identifications using the reflection primitive {\tt declarePostulate}.
 The data type {\tt ArgPath} in figure~\ref{fig:argPath} represents paths as their types.
 
 \begin{figure}
@@ -1083,10 +1087,10 @@ G_{\mathit{rec}} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 \end{align*}
  
 The schematic definition of $G_{\mathit{rec}}$ supports only we have given only one-dimensional paths.
-Our metaprogram currently supports only one-dimensional paths,\todo{THIS IS A MAJOR LIMITATION THAT NEEDS TO BE IN THE INTRODUCTION!!!!!!!!!!!} but we are planning to improve the tool to support higher-dimensional paths in the future. 
+Our metaprogram currently supports only one-dimensional paths, but we are planning to improve the tool to support higher-dimensional paths in the future. 
 
 The type of the method $f_i$ for the point constructor $g_i$ in $G_{rec}$ is built the same way as for the normal inductive type $D$, as described in section~\ref{sec:sec3.1}.
-The automation tool builds the type of $k_i$, method for path constructor $p_i$ in $G_{rec}$, by traversing the AST of $p_i$. The arguments of $k_i$ are handled the same way as for the point constructor's method $f_i$. During the traversal, the code generator uses the base type recursor $D_{rec}$ to map the point constructors $g_i$ of $G$ in the codomain of $p_i$ to $f_i$. Determining the computation rules corresponding to points $g_i$ is similar to the computation rules corresponding to constructors $c_i$ of the inductive type $D$, except that there are additional methods to handle paths. Paths compute new paths; the computation rules that govern the interaction of recursors and paths $p_i$ are named and postulated. They identify the action of the recursor on the path with the corresponding method.
+The code generator builds the type of $k_i$, method for path constructor $p_i$ in $G_{rec}$, by traversing the AST of $p_i$. The arguments of $k_i$ are handled the same way as for the point constructor's method $f_i$. During the traversal, the code generator uses the base type recursor $D_{rec}$ to map the point constructors $g_i$ of $G$ in the codomain of $p_i$ to $f_i$. Determining the computation rules corresponding to points $g_i$ is similar to the computation rules corresponding to constructors $c_i$ of the inductive type $D$, except that there are additional methods to handle paths. Paths compute new paths; the computation rules that govern the interaction of recursors and paths $p_i$ are named and postulated. They identify the action of the recursor on the path with the corresponding method.
 \begin{align*}
 \beta G_{rec} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & (\mathit{C} : \SET{}) \to \\
@@ -1103,7 +1107,7 @@ As an example, if code for the circle HIT from section~\ref{sec:sec2.1} has been
 The method for \texttt{base} should be an inhabitant of \texttt{C}.
 If it is called \texttt{cbase}, then the method for \texttt{loop} should be a path \texttt{cbase ≡ cbase}.
 The types of the path methods depend on the values of the point methods.
-The automation tool builds the type of \texttt{loop}'s method by traversing the AST of \texttt{loop}'s type,
+The code generator builds the type of \texttt{loop}'s method by traversing the AST of \texttt{loop}'s type,
 replacing references to point constructors with the result of applying the base type's recursor to the point methods.
 
 \begin{figure}
@@ -1235,7 +1239,7 @@ G_{\mathit{ind}} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 \end{align*}
 
 Similar to $G_{rec}$, the type of $f_i$ is built the same way as for the normal inductive type $D$.
-The code generator builds the type of the method for path constructor $p_i$, called $k_i$, in $G_{ind}$, by traversing the AST of $p_i$. During the traversal, the automation tool uses the base eliminator $D_{ind}$ to map the point constructors $g_i$ of $G$ in the codomain of $p_i$ to $f_i$. In the first argument to the identity type in the codomain of $k_i$, the code generator adds an application of  {\tt transport} to the motive {\tt C} and the path $p_i$. The arguments of $k_i$ are handled the same way as for $f_i$.
+The code generator builds the type of the method for path constructor $p_i$, called $k_i$, in $G_{ind}$, by traversing the AST of $p_i$. During the traversal, the code generator uses the base eliminator $D_{ind}$ to map the point constructors $g_i$ of $G$ in the codomain of $p_i$ to $f_i$. In the first argument to the identity type in the codomain of $k_i$, the code generator adds an application of  {\tt transport} to the motive {\tt C} and the path $p_i$. The arguments of $k_i$ are handled the same way as for $f_i$.
 The computation rules corresponding to paths $p_i$ are postulated as follows:
 \begin{align*}
 \beta G_i :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
@@ -1255,7 +1259,7 @@ The computation rules corresponding to paths $p_i$ are postulated as follows:
 
 For the type {\tt S} with point constructor {\tt base} and path constructor {\tt loop}, to define a mapping {\tt indS : (x : S) → C x}, we need {\tt cbase : C base} and {\tt cloop : transport C loop cbase ≡ cbase}, where {\tt cloop} is a heterogeneous path transported over {\tt loop}. The code generator builds the type of {\tt cloop} by adding relevant type information to the type of {\tt loop}.
 The type of the method for the path constructor {\tt cloop} is derived by inserting a call to {\tt transport} with arguments {\tt C}, {\tt loop} and {\tt cbase}. %%% BUT WHY???? This tells the reader nothing.
-The automation tool applies the eliminator of base type {\tt S*} to map {\tt base} to {\tt cbase} during the construction of the codomain of {\tt cloop}. The following declaration gives the type of {\tt indS}.
+The code generator applies the eliminator of base type {\tt S*} to map {\tt base} to {\tt cbase} during the construction of the codomain of {\tt cloop}. The following declaration gives the type of {\tt indS}.
 \begin{center}
 \begin{BVerbatim}
 indS : (circle : S) → 
@@ -1331,7 +1335,7 @@ Having implemented patch theory, we then reimplemented \texttt{History} and the 
 \subsection{Cryptographic Protocols}
 \label{crypto}
 
-\citet{Paventhan-2018} models certain cryptographic protocols using homotopy type theory,  introducing a new approach to formally specificying cryptographic schemes using types. The work discusses modeling cryptDB~\citep{Popa-2011} using a framework similar to \citeauthor{Angiuli-2014}'s patch theory. CryptDB employs layered encryption techniques and homomorphic encryption. We can implement cryptDB by modeling the database queries as paths in a higher inductive type and mapping the paths to the universe using singleton types \cite{Angiuli-2014}. The automation tool can be applied to generate code for the higher inductive type representing cryptDB and its corresponding elimination and computation rules. By using the code generator, we can decrease the length and increase the readability of the definitions, hopefully making it more accessible to the broad cryptographic community.
+\citet{Paventhan-2018} models certain cryptographic protocols using homotopy type theory,  introducing a new approach to formally specificying cryptographic schemes using types. The work discusses modeling cryptDB~\citep{Popa-2011} using a framework similar to \citeauthor{Angiuli-2014}'s patch theory. CryptDB employs layered encryption techniques and homomorphic encryption. We can implement cryptDB by modeling the database queries as paths in a higher inductive type and mapping the paths to the universe using singleton types \cite{Angiuli-2014}. The code generator can be applied to generate code for the higher inductive type representing cryptDB and its corresponding elimination and computation rules. By using the code generator, we can decrease the length and increase the readability of the definitions, hopefully making it more accessible to the broad cryptographic community.
 
 %%% This makes no sense without the one after it, so i'm commenting it
 %A formal specification of a cryptographic construction promises increased assurance that an implementation is correct.. The downside of formal specification is that it introduces a framework which requires expert knowledge on theorem proving and a strong mathematical background.
