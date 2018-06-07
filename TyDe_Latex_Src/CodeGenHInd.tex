@@ -184,7 +184,7 @@ We do not yet have a mature theory or a mature implementation.
 While work proceeds on prototype implementations of higher-dimensional type theories~\todo{Cite Coquand's group and Harper's group}, much work remains before they will be as convenient for experimentation with new ideas as Coq, Agda, or Idris is today.
 In the meantime, it is useful to be able to experiment with ideas from higher-dimensional type theory in our existing systems.
 If one is willing to put up with some boilerplate code, it is possible to encode higher inductive types and univalence using a mixture of postulated identities and traditional datatypes.
-We use a technique developed by Dan Licata~\cite{Licata-2011}.
+We use a technique developed by Licata~\cite{Licata-2011}.
 
 Boilerplate postulates, however, are not just inconvenient, they are also an opportunity to make mistakes.
 Luckily, this boilerplate code can be mechanically generated using Agda's recent support for \emph{elaborator reflection}~\cite{David-2016}, a paradigm for metaprogramming in an implementation of type theory.
@@ -370,7 +370,7 @@ Agda \todo{Cite Ulf's thesis + official wiki page} is a programming language tha
 Agda's type theory has since gained a number of new features, among them the ability to restrict pattern matching to that subset that does not imply Streicher's Axiom K \todo{Cite Cockx et al}, which is inconsistent with univalence.
 The convenience of programming in Agda, combined with the ability to avoid axiom K, makes it a good laboratory for experimenting with the idioms and techniques of univalent programming while more practical implementations of univalent type theories are under development.
 
-In Agda, we don't have built-in primitives to support the definition of higher inductive type such as {\tt Circle}. One approach is to use Agda's rewrite rules \todo{cite Cockx and Abel, extended abstract at TYPES 2016} mechanism to define higher inductive types. In this approach, we define the dependent and non-dependent eliminators of a higher inductive type as paramterized modules inside which we declare the computation rules for points as rewrite rules using \Verb|{-# REWRITE , ...#-}| pragma. However, Agda's reflection library do not have interfaces to support introducing new pragmas and defining new modules. Another approach to define higher inductive types is to use Dan Licata's method \cite{Licata-2011}. According to this method, a higher inductive type is defined using type abstraction inside a module. The module consists of a boiler-plate code segment which defines the higher inductive type using a private base type. Inside the module, the recursion and the induction principles acts on the constructors of the private base type. The abstract type is then exported allowing the reduction rules for point constructors to hold definitionally. For example, {\tt Circle} is defined using Dan Licata's method as follows.
+In Agda, we don't have built-in primitives to support the definition of higher inductive type such as {\tt Circle}. One approach is to use Agda's rewrite rules \todo{cite Cockx and Abel, extended abstract at TYPES 2016} mechanism to define higher inductive types. In this approach, we define the dependent and non-dependent eliminators of a higher inductive type as paramterized modules inside which we declare the computation rules for points as rewrite rules using \Verb|{-# REWRITE , ...#-}| pragma. However, Agda's reflection library do not have interfaces to support introducing new pragmas and defining new modules. Another approach to define higher inductive types is to use Licata's method \cite{Licata-2011}. According to this method, a higher inductive type is defined using type abstraction inside a module. The module consists of a boiler-plate code segment which defines the higher inductive type using a private base type. Inside the module, the recursion and the induction principles acts on the constructors of the private base type. The abstract type is then exported allowing the reduction rules for point constructors to hold definitionally. For example, {\tt Circle} is defined using Licata's method as follows.
 
 \begin{figure}
 \begin{center}
@@ -957,13 +957,15 @@ unquoteDecl indW' = generateInd (vArg f)
 \section{Code Generation for Higher Inductive Types}
 \label{sec:sec4}
 
-In Agda, there are no built-in primitives to support the definition of higher inductive types. However, we can still define a higher inductive type with a base type using Dan Licata's \citep{Licata-2011} method as discussed in section 2.1. In this section, we discuss the automation of code generation for the boiler-plate code segments defining the higher inductive type. We also describe how to automate the code generation for the elimination and the computation rules of the higher inductive type using static type information obtained from the base type.
+In Agda, there are no built-in primitives to support the definition of higher inductive types.
+However, we can still define a higher inductive type with a base type using Licata's~\citep{Licata-2011} method, as described in section~\ref{sec:sec2.1}.
+In this section, we discuss the automation of code generation for the boiler-plate code segments defining the higher inductive types.
 
 
-\subsection{Higher Inductive Type Definition}
+\subsection{Defining Higher Inductive Types}
 \label{sec:sec4.1}
 
-The automation tool defines a higher inductive type $G$ as a top-level definition using a base type $D$ similar to the module {\tt Circle} in section 2.1. The reflection type {\tt Definition} provides the tool with the type and the constructors of the base type $D$. The tool then copies the type of $D$ to $G$ and for the constructors $g_1 \ldots g_n$ of $G$, it traverses the AST of the constructors $c_1 \ldots c_n$ of $D$ respectively replacing the occurrences of $D$ to $G$ in every strictly positive position. Consider a constructor $c_i$ that has the following type.
+Our metaprogram defines a higher inductive type $G$ as a top-level definition using a base type $D$ similar to the module {\tt Circle} in section 2.1. The reflection type {\tt Definition} provides the tool with the type and the constructors of the base type $D$. The tool then copies the type of $D$ to $G$ and for the constructors $g_1 \ldots g_n$ of $G$, it traverses the AST of the constructors $c_1 \ldots c_n$ of $D$ respectively replacing the occurrences of $D$ to $G$ in every strictly positive position. Consider a constructor $c_i$ that has the following type.
 \begin{equation*}
 c_i : (A \rightarrow D) \rightarrow (B \rightarrow D) \rightarrow C \rightarrow D \rightarrow D
 \end{equation*}
@@ -991,21 +993,21 @@ data ArgPath {ℓ₁} : Set (lsuc ℓ₁) where
 We define the generic form of a higher inductive type as follows.
 \begin{center}
 \begingroup
-\fontsize{7.9pt}{0pt}\selectfont
-\begin{align}
-& data{\text -}hit \hspace {0.1cm} (quote \hspace {0.1cm} D) \hspace {0.1cm} G \nonumber \\
-  & \hspace {0.3cm} Gpoints \hspace {0.2cm} (g_1 ::  \ldots :: g_n :: []) \nonumber \\
-  & \hspace {0.3cm} Gpaths  \hspace {0.2cm} (p_1 :: \ldots :: p_n :: []) \nonumber \\
-  & \hspace {0.3cm} (argPath \nonumber \\
-  & \hspace {0.6cm} (\{x_1:P_1\} \rightarrow \ldots \rightarrow \{x_n:P_n\} \rightarrow \nonumber \\
-  & \hspace {0.7cm} \{i_1:Q_1\} \rightarrow \ldots \rightarrow \{i_n:Q_n\} \rightarrow \Delta_1 \rightarrow \nonumber \\
-  & \hspace {0.7cm} (c_i \{x_1\} \ldots \{x_n\} \{i_1\} \ldots \{i_n\} \ldots) \equiv (c_j \ldots)) :: \nonumber \\
-  & \hspace {3cm} \vdots \nonumber \\
-  & \hspace {0.4cm} argPath \nonumber \\
-  & \hspace {0.6cm} (\{x_1:P_1\} \rightarrow \ldots \rightarrow \{x_n:P_n\} \rightarrow \nonumber \\
-  & \hspace {0.7cm} \{j_1:Q_1\} \rightarrow \ldots \rightarrow \{j_n:Q_n\} \rightarrow \Delta_n \rightarrow \nonumber \\
-  & \hspace {0.7cm} (c_i \{x_1\} \ldots \{x_n\} \{j_1\} \ldots \{j_n\} \ldots) \equiv (c_j \ldots)) :: [])\nonumber \\ \nonumber
-\end{align}
+\fontsize{10pt}{0pt}\selectfont
+\begin{align*}
+& \texttt{data-hit (quote D) G}\\
+  & \hspace {0.3cm} \texttt{Gpoints ($g_1$ :: $\ldots$ :: $g_n$ :: [])} \\
+  & \hspace {0.3cm} \texttt{Gpaths ($p_1$ :: $\ldots$ :: $p_n$ :: [])} \\
+  & \hspace {0.3cm} \texttt{(argPath} \\
+  & \hspace {0.6cm} (\{x_1:P_1\} \rightarrow \ldots \rightarrow \{x_n:P_n\} \rightarrow \\
+  & \hspace {0.7cm} \{i_1:Q_1\} \rightarrow \ldots \rightarrow \{i_n:Q_n\} \rightarrow \Delta_1 \rightarrow \\
+  & \hspace {0.7cm} (c_i \{x_1\} \ldots \{x_n\} \{i_1\} \ldots \{i_n\} \ldots) \equiv (c_j \ldots))\ \texttt{::} \\
+  & \hspace {3cm} \vdots \\
+  & \hspace {0.4cm} \texttt{argPath} \\
+  & \hspace {0.6cm} (\{x_1:P_1\} \rightarrow \ldots \rightarrow \{x_n:P_n\} \rightarrow \\
+  & \hspace {0.7cm} \{j_1:Q_1\} \rightarrow \ldots \rightarrow \{j_n:Q_n\} \rightarrow \Delta_n \rightarrow \\
+  & \hspace {0.7cm} (c_i \{x_1\} \ldots \{x_n\} \{j_1\} \ldots \{j_n\} \ldots) \equiv (c_j \ldots))\ \texttt{:: [])}\\ \nonumber
+\end{align*}
 \endgroup
 \end{center}
 \normalsize
@@ -1018,7 +1020,6 @@ We define holders $Gpoints$ for point constructors and $Gpaths$ for path constru
 \begin{figure}
 \begin{center}
 \begingroup
-\fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}
 data-hit : ∀{ℓ₁} 
   (baseType : Name) → (indType : Name) →
@@ -1036,7 +1037,7 @@ data-hit base ind h1 lcons h2 lpaths pTy =
 \end{Verbatim}
 \endgroup
 \end{center}
-\caption{Implementation for {\tt data-hit}}
+\caption{The implementation of {\tt data-hit}}
 \label{fig:data-hit}
 \end{figure}
 \normalsize
@@ -1049,14 +1050,12 @@ The higher inductive type \texttt{G}, the points $g_1 \ldots g_n$, the paths $p_
 \begin{center}
 \begingroup
 \begin{BVerbatim}
-
 unquoteDecl S Spoints base Spaths loop =
   data-hit (quote S*) S
     Spoints (base :: []) -- point constructors
     Spaths (loop :: [])  -- path constructors
     (argPath (base* ≡ base*) :: []) 
     -- base replaces base*
-
 \end{BVerbatim}
 \endgroup
 \end{center}
@@ -1299,7 +1298,7 @@ The field of homotopy type theory is less well-developed on the programming side
 
 A patch is a syntactic representation of a function that modifies a repository context when applied. For example, a patch $(s1 \leftrightarrow s2 \, @ \, l)$, which replaces string s1 with s2 at line l, when applied to a repository context with string s1 at line l results in a repository context with string s2 at line l. In homotopical patch theory \cite{Angiuli-2014}, the patches are modeled as paths in a higher inductive type. The higher inductive type representation of patches automatically satisfy groupoid laws such as the composition of patches is associative, and inverse composes to identity. Domain-specific laws related to the patches such as two swaps at independent lines commute are designed as higher dimensional paths. The computation content of the patches is extracted by mapping them to bijections in the universe with the help of univalence. Due to the functoriality of mappings in type theory, the functions preserve the path structures in their mapping to the universe.
 
-We developed the patch theory application in Agda using Dan Licata's method \cite{Licata-2011}. We implemented basic patches like the insertion of a string as line l1 in a file and deletion of a line l2 from a file. The functions implementing insertion and deletion in the universe are not bijective. So, to map the paths representing the patches insert and delete into the universe, we used the patch history approach \cite{Angiuli-2014}. According to this approach, we developed a separate higher inductive type $History$ which serves as the types of patches. In addition to basic patches, we also implemented patches of encryption using cryptosystems like rsa \cite{Rivest-1978} and paillier \cite{Paillier-1999}.
+We developed the patch theory application in Agda using Licata's method \cite{Licata-2011}. We implemented basic patches like the insertion of a string as line l1 in a file and deletion of a line l2 from a file. The functions implementing insertion and deletion in the universe are not bijective. So, to map the paths representing the patches insert and delete into the universe, we used the patch history approach \cite{Angiuli-2014}. According to this approach, we developed a separate higher inductive type $History$ which serves as the types of patches. In addition to basic patches, we also implemented patches of encryption using cryptosystems like rsa \cite{Rivest-1978} and paillier \cite{Paillier-1999}.
 
 We used the automation tool described in this paper to generate code for the higher inductive type definition representing $History$ and the repository context $cryptR$ for the patches. We also automated the code generation for the elimination and the computation rules for the higher inductive types $History$ and $cryptR$. In addition to abstracting the implementation difficulties of higher inductive types, the automation tool helped us to achieve an extensive reduction in the code size of the original application. We were able to automate the generation of approximately 1500 lines of code with just about 70 lines of automation code. The automation massively reduced the code size of the application which is about 2500 lines resulting in 60\% reduction in the original code size.
 
