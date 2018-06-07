@@ -965,15 +965,13 @@ In this section, we discuss the automation of code generation for the boiler-pla
 \subsection{Defining Higher Inductive Types}
 \label{sec:sec4.1}
 
-Our metaprogram defines a higher inductive type $G$ as a top-level definition using a base type $D$ similar to the module {\tt Circle} in section 2.1. The reflection type {\tt Definition} provides the tool with the type and the constructors of the base type $D$. The tool then copies the type of $D$ to $G$ and for the constructors $g_1 \ldots g_n$ of $G$, it traverses the AST of the constructors $c_1 \ldots c_n$ of $D$ respectively replacing the occurrences of $D$ to $G$ in every strictly positive position. Consider a constructor $c_i$ that has the following type.
-\begin{equation*}
-c_i : (A \rightarrow D) \rightarrow (B \rightarrow D) \rightarrow C \rightarrow D \rightarrow D
-\end{equation*}
+Our library defines a higher inductive type $G$ as a top-level definition using a base type $D$, similar to the module {\tt Circle} in section 2.1.
+The first step is to generate the private base type.
+After this, public definitions are created to provide access to the constructors, and the paths are postulated.
+Finally, the elimination principles are generated, and their actions on paths are postulated.
 
-The automation tool builts the type of $g_i$ by traversing the AST of $c_i$ and replacing the base type $D$ with the higher inductive type $G$. The AST of $c_i$ incorporates the type of the parameters and the indices if present. The tool retains the parameters and the indices explicitly during the construction of $g_i$. The following represents the type of the constructor $g_i$.
-\begin{equation*}
-g_i : (A \rightarrow G) \rightarrow (B \rightarrow G) \rightarrow C \rightarrow G \rightarrow G
-\end{equation*}
+The first step is to copy the type constructor $D$'s type, re-using it for the declaration of $G$.
+Next, the library copies the type of each constructors $c_i$ to a corresponding definition $g_i$, except each reference to $D$ is replaced by a reference to $G$.
 
 We explicitly pass the types of the path constructors to the automation tool. The higher inductive type definition of {\tt Circle} in section 2.1 represents the path constructors as propositional equalities. The automation tool takes the path types as input and declares them as propositional equalities using the reflection primitive {\tt declarePostulate}. We introduce a new data type {\tt ArgPath} (figure~\ref{fig:argPath}) to input the path types to the automation tool. The constructor {\tt argPath} takes the type of a path constructor as input.
 
