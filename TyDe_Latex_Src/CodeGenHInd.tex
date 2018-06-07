@@ -1032,29 +1032,29 @@ G_{\mathit{rec}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
 & (\mathit{tgt} : G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
 & (\mathit{C} : \SET{}) \to \\
-& (\mathit{f_1} : \Delta_1 \to  \Delta_1^\prime \to \mathit{C}) \to \\
-& (\mathit{f_r} : \Delta_r \to  \Delta_r^\prime \to \mathit{C}) \to \\
-& (\mathit{k_1} : \Delta_1 \to  \Delta_1^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
-& (\mathit{k_r} : \Delta_r \to  \Delta_r^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}) \ldots (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}) \to \\
+& (\mathit{k_1} : \Delta_1^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \vdots \\
+& (\mathit{k_r} : \Delta_r^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
 & \mathit{C}
 \end{align*}
  
 In the schema definition above, we have given only one-dimensional paths. The automation tool currently supports one-dimensional paths, and we are planning to improve the tool to support higher-dimensional paths in the future. 
 
-The type of $f_i$, method for the point constructor $g_i$ in $G_{rec}$, is built the same way as for the normal inductive type $D$. The automation tool builds the type of $k_i$, method for path constructor $p_i$ in $G_{rec}$, by traversing the AST of $p_i$. During the traversal, the references to point constructors $g_i$ of $G$ in the co-domain of $p_i$ are replaced by $f_i$. The arguments of $k_i$ are handled the same way as for $f_i$. The schema for the computation rules corresponding to points $g_i$ is similar to the computation rules corresponding to constructors $c_i$ of the inductive type $D$ except that it has additional variables to represent paths. The schema for the computation rules corresponding to paths $p_i$ is given as follows.
+The type of $f_i$, method for the point constructor $g_i$ in $G_{rec}$, is built the same way as for the normal inductive type $D$ (sec.\ref{sec:sec3.1}). The automation tool builds the type of $k_i$, method for path constructor $p_i$ in $G_{rec}$, by traversing the AST of $p_i$. The arguments of $k_i$ are handled the same way as for the point constructor $f_i$. During the traversal, the automation tool uses the base type recursor $D_{rec}$ to map the point constructors $g_i$ of $G$ in the co-domain of $p_i$ to $f_i$. The schema for the computation rules corresponding to points $g_i$ is similar to the computation rules corresponding to constructors $c_i$ of the inductive type $D$ except that it has additional variables to represent paths. The schema for the computation rules corresponding to paths $p_i$ is given as follows.
 \begin{align*}
 \beta G_{rec} :  & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & (\mathit{C} : \SET{}) \to \\
-& (\mathit{f_1} : \Delta_1 \to  \Delta_1^\prime \to \mathit{C}) \to \\
-& (\mathit{f_r} : \Delta_r \to  \Delta_r^\prime \to \mathit{C}) \to \\
-& (\mathit{k_1} : \Delta_1 \to  \Delta_1^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
-& (\mathit{k_r} : \Delta_r \to  \Delta_r^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}) \ldots (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}) \to \\
+& (\mathit{k_1} : \Delta_1^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \vdots \\
+& (\mathit{k_r} : \Delta_r^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
 & \mathit{ap} \, (\lambda \, x \to G_{rec} \, x \, C \, f_1 \, f_r \, k_1 \, k_r) \, (p_i \ldots) \equiv (k_i \ldots)
 \end{align*}
 
 The computation rule $\beta G_{rec}$ exists only as propositional equality. The automation tool builds the type of $\beta G_{rec}$ using the same approach as for the recursion rule $G_{rec}$. The type of $G_{rec}$ and $\beta G_{rec}$ is similar except for the mapping $G \to C$ in $G_{rec}$ which is replaced by the term representing the action of function $G_{rec}$ on the path $(p_i \, \ldots)$. The function {\tt ap} (sec. \ref{sec:sec2.2}) applies $G_{rec}$, which is nested inside a lambda function, on the path $(p_i \ldots)$. The tool uses the constructor {\tt lam} of {\tt Term} to introduce a lambda function.
 
-Lets consider the higher inductive type {\tt S} (sec \ref{sec:sec2.1}), which represents the {\tt Circle}. To define a mapping {\tt recS : S → C}, we need a point {\tt cbase : C} and a path {\tt cloop : C ≡ C} in the space {\tt C}. To construct the recursion principle {\tt recS}, we need to build the type of point {\tt cbase} and path {\tt cloop}. The type of {\tt cbase} is built from the AST of points {\tt base} using the approach described in section \eqref{sec:sec3.1}. The automation tool builds the type of {\tt cloop} by traversing the AST of {\tt loop}. During the traversal, the tool replaces the point {\tt base}, which forms the two arguments to the identity type, in the co-domain of the path {\tt loop} by the point {\tt cbase}.
+Lets consider the higher inductive type {\tt S} (sec \ref{sec:sec2.1}), which represents the {\tt Circle}. To define a mapping {\tt recS : S → C}, we need a point {\tt cbase : C} and a path {\tt cloop : cbase ≡ cbase} in the space {\tt C}. To construct the recursion principle {\tt recS}, we need to build the type of point {\tt cbase} and path {\tt cloop}. The type of {\tt cbase} is built from the AST of points {\tt base} using the approach described in section \eqref{sec:sec3.1}. The automation tool builds the type of {\tt cloop} by traversing the AST of {\tt loop}. During the traversal, the tool maps the point {\tt base}, which forms the two arguments to the identity type in the co-domain of the path {\tt loop}, to the point {\tt cbase} using the recursor of the base type {\tt S*}.
 
 \begin{figure}
 \begin{center}
@@ -1076,7 +1076,7 @@ Lets consider the higher inductive type {\tt S} (sec \ref{sec:sec2.1}), which re
 \end{figure}
 \normalsize
 
-The recursion rule {\tt recS} corresponding to figure \eqref{fig:ast-f} is given as follows.
+The recursion rule {\tt recS} corresponding to fig.\eqref{fig:ast-f} is given as follows.
 \begin{center}
 \begingroup
 \begin{BVerbatim}
@@ -1089,7 +1089,7 @@ The recursion rule {\tt recS} corresponding to figure \eqref{fig:ast-f} is given
 \endgroup
 \end{center}
 
-The automation tool builds the computation rule for the point constructor {\tt base} using the same approach as described in sec.~\ref{sec:sec3.1}. Additionally, it includes variables in the {\tt clause} definition for the path constructor {\tt loop}. The tool builds the computation rule for the path constructor {\tt loop} using {\tt ap} as follows.
+The automation tool builds the computation rule for the point constructor {\tt base} using the same approach as described in sec.~\ref{sec:sec3.1}. Additionally, it includes variables in the {\tt clause} definition for the path constructor {\tt loop}. The tool builds the computation rule {\tt βrecS} for the path constructor {\tt loop} using {\tt ap}. The type of {\tt βrecS} is given as follows.
 
 \begin{center}
 \begingroup
@@ -1164,7 +1164,7 @@ generateRecHit (arg i f) argD b il br i p1 p2 =
 \end{figure}
 \normalsize
 
-{\tt generateRecHit} takes the base type recursion rule as input and uses that to eliminate the points in the AST of the path methods in the recursor $G_{rec}$. The second argument {\tt argD} is a list of terms representing the computation rules for the path constructors. The {\tt generateβRecHit} interface takes {\tt argD} as input and builds the computation rule for the path constructors. Other inputs to {\tt generateRecHit} are the point and path holders declared during the higher inductive type definition.
+{\tt generateRecHit} takes the base type recursion rule as input and uses that to eliminate the points during the construction of the path methods in the recursor $G_{rec}$. The second argument {\tt argD} is a list of terms representing the computation rules for the path constructors. The {\tt generateβRecHit} interface takes {\tt argD} as input and builds the computation rule for the path constructors. Other inputs to {\tt generateRecHit} are the point and path holders declared during the higher inductive type definition.
 
 \subsection{Dependent Eliminator}
 \label{sec:sec4.3}
@@ -1280,7 +1280,7 @@ The work of \cite{Walt-2013} \cite{Walt-2012} discusses automating specific cate
 
 \section{Conclusion and Future Work}
 
-We presented an automation tool developed using the new reflection library of Agda extended with support for elaborator reflection. Our automation tool handles code generation for inductive types with constructors taking zero arguments, one or more arguments, and type being defined itself as an argument. We simplified the syntax for defining higher inductive types through the mechanized construction of the boiler-plate code segments. By automating the generation of the elimination and the computation rules associated with a higher inductive type, we demonstrated an extensive reduction in code size and abstraction of difficulties involved in implementing and using the higher inductive type. Next, we intend to extend the support to include more categories of the inductive type such as the inductive-inductive type and the inductive-recursive type.
+We presented an automation tool developed using the new reflection library of Agda extended with support for elaborator reflection. Our automation tool handles code generation for inductive types with constructors taking zero arguments, one or more arguments, and type being defined itself as an argument. We simplified the syntax for defining higher inductive types through the mechanized construction of the boiler-plate code segments. By automating the generation of the elimination and the computation rules associated with a higher inductive type, we demonstrated an extensive reduction in code size and abstraction of difficulties involved in implementing and using the higher inductive type. Next, we intend to extend the tool to support higher-dimensional paths in the definition of the higher inductive type. Also, we would like to automate code generation for more members of the inductive type family such as the inductive-inductive type and the inductive-recursive type.
 
 
 \bibliographystyle{ACM-Reference-Format}
