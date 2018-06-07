@@ -243,7 +243,7 @@ sampleTerm = mc1 (λ (n : Nat) → n)
 
 Figure~\ref{fig:macro1} demonstrates a macro that quotes its argument.
 The first step is to quote the quoted expression argument again, using \texttt{quoteTC}, yielding a quotation of a quotation.
-The result of this double-quotation is passed, using Agda's new support for Haskell-style do-notation, into a function that unifies it with the hole.
+This doubly-quoted expression is passed, using Agda's new support for Haskell-style do-notation, into a function that unifies it with the hole.
 Because unification removes one layer of quotation, \texttt{unify} inserts the original quoted term into the hole.
 The value of {\tt sampleTerm} is
 \begin{center}
@@ -328,7 +328,7 @@ Similarly, \texttt{def} constructs references to defined names, and the pattern 
 Once declared, \texttt{plus} is defined using {\tt defineFun}, which takes a name and a list of clauses, defining the function by side effect.
 Each clause consists of a pattern and a right-hand side.
 Patterns have their own datatype, while right-hand sides are \texttt{Term}s.
-The name \texttt{con} is overloaded: in patterns, it denotes a pattern that match a particular constructor, while in \texttt{Term}s, it denotes a reference to a constructor.
+The name \texttt{con} is overloaded: in patterns, it denotes a pattern that matches a particular constructor, while in \texttt{Term}s, it denotes a reference to a constructor.
 
 
 \subsection{Higher Inductive Types}
