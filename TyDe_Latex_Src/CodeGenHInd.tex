@@ -506,7 +506,7 @@ If $B$ is an application of $D$, then an additional binding $(y^\prime : C)$ is 
 Finally, if $B$ is a function type $\Psi \to D$, the additional binding is $(y^\prime : \Psi \to C)$. 
 
 When automating the production of $D_{\mathit{rec}}$, all the information that is needed to produce the type signature is available in the \texttt{TC} monad by looking up $D$'s definition.
-The constructor {\tt data-type} contains the count \emph{cp} of parameters occurring in a defined type. It also encodes the constructors of the type as a list of \texttt{Name}s. Metaprograms can retrieve the index count by finding the difference between \emph{cp} and the length of the constructor list. The constructors of $D$ refer to the parameter and the index using de~Bruijn indices.
+The constructor {\tt data-type} contains the number of parameters occurring in a defined type. It also encodes the constructors of the type as a list of \texttt{Name}s. Metaprograms can retrieve the index count by finding the difference between the number of parameters and the length of the constructor list. The constructors of $D$ refer to the parameter and the index using de~Bruijn indices.
 
 The general schema for the computation rules corresponding to $D_{\mathit{rec}}$ and constructors $c_1, \ldots, c_n$ is given as follows.
 
@@ -607,7 +607,7 @@ pattern _[_h]⇒_ a s b = pi (hArg a) (abs s b)
 \end{figure}
 \normalsize
 
-During the traversal of abstract syntax tree of the type of {\tt \_::\_}, when the type {\tt Vec} occurs directly in a non-codomain position, we add the type {\tt C} next to it. For example, in figure~\ref{fig:ast-g}, a new function is built from the argument {\tt (xs : Vec A n)} by modifying it to {\tt (Vec A n) → C} (fig.~\ref{fig:ast-d}). Constant types require no modifications. Therefore, we copy {\tt (x : A)} into the new type without any changes. Finally, we change the codomain {Vec A (suc n)} of {\tt \_::\_} to \emph{C} resulting in an abstract syntax tree representation of the type {\tt c2}. We repeat this process for each of the constructors.
+During the traversal of abstract syntax tree of the type of {\tt \_::\_}, when the type {\tt Vec} occurs directly in a non-codomain position, we add the type {\tt C} next to it. For example, in figure~\ref{fig:ast-g}, a new function is built from the argument {\tt (xs : Vec A n)} by modifying it to {\tt (Vec A n) → C} (figure~\ref{fig:ast-d}). Constant types require no modifications. Therefore, we copy {\tt (x : A)} into the new type without any changes. Finally, we change the codomain {Vec A (suc n)} of {\tt \_::\_} to \texttt{C} resulting in an abstract syntax tree representation of the type {\tt c2}. We repeat this process for each of the constructors.
 
 \begin{figure}
 \begin{center}
@@ -637,24 +637,26 @@ During the traversal of abstract syntax tree of the type of {\tt \_::\_}, when t
 
 The element {\tt c2}, which represents the method for the constructor {\tt \_::\_} in {\tt Vec}, refers to the parameter and the index using de~Bruijn indices. During the construction of the type of {\tt c2}, the automation tool updates the de~Bruijn indices accordingly. Some constructors might not take the same number of indices as the parent type. For example, in the case of {\tt Vec}, the constructor {\tt []} excludes the index {\tt Nat} from its type. We do not have any reflection primitive to retrieve the index count from a constructor name. A workaround is to pass the index count of each constructor explicitly to the automation tool.
 
-Once we have the AST of {\tt c2}, we can build the type of the recursion rule {\tt f} for {\tt Vec} (fig.\ref{fig:ast-d}). To encode the mapping {\tt Vec A n → C} in the recursion type, we need to declare {\tt C}. We can use the constructor {\tt agda-sort} to introduce the type {\tt (C : Set)}. The type of the recursion rule \emph{f} is given as follows.
-
+Once we have the AST of {\tt c2}, we can build the type of the recursion rule {\tt f} for {\tt Vec} (fig.\ref{fig:ast-d}). To encode the mapping {\tt Vec A n → C} in the recursion type, we need to declare {\tt C}. We can use the constructor {\tt agda-sort} to introduce the type {\tt (C : Set)}. The type of the recursion rule \texttt{recVec} is:
 \begin{center}
 %\begingroup
 %\fontsize{8pt}{2pt}\selectfont
 \begin{BVerbatim}
-f : {A : Set} → {n : Nat} → Vec A n → 
-  (C : Set) → 
-  (c1 : C) → 
-  (c2 : {n : Nat} → (x : A) → 
-        (xs : Vec A n) → C → C) → 
-  C
+recVec : (A : Set) →
+         (n : Nat) → Vec A n →
+         (C : Set) →
+         (base : C) →
+         (step : {n : Nat} →
+                 (x : A) →
+                 (xs : Vec A n) → C →
+                 C) →
+         C
 \end{BVerbatim}
 %\endgroup
 \end{center}
 %\normalsize
 
-The above type is declared using {\tt declareDef}. We can build the computation rule representing the action of function \emph{f} on {\tt []} and {\tt \_::\_} using {\tt clause} (fig.~\ref{fig:ast-cdef}). The first argument to {\tt clause} encodes variables corresponding to the above type, and it also includes the abstract representation of {\tt []},{\tt \_::\_} on which the pattern matching should occur. The second argument to clause, which is of type {\tt Term}, refers to the variables in the first argument using de~Bruijn indices, and it encodes the output of the action of function \emph{f} on {\tt []},{\tt \_::\_}. The constructor {\tt var} in {\tt Pattern} is used to introduce new variables in the {\tt clause} definition. The type {\tt Pattern} also has another constructor {\tt con} used to represent the pattern matching term. The type {\tt Term} has similar constructors {\tt var} and {\tt con}, but with different types, used to encode the output of the recursion rule. The computation rules corresponding to the above type is given as follows.
+\texttt{recVec}'s type is declared using {\tt declareDef}. We can build the computation rule representing the action of function \texttt{recVec} on {\tt []} and {\tt \_::\_} using {\tt clause} (fig.~\ref{fig:ast-cdef}). The first argument to {\tt clause} encodes variables corresponding to the above type, and it also includes the abstract representation of {\tt []},{\tt \_::\_} on which the pattern matching should occur. The second argument to clause, which is of type {\tt Term}, refers to the variables in the first argument using de~Bruijn indices, and it encodes the output of the action of \texttt{recVec} on {\tt []},{\tt \_::\_}. The constructor {\tt var} in {\tt Pattern} is used to introduce new variables in the {\tt clause} definition. The type {\tt Pattern} also has another constructor {\tt con} used to represent the pattern matching term. The type {\tt Term} has similar constructors {\tt var} and {\tt con}, but with different types, used to encode the output of the recursion rule. The computation rules corresponding to the above type is given as follows.
 
 \begin{center}
 %\begingroup
@@ -708,7 +710,7 @@ data W (A : Set) (B : A → Set) : Set where
 \label{fig:W-type}
 \end{figure}
 
-A clause definition, which evaluates to the above computation rule of {\tt Vec} pattern matching on {\tt \_::\_}, is given in figure~\ref{fig:ast-cdef}. The de~Bruijn index reference increments right to left starting from the last argument.  The above clause definition is defined using {\tt defineFun} primitive, and the function \emph{f} is brought into scope by {\tt unquotedecl}.
+A clause definition, which evaluates to the above computation rule of {\tt Vec} pattern matching on {\tt \_::\_}, is given in figure~\ref{fig:ast-cdef}. The de~Bruijn index reference increments right to left starting from the last argument.  The above clause definition is defined using {\tt defineFun} primitive, and \texttt{recVec} is brought into scope by {\tt unquotedecl}.
 
 Lets consider another example, the {\tt W}-type (fig.\ref{fig:W-type}), to review the automation process for the recursion principle. {\tt W}-type has a constructor {\tt sup} given by the following type.
 
@@ -802,20 +804,26 @@ If $B$ is an application of $D$ to parameters $a\ldots$ and indices $e\ldots$, t
 Finally, if $B$ is a function type $\Psi \to D\ a\ldots\ e\ldots$, the additional binding is $(y^\prime : \Psi \to C\ e\ldots (y\ \overline{\Psi}))$. 
 
 The computation rules for the induction principle are the same as for the recursion principle.
+Following these rules, the induction principle for \texttt{W} can be seen in figure~\ref{fig:w-ind}.
 
-For the inductive type {\tt W}, the induction principle says that to define a mapping {\tt f : (w : W A B) → C w}, it suffices to define the action of {\tt f} on the constructor {\tt sup}. To define the action of {\tt f} on {\tt sup}, we need an element {\tt d} of the following type.
+\begin{figure}
+\begin{Verbatim}
+indW : (A : Set) -> (B : A -> Set) ->
+       (tgt : W A B) ->
+       (mot : W A B -> Set) ->
+       (f-sup : (x : A) ->
+                (f : B x -> W A B) ->
+                (f' : (b : B x) -> mot (f b)) ->
+                mot (sup x f)) ->
+       mot tgt
+indW A B (sup x f) mot f-sup =
+  f-sup x f (λ b -> indW A B (f b) mot f-sup)
+\end{Verbatim}
+  \caption{The induction principle for \texttt{W}}
+  \label{fig:w-ind}
+\end{figure}
 
-\begin{center}
-\begingroup
-\begin{BVerbatim}
-d : (a : A) → (y : B a → W A B) → 
-    (z : (v : B a) → C (y v)) → 
-    C (sup a y)
-\end{BVerbatim}
-\endgroup
-\end{center}
-
-To build the dependent eliminator, we need the type of the function {\tt d}. We can construct the AST of {\tt d} using the static type information obtained from {\tt sup}. To construct {\tt d}, during the traversal of the AST of {\tt sup}, we copy the constant {\tt (a : A)} directly without any changes as in the case of the non-dependant eliminator. When we identify a function {\tt y : B a → W A B} with codomain {\tt W A B}, we add a new function {\tt (z : (v : B a) → C (y v))} with the same arguments as in {\tt y} and codomain {\tt C (y v)}, which depends on the action of {\tt y} on {\tt v}. Finally, the co-domain \emph{W A B} of the constructor {\tt sup} is changed to {\tt C (sup a y)}, which depends on the action of the constructor {\tt sup} on inputs {\tt a} and {\tt y} (fig.~\ref{fig:ast-d'}).
+To build the dependent eliminator, we need the type of the function {\tt d}. We can construct the AST of {\tt d} using the static type information obtained from {\tt sup}. To construct {\tt d}, during the traversal of the AST of {\tt sup}, we copy the constant {\tt (a : A)} directly without any changes as in the case of the non-dependant eliminator. When we identify a function {\tt y : B a → W A B} with codomain {\tt W A B}, we add a new function {\tt (z : (v : B a) → C (y v))} with the same arguments as in {\tt y} and codomain {\tt C (y v)}, which depends on the action of {\tt y} on {\tt v}. Finally, the co-domain \texttt{W A B} of the constructor {\tt sup} is changed to {\tt C (sup a y)}, which depends on the action of the constructor {\tt sup} on inputs {\tt a} and {\tt y} (fig.~\ref{fig:ast-d'}).
 
 \begin{figure}
 \begin{center}
@@ -1005,7 +1013,7 @@ data-hit base ind h1 lcons h2 lpaths pTy =
 %\endgroup
 %\end{center}
 
-The higher inductive type \emph{G}, the points $g_1 \ldots g_n$, the paths $p_1 \ldots p_n$, and the holders \emph{Gpoints} and \emph{Gpaths} are brought into scope by {\tt unquoteDecl}. In the implementation of {\tt data-hit} in fig.\eqref{fig:data-hit}, {\tt defineHindType} defines the higher inductive type as a top-level definition using the base type. The interface {\tt defineHitCons} specifies the point constructors of the higher inductive type using the type information obtained from the constructors of the base type, and the interface {\tt defineHitPathCons} builds the paths constructors of the higher inductive type using the {\tt argPath} list. The following code automates the generation of the higher inductive type definition for {\tt Circle} given in section 2.1.
+The higher inductive type \texttt{G}, the points $g_1 \ldots g_n$, the paths $p_1 \ldots p_n$, and the holders \texttt{Gpoints} and \texttt{Gpaths} are brought into scope by {\tt unquoteDecl}. In the implementation of {\tt data-hit} in fig.\eqref{fig:data-hit}, {\tt defineHindType} defines the higher inductive type as a top-level definition using the base type. The interface {\tt defineHitCons} specifies the point constructors of the higher inductive type using the type information obtained from the constructors of the base type, and the interface {\tt defineHitPathCons} builds the paths constructors of the higher inductive type using the {\tt argPath} list. The following code automates the generation of the higher inductive type definition for {\tt Circle} given in section 2.1.
 \begin{center}
 \begingroup
 \begin{BVerbatim}
@@ -1274,7 +1282,7 @@ A formal specification of a cryptographic construction promises correctness of p
 
 \section{Related Work}
 
-There are other works which use the Agda's reflection library for performing different meta-programming tasks. \emph{Auto in Agda} \cite{Kokke-2015} implements a library for proof search using Agda's reflection primitives. It discusses implementing a \emph{Prolog} interpreter in the style of Stutterheim et al \cite{Stutterheim-2013}. It employs a \emph{hint} database, associated with a customizable depth-first traversal, with lemmas to assist in the proof search. The implementation of \emph{Auto in Agda} used an older version of Agda's reflection library which does not include the support for elaborator reflection. 
+There are other works which use the Agda's reflection library for performing different meta-programming tasks. \emph{Auto in Agda} \cite{Kokke-2015} implements a library for proof search using Agda's reflection primitives. It discusses implementing a Prolog interpreter in the style of Stutterheim et al \cite{Stutterheim-2013}. It employs a hint database, associated with a customizable depth-first traversal, with lemmas to assist in the proof search. The implementation of \emph{Auto in Agda} used an older version of Agda's reflection library which does not include the support for elaborator reflection. 
 
 The work of \cite{Walt-2013} \cite{Walt-2012} discusses automating specific categories of proofs using \emph{proof by reflection}. It presents \emph{Autoquote}, an Agda library, for translation of a quoted expression, based on a conversion table, to a representation defined by the user using a non-dependent datatype. It gives an overview of a prior version of Agda's reflection library and also sites its limitations such as the inability to introduce top-level definitions. However, the new Agda reflection library has addressed a lot of those limitations.
 
