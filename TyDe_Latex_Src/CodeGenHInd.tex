@@ -1260,7 +1260,6 @@ Figure~\ref{fig:generateIndHit} gives the implementation of {\tt generateIndHit}
 \begin{figure}
 \begin{center}
 %\begingroup
-\fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}
 generateIndHit : Arg Name → List (Arg Name) →
   (baseType : Name) → (indLs : List Nat) →
@@ -1272,9 +1271,11 @@ generateIndHit (arg i f) argD b il br i p1 p2 =
      lcons ← getConstructors b
      lp1 ← getLength p1
      lp2 ← getLength p2
-     clauses ← (getPathClauseDep lp1 lp2 b br il' lcons)
+     clauses ← getPathClauseDep lp1 lp2
+                 b br il' lcons
      RTy ← getType b
-     fTy ← (getRtypePathDep b i br p1 p2 zero il' RTy)
+     fTy ← getRtypePathDep b i br
+             p1 p2 zero il' RTy
      declareDef (arg i f) fTy
      defineFun f clauses
      generateβIndHit argD b il br i f p1 p2
