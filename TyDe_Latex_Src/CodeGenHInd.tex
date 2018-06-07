@@ -338,7 +338,7 @@ Homotopy type theory~\cite{HoTT-2013} is a research program that aims to develop
 A type theory is \emph{univalent} when equivalences between types are considered equivalent to identifications between types; it is \emph{higher-dimensional} when we allow non-trivial identifications that every structure in the theory must nevertheless respect.
 Identifications between elements of a type are considered to be at the lowest dimension, while identifications between identifications at dimension $n$ are at dimension $n+1$.
 Voevodsky added univalence  to type theories as an axiom, asserting new identifications without providing a means to compute with them.
-While more recent work arranges the computational mechanisms of the type theory such that univalence can be derived, as is done in cubical type theories,\todo{cite Coquand's group, Mörtberg, and Harper's group} we are concerned with modeling concepts from homotopy type theory in existing, mature implementations of type theory, so we follow \citet{HoTT-2013} in modeling paths using Martin-Löf's identity type.
+While more recent work arranges the computational mechanisms of the type theory such that univalence can be derived, as is done in cubical type theories~\citep\citep{cohen, Angiuli-2017}, we are concerned with modeling concepts from homotopy type theory in existing, mature implementations of type theory, so we follow \citet{HoTT-2013} in modeling paths using Martin-Löf's identity type.
 Higher-dimensional structure can arise from univalence, but it can also be introduced by defining new type formers that introduce not only introduction and elimination principles, but also new non-trivial identifications.
 
 In homotopy type theories, one tends to think of types not as collections of distinct elements, but rather through the metaphor of topological spaces.
@@ -1013,17 +1013,7 @@ This is because Agda does not natively support these definitions, so there is no
 This parallels the use of compile-time bindings in Racket~\citep{compilemacro} to store structure type metadata.
 
 
-%%% TODO: I think this para has the misunderstanding about indices in it... - DTC
 The elements of the {\tt argPath} list represent the type of the path constructors $p_1 \ldots p_q$.
-The parameter references
-\begin{displaymath}
-\{a_1 : A_1\} \ldots \{a_n : A_n\}
-\end{displaymath}
-and the index references
-\begin{displaymath}
-\{i_1 : I_1\} \ldots \{i_m : I_m\}
-\end{displaymath}
-in the types of the arguments to {\tt argPath}.
 The constructor $g_i$ is not in scope when used in the path type passed to {\tt argPath}, so the base types' constructors are used instead.
 Figure~\ref{fig:data-hit} contains the implementation of \texttt{data-hit}.
 
@@ -1058,7 +1048,9 @@ data-hit base ind h1 lcons h2 lpaths pTy =
 %\end{BVerbatim}
 %\endgroup
 %\end{center}
-In the implementation of {\tt data-hit} in figure~\ref{fig:data-hit}, the helper \texttt{defineHindType} defines the higher inductive type as a top-level definition using the base type. \texttt{defineHitCons} is a helper that specifies the point constructors of the higher inductive type using the type information obtained from the constructors of the base type, and the interface {\tt defineHitPathCons} builds the path constructors of the higher inductive type using the {\tt argPath} list. For example, {\tt Circle} from section~\ref{sec:sec2.1} is defined thusly:
+In the implementation of {\tt data-hit} in figure~\ref{fig:data-hit}, the helper \texttt{defineHindType} defines the higher inductive type as a top-level definition using the base type, and 
+\texttt{defineHitCons} defines specifies the point constructors of the higher inductive type as references to the base type's constructors.
+{\tt defineHitPathCons} builds the path constructors of the higher inductive type using the {\tt argPath} list. For example, {\tt Circle} from section~\ref{sec:sec2.1} is defined thusly:
 \begin{center}
 \begingroup
 \begin{BVerbatim}
@@ -1072,63 +1064,68 @@ unquoteDecl S Spoints base Spaths loop =
 \endgroup
 \end{center}
 
-The identity type input {\tt (base* ≡ base*)} to argPath represents the type of the path {\tt loop}, and it uses the inductive type constructor {\tt base*} as a dummy argument in the place of the higher inductive type constructor {\tt base}. The constructor {\tt base} comes into scope only during the execution of {\tt unquoteDecl}, and so cannot be used in the identity type reference in {\tt argPath}. The references to \texttt{base*} in the type of the path \texttt{loop} are replaced by \texttt{base} once it is defined.
+The identity type input {\tt (base* ≡ base*)} to argPath represents the type of the path {\tt loop}. The constructor {\tt base} comes into scope only during the execution of {\tt unquoteDecl}, and so cannot be used in the identity type reference in {\tt argPath}. The references to \texttt{base*} in the type of the path \texttt{loop} are replaced by \texttt{base} once it is defined.
 
 \subsection{Non-dependent Eliminators for HITs}
 \label{sec:sec4.2}
 
 The the recursion principle of a higher inductive type $G$ maps the points and paths of $G$ to points and paths in an output type $C$. We extend the general schema of the recursion principle given in section~\ref{sec:sec3.1} by adding methods for path constructors as follows.
 \begin{align*}
-G_{\mathit{rec}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+G_{\mathit{rec}} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
 & (\mathit{tgt} : G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
 & (\mathit{C} : \SET{}) \to \\
 & (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}) \ldots (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}) \to \\
 & (\mathit{k_1} : \Delta_1^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
 & \vdots \\
-& (\mathit{k_r} : \Delta_r^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& (\mathit{k_q} : \Delta_q^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
 & \mathit{C}
 \end{align*}
  
-In the schema definition above, we have given only one-dimensional paths. The automation tool currently supports one-dimensional paths,\todo{THIS IS A MAJOR LIMITATION THAT NEEDS TO BE IN THE INTRODUCTION!!!!!!!!!!!} and we are planning to improve the tool to support higher-dimensional paths in the future. 
+The schematic definition of $G_{\mathit{rec}}$ supports only we have given only one-dimensional paths.
+Our metaprogram currently supports only one-dimensional paths,\todo{THIS IS A MAJOR LIMITATION THAT NEEDS TO BE IN THE INTRODUCTION!!!!!!!!!!!} but we are planning to improve the tool to support higher-dimensional paths in the future. 
 
 The type of the method $f_i$ for the point constructor $g_i$ in $G_{rec}$ is built the same way as for the normal inductive type $D$, as described in section~\ref{sec:sec3.1}.
-The automation tool builds the type of $k_i$, method for path constructor $p_i$ in $G_{rec}$, by traversing the AST of $p_i$. The arguments of $k_i$ are handled the same way as for the point constructor $f_i$. During the traversal, the automation tool uses the base type recursor $D_{rec}$ to map the point constructors $g_i$ of $G$ in the codomain of $p_i$ to $f_i$. The schema for the computation rules corresponding to points $g_i$ is similar to the computation rules corresponding to constructors $c_i$ of the inductive type $D$ except that it has additional variables to represent paths. The schema for the computation rules corresponding to paths $p_i$ is given as follows.
+The automation tool builds the type of $k_i$, method for path constructor $p_i$ in $G_{rec}$, by traversing the AST of $p_i$. The arguments of $k_i$ are handled the same way as for the point constructor's method $f_i$. During the traversal, the code generator uses the base type recursor $D_{rec}$ to map the point constructors $g_i$ of $G$ in the codomain of $p_i$ to $f_i$. Determining the computation rules corresponding to points $g_i$ is similar to the computation rules corresponding to constructors $c_i$ of the inductive type $D$, except that there are additional methods to handle paths. Paths compute new paths; the computation rules that govern the interaction of recursors and paths $p_i$ are named and postulated. They identify the action of the recursor on the path with the corresponding method.
 \begin{align*}
-\beta G_{rec} :  & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+\beta G_{rec} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & (\mathit{C} : \SET{}) \to \\
 & (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}) \ldots (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}) \to \\
 & (\mathit{k_1} : \Delta_1^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
 & \vdots \\
-& (\mathit{k_r} : \Delta_r^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
-& \mathit{ap} \, (\lambda \, x \to G_{rec} \, x \, C \, f_1 \, f_r \, k_1 \, k_r) \, (p_i \ldots) \equiv (k_i \ldots)
+& (\mathit{k_q} : \Delta_q^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \mathit{ap} \  (\lambda \  x . G_{rec} \  x \  C \  f_1 \  \ldots\ f_r \  k_1 \ \ldots\  k_q)\\
+& \hspace{0.25cm} \  (p_i \ldots) \equiv (k_i \ldots)
 \end{align*}
 
-The computation rule $\beta G_{rec}$ exists only as propositional equality. The automation tool builds the type of $\beta G_{rec}$ using the same approach as for the recursion rule $G_{rec}$. The type of $G_{rec}$ and $\beta G_{rec}$ is similar except for the mapping $G \to C$ in $G_{rec}$ which is replaced by the term representing the action of function $G_{rec}$ on the path $(p_i \, \ldots)$. The function {\tt ap} (section~\ref{sec:sec2.2}) applies $G_{rec}$, which is nested inside a lambda function, on the path $(p_i \ldots)$. The tool uses the constructor {\tt lam} of {\tt Term} to introduce a lambda function.
 
-Lets consider the higher inductive type {\tt S} (sec \ref{sec:sec2.1}), which represents the {\tt Circle}. To define a mapping {\tt recS : S → C}, we need a point {\tt cbase : C} and a path {\tt cloop : cbase ≡ cbase} in the space {\tt C}. To construct the recursion principle {\tt recS}, we need to build the type of point {\tt cbase} and path {\tt cloop}. The type of {\tt cbase} is built from the AST of points {\tt base} using the approach described in section \ref{sec:sec3.1}. The automation tool builds the type of {\tt cloop} by traversing the AST of {\tt loop}. During the traversal, the tool maps the point {\tt base}, which forms the two arguments to the identity type in the codomain of the path {\tt loop}, to the point {\tt cbase} using the recursor of the base type {\tt S*}.
+As an example, if code for the circle HIT from section~\ref{sec:sec2.1} has been generated, and the type is called \texttt{S}, then the recursor needs a method for \texttt{base} and one for \texttt{loop}.
+The method for \texttt{base} should be an inhabitant of \texttt{C}.
+If it is called \texttt{cbase}, then the method for \texttt{loop} should be a path \texttt{cbase ≡ cbase}.
+The types of the path methods depend on the values of the point methods.
+The automation tool builds the type of \texttt{loop}'s method by traversing the AST of \texttt{loop}'s type,
+replacing references to point constructors with the result of applying the base type's recursor to the point methods.
 
 \begin{figure}
 \begin{center}
 \begingroup
-\fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}
-(def (quote S) [] [ "_" v]⇒                 -- S
- (agda-sort (lit 0) [ "C" v]⇒               -- C : Set
-  (var 0 [] [ "cbase" v]⇒                   -- cbase
-   (def (quote _≡_)                         -- cloop
+(def (quote S) [] [ "_" v]⇒    -- S
+ (agda-sort (lit 0) [ "C" v]⇒  -- C : Set
+  (var 0 [] [ "cbase" v]⇒      -- cbase
+   (def (quote _≡_)            -- cloop
     (vArg (var 0 []) ::
      vArg (var 0 []) :: [])
     [ "cloop" v]⇒ var 2 []))))
 \end{Verbatim}
 \endgroup
 \end{center}
-\caption{Abstract syntax tree for {\tt recS}}
+\caption{Abstract syntax tree for {\tt recS}'s type}
 \label{fig:ast-f}
 \end{figure}
 \normalsize
 
-The recursion rule {\tt recS} corresponding to figure~\ref{fig:ast-f} is given as follows.
+The recursion rule {\tt recS}, corresponding to figure~\ref{fig:ast-f}, follows this pattern.
 \begin{center}
 \begingroup
 \begin{BVerbatim}
@@ -1141,12 +1138,13 @@ The recursion rule {\tt recS} corresponding to figure~\ref{fig:ast-f} is given a
 \endgroup
 \end{center}
 
-The automation tool builds the computation rule for the point constructor {\tt base} using the same approach as described in section~\ref{sec:sec3.1}. Additionally, it includes variables in the {\tt clause} definition for the path constructor {\tt loop}. The tool builds the computation rule {\tt βrecS} for the path constructor {\tt loop} using {\tt ap}. The type of {\tt βrecS} is given as follows.
+The code generator builds the computation rule for the point constructor {\tt base} using the same approach as described in section~\ref{sec:sec3.1}, as if it were for the base type.
+Additionally, it includes variables in the {\tt clause} definition for the path constructor {\tt loop}.
+The code generator postulates the following computation rule {\tt βrecS} for the path constructor {\tt loop}:
 
 \begin{center}
 \begingroup
 \begin{BVerbatim}
-
     βrecS : (C : Set) → (cbase : C) → 
       (cloop : cbase ≡ cbase) → 
       ap (λ x → recS x C cbase cloop) loop 
@@ -1155,42 +1153,40 @@ The automation tool builds the computation rule for the point constructor {\tt b
 \endgroup
 \end{center}
 
-The application of function {\tt recS} to the path {\tt loop} substitutes the point {\tt base} for the lambda argument {\tt x}, and it evaluates to the path {\tt cloop} in the output type {\tt C}. The automation tool uses {\tt declarePostulate} primitive to introduce {\tt βrecS} as a postulate. We implement the {\tt generateRecHit} interface as given in figure~\ref{fig:generateRecHit}.
+The application of function {\tt recS} to the path {\tt loop} substitutes the point {\tt base} for the argument {\tt x}, and it evaluates to the path {\tt cloop} in the output type {\tt C}. The definition of {\tt generateRecHit} can be found in figure~\ref{fig:generateRecHit}.
+
+% \begin{figure}
+% \begin{center}
+% \begingroup
+% \begin{Verbatim}
+% (agda-sort (lit 0) [ "C" v]⇒
+%  (var 0 [] [ "cbase" v]⇒
+%   (def (quote _≡_)
+%    (vArg (var 0 []) :: vArg (var 0 []) :: [])
+%    [ "cloop" v]⇒
+%    def (quote _≡_)
+%    (vArg
+%     (def (quote ap)
+%      (vArg
+%       (lam visible
+%        (abs "x"
+%         (def (quote recS)
+%          (vArg (var 0 []) ::
+%           vArg (var 3 []) :: vArg (var 2 []) :: 
+%           vArg (var 1 []) :: []))))
+%       :: vArg (def (quote loop) []) :: []))
+%     :: vArg (var 0 []) :: []))))
+% \end{Verbatim}
+% \endgroup
+% \end{center}
+% \caption{AST representing the action of function {\tt recS} on path {\tt loop}}
+% \label{fig:ast-beta-f}
+% \end{figure}
+% \normalsize
 
 \begin{figure}
 \begin{center}
 \begingroup
-\fontsize{7pt}{9pt}\selectfont
-\begin{Verbatim}
-(agda-sort (lit 0) [ "C" v]⇒
- (var 0 [] [ "cbase" v]⇒
-  (def (quote _≡_)
-   (vArg (var 0 []) :: vArg (var 0 []) :: [])
-   [ "cloop" v]⇒
-   def (quote _≡_)
-   (vArg
-    (def (quote ap)
-     (vArg
-      (lam visible
-       (abs "x"
-        (def (quote recS)
-         (vArg (var 0 []) ::
-          vArg (var 3 []) :: vArg (var 2 []) :: 
-          vArg (var 1 []) :: []))))
-      :: vArg (def (quote loop) []) :: []))
-    :: vArg (var 0 []) :: []))))
-\end{Verbatim}
-\endgroup
-\end{center}
-\caption{AST representing the action of function {\tt recS} on path {\tt loop}}
-\label{fig:ast-beta-f}
-\end{figure}
-\normalsize
-
-\begin{figure}
-\begin{center}
-\begingroup
-\fontsize{7pt}{9pt}\selectfont
 \begin{Verbatim}
 generateRecHit : 
   Arg Name → List (Arg Name) →
@@ -1216,38 +1212,50 @@ generateRecHit (arg i f) argD b il br i p1 p2 =
 \end{figure}
 \normalsize
 
-{\tt generateRecHit} takes the base type recursion rule as input and uses that to eliminate the points during the construction of the path methods in the recursor $G_{rec}$. The second argument {\tt argD} is a list of terms representing the computation rules for the path constructors. The {\tt generateβRecHit} interface takes {\tt argD} as input and builds the computation rule for the path constructors. Other inputs to {\tt generateRecHit} are the point and path holders declared during the higher inductive type definition.
+{\tt generateRecHit} takes the base types' recursion rule as input and uses that to eliminate the points during the construction of the path methods in the recursor $G_{rec}$.
+The second argument {\tt argD} is a list of terms representing the computation rules for the path constructors.
+The {\tt generateβRecHit} interface takes {\tt argD} as input and builds the computation rules for the path constructors. Other inputs to {\tt generateRecHit} are the point and path collections declared during the definition of the HIT.
 
-\subsection{Dependent Eliminator}
+\subsection{Dependent Eliminators for HITs}
 \label{sec:sec4.3}
 
-Dependent eliminator or the induction principle of a higher inductive type $G$ is a dependent function that maps an element $g$ of $G$ to an output type $C \, g$. The general schema for the induction principle of $G$ is given as follows.
+The dependent eliminator for a higher inductive type $G$ is a dependent function that maps an element $g$ of $G$ to an output type $C \, g$. The general schema for the induction principle of $G$ is given as follows.
 \begin{align*}
-G_{\mathit{ind}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+G_{\mathit{ind}} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
 & (\mathit{tgt} : G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
 & \begin{array}{@{}l@{}l}(\mathit{C} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
 & (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
+& \vdots\\
 & (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
-& (\mathit{k_1} : \Delta_1^\prime \to transport \, \mathit{C} \, p_1 \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
-& (\mathit{k_r} : \Delta_r^\prime \to transport \, \mathit{C} \, p_r \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& (\mathit{k_1} : \Delta_1^\prime \to \texttt{transport} \, \mathit{C} \, p_1 \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \vdots\\
+& (\mathit{k_q} : \Delta_q^\prime \to \texttt{transport} \, \mathit{C} \, p_q \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
 & \mathit{C}\ i_1\ \ldots\ i_n\ \mathit{tgt}
 \end{align*}
 
-Similar to $G_{rec}$, the type of $f_i$ is built the same way as for the normal inductive type $D$. The automation tool builds the type of $k_i$, method for path constructor $p_i$ in $G_{ind}$, by traversing the AST of $p_i$. During the traversal, the automation tool uses the base eliminator $D_{ind}$ to map the point constructors $g_i$ of $G$ in the codomain of $p_i$ to $f_i$. In the first argument to the identity type in the codomain of $k_i$, the automation tool adds the quoted {\tt name} of {\tt transport}, reference to the motive {\tt C}, and the path $p_i$. The arguments of $k_i$ are handled the same way as for $f_i$. The schema for the computation rules corresponding to paths $p_i$ is given as follows.
+Similar to $G_{rec}$, the type of $f_i$ is built the same way as for the normal inductive type $D$.
+The code generator builds the type of the method for path constructor $p_i$, called $k_i$, in $G_{ind}$, by traversing the AST of $p_i$. During the traversal, the automation tool uses the base eliminator $D_{ind}$ to map the point constructors $g_i$ of $G$ in the codomain of $p_i$ to $f_i$. In the first argument to the identity type in the codomain of $k_i$, the code generator adds an application of  {\tt transport} to the motive {\tt C} and the path $p_i$. The arguments of $k_i$ are handled the same way as for $f_i$.
+The computation rules corresponding to paths $p_i$ are postulated as follows:
 \begin{align*}
-\beta G_i : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+\beta G_i :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & \begin{array}{@{}l@{}l}(\mathit{C} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
 & (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
 & (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
-& (\mathit{k_1} : \Delta_1^\prime \to transport \, \mathit{C} \, p_1 \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
-& (\mathit{k_r} : \Delta_r^\prime \to transport \, \mathit{C} \, p_r \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
-& \mathit{apd} \, (\lambda \, x \to G_{ind} \, x \, C \, f_1 \, f_r \, k_1 \, k_r) \, (p_i \ldots) \equiv (k_i \ldots)
+& (\mathit{k_1} : \Delta_1^\prime \to \texttt{transport} \, \mathit{C} \, p_1 \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& (\mathit{k_r} : \Delta_r^\prime \to \texttt{transport} \, \mathit{C} \, p_r \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \texttt{apd} \  (\lambda \  x\ .\ G_{ind} \  x \  C \  f_1 \ \ldots\ f_r \  k_1 \ \ldots\ k_r)\\
+&\hspace{0.5cm} \  (p_i \ldots) \equiv\\
+& (k_i \ldots)
 \end{align*}
 
-The automation tool builds the type of $\beta G_{ind}$ using the same approach as for the induction rule $G_{ind}$. The type of $G_{ind}$ and $\beta G_{ind}$ is similar except for the mapping $(g : G) \to C g$ in $G_{ind}$ which is replaced by the term representing the action of function $G_{ind}$ on the path $(p_i \, \ldots)$. The function {\tt apd} (section~\ref{sec:sec2.2}) applies $G_{ind}$, which is nested inside a lambda function, on the path $(p_i \ldots)$.
+%%% DTC: I can't understand this paragraph, so I'm just leaving it out for now.
+% The code generator builds the type of $\beta G_{ind}$ using the same approach as for the induction rule $G_{ind}$.
+% The type of $G_{ind}$ and $\beta G_{ind}$ is similar except for the mapping $(g : G) \to C g$ in $G_{ind}$ which is replaced by the term representing the action of function $G_{ind}$ on the path $(p_i \, \ldots)$. The function {\tt apd} (section~\ref{sec:sec2.2}) applies $G_{ind}$, which is nested inside a lambda function, on the path $(p_i \ldots)$.
 
-For the type {\tt S} with point constructor {\tt base} and path constructor {\tt loop}, to define a mapping {\tt indS : (x : S) → C x}, we need {\tt cbase : C base} and {\tt cloop : transport C loop cbase ≡ cbase}, where {\tt cloop} is a heterogeneous path transported over {\tt loop}. The automation tool builds the type of {\tt cloop} by traversing the abstract syntax tree of {\tt loop} and adding relevant type information into it. For the codomain of {\tt cloop}, which is an identity type, we insert the quoted {\tt name} of {\tt transport} with arguments {\tt C}, {\tt loop} and {\tt cbase}. The automation tool applies the eliminator of base type {\tt S*} to map {\tt base} to {\tt cbase} during the construction of the codomain of {\tt cloop}. The following declaration gives the type of {\tt indS}.
+For the type {\tt S} with point constructor {\tt base} and path constructor {\tt loop}, to define a mapping {\tt indS : (x : S) → C x}, we need {\tt cbase : C base} and {\tt cloop : transport C loop cbase ≡ cbase}, where {\tt cloop} is a heterogeneous path transported over {\tt loop}. The code generator builds the type of {\tt cloop} by adding relevant type information to the type of {\tt loop}.
+The type of the method for the path constructor {\tt cloop} is derived by inserting a call to {\tt transport} with arguments {\tt C}, {\tt loop} and {\tt cbase}. %%% BUT WHY???? This tells the reader nothing.
+The automation tool applies the eliminator of base type {\tt S*} to map {\tt base} to {\tt cbase} during the construction of the codomain of {\tt cloop}. The following declaration gives the type of {\tt indS}.
 \begin{center}
 \begin{BVerbatim}
 indS : (circle : S) → 
@@ -1258,7 +1266,8 @@ indS : (circle : S) →
 \end{BVerbatim}
 \end{center}
 
-The computation rule for {\tt base}, which defines the action of {\tt indS} on {\tt base}, is built using the same approach as for the non-dependent eliminator {\tt recS}. The computation rule {\tt βindS} for the path {\tt loop} is built using {\tt apd} which gives the action of dependent function {\tt indS} on the path {\tt loop}.
+The computation rule for {\tt base}, which defines the action of {\tt indS} on {\tt base}, is built using the same approach as for the non-dependent eliminator {\tt recS}.
+The postulated computation rule {\tt βindS} for the path {\tt loop} uses {\tt apd} which gives the action of dependent function {\tt indS} on the path {\tt loop}.
 \begin{center}
 \begin{BVerbatim}
 βindS : (C : S → Set) → 
@@ -1268,7 +1277,7 @@ The computation rule for {\tt base}, which defines the action of {\tt indS} on {
 \end{BVerbatim}
 \end{center}
 
-Figure~\ref{fig:generateIndHit} gives the implementation of {\tt generateIndHit} interface in the automation tool. {\tt generateβIndHit} builds the computation rule for the path constructors.
+Figure~\ref{fig:generateIndHit} gives the implementation of {\tt generateIndHit}. The helper {\tt generateβIndHit} builds the computation rules for the path constructors.
 
 \begin{figure}
 \begin{center}
@@ -1301,37 +1310,55 @@ generateIndHit (arg i f) argD b il br i p1 p2 =
 \normalsize
 
 
-\section{Application}
+\section{Applications}
 
-The field of homotopy type theory is less well-developed on the programming side. There are only few programming applications of homotopy type theory, and the role of computationally relevant equality proofs on programming is an area of active research. Applications such as homotopical patch theory \cite{Angiuli-2014} discuss the implementation of Darcs \cite{Darcs-2005} version control system using patch theory \cite{Mimram-2013} \cite{Jason-2009} in the context of homotopy type theory. Containers in homotopy type theory \cite{Altenkirch-2014} \cite{Abbott-2005} implement data structures such as multisets and cycles. The automation tool discussed in this paper abstracts away the difficulties involved in the implementation of a higher inductive type and its elimination rules. It introduces interfaces which simplify the intricacies of a higher inductive type definition and usage by automating the generation of the code segments defining the higher inductive type and its elimination rules. The automation tool is significant in reducing the development effort for existing applications, and it can also attract new programming applications in homotopy type theory.
+Homotopy type theory has thus far primarily been applied to the encoding of mathematics, rather than to programming.
+Nevertheless, there are a few  applications of homotopy type theory to programming. Applications such as homotopical patch theory \cite{Angiuli-2014} discuss a model of the core of the of Darcs \cite{Darcs-2005} version control system using patch theory \cite{Mimram-2013,Jason-2009} encoded as a HIT. Containers in homotopy type theory~\cite{Altenkirch-2014,Abbott-2005} implement data structures such as multisets and cycles. Automating the HIT boilerplate code allows more programmers to begin experimenting with programming with HITs.
 
 %In the next section, we discuss the implementation of patch theory application in Agda and exhibit a tremendous reduction in code size using the automation tool. In section \ref{crypto}, we present a cryptography application and discuss how to abstract the implementation difficulties of a higher inductive type making it more accessible to the cryptographers.
 
 \subsection{Patch Theory Revisited}
 \label{patch-theory}
 
-A patch is a syntactic representation of a function that modifies a repository context when applied. For example, a patch $(s1 \leftrightarrow s2 \, @ \, l)$, which replaces string s1 with s2 at line l, when applied to a repository context with string s1 at line l results in a repository context with string s2 at line l. In homotopical patch theory \cite{Angiuli-2014}, the patches are modeled as paths in a higher inductive type. The higher inductive type representation of patches automatically satisfy groupoid laws such as the composition of patches is associative, and inverse composes to identity. Domain-specific laws related to the patches such as two swaps at independent lines commute are designed as higher dimensional paths. The computation content of the patches is extracted by mapping them to bijections in the universe with the help of univalence. Due to the functoriality of mappings in type theory, the functions preserve the path structures in their mapping to the universe.
+A patch is a syntactic representation of a function that modifies a repository when applied. For example, a patch $(s_1 \leftrightarrow s_2 \, @ \, l)$, which replaces string $s_1$ with $s_2$ at line $l$, when applied to a repository containing with string $s_1$ at line $l$ results in a repository with string $s_2$ at line $l$. In homotopical patch theory \cite{Angiuli-2014}, the patches are modeled as paths in a higher inductive type. Because patches are paths, they automatically satisfy groupoid laws, such as that the composition of patches is associative, that all patches have an inverse,  and that inverse patches compose to the identity. Domain-specific laws related to the patches, such as that two swaps at independent lines commute, are implemented as higher dimensional paths.
+The computational content of the patches is extracted by mapping them to bijections in the universe with the help of univalence. Due to the functoriality of mappings in type theory, the functions preserve the path structures and thus the desired axioms.
 
-We developed the patch theory application in Agda using Licata's method \cite{Licata-2011}. We implemented basic patches like the insertion of a string as line l1 in a file and deletion of a line l2 from a file. The functions implementing insertion and deletion in the universe are not bijective. So, to map the paths representing the patches insert and delete into the universe, we used the patch history approach \cite{Angiuli-2014}. According to this approach, we developed a separate higher inductive type $History$ which serves as the types of patches. In addition to basic patches, we also implemented patches of encryption using cryptosystems like rsa \cite{Rivest-1978} and paillier \cite{Paillier-1999}.
+We reimplemented \citeauthor{Angiuli-2014}'s patch theory in Agda.
+We implemented basic patches such as the insertion of a string as line $l_1$ in a file and deletion of a line $l_2$ from a file. The functions implementing insertion and deletion in the universe are not bijective. So, to map the paths representing the patches insert and delete into the universe, we used \citeauthor{Angiuli-2014}'s patch history approach. According to this approach, we developed a separate higher inductive type \texttt{History} which serves as the types of patches. In addition to basic patches, we also implemented patches involving encryption or decryption with cryptosystems like RSA~\cite{Rivest-1978} and Paillier~\cite{Paillier-1999}.
 
-We used the automation tool described in this paper to generate code for the higher inductive type definition representing $History$ and the repository context $cryptR$ for the patches. We also automated the code generation for the elimination and the computation rules for the higher inductive types $History$ and $cryptR$. In addition to abstracting the implementation difficulties of higher inductive types, the automation tool helped us to achieve an extensive reduction in the code size of the original application. We were able to automate the generation of approximately 1500 lines of code with just about 70 lines of automation code. The automation massively reduced the code size of the application which is about 2500 lines resulting in 60\% reduction in the original code size.
+Having implemented patch theory, we then reimplemented \texttt{History} and the encrypted repository type \texttt{cryptR}  it using our code generator. We also automated the code generation for the elimination and the computation rules for the higher inductive types \texttt{History} and \texttt{cryptR}. In addition to easing the implementation difficulties of higher inductive types, the code generator greatly reduced the code size. The type definitions shrank from around 1500 to around 70 lines, resulting in a 60\% decrease in the overall number of lines of code in the development.
 
-\subsection{Cryptography}
+\subsection{Cryptographic Protocols}
 \label{crypto}
 
-The work of \cite{Paventhan-2018} applies the tools of homotopy type theory for cryptographic protocol implementation. It introduces a new approach for the formal specification of cryptographic schemes using types. The work discusses modeling $cryptDB$ \citep{Popa-2011} using a framework similar to patch theory. CryptDB employs layered encryption techniques and demonstrates computation on top of encrypted data. We can implement cryptDB by modeling the database queries as paths in a higher inductive type and mapping the paths to the universe using singleton types \cite{Angiuli-2014}. The automation tool can be applied to generate code for the higher inductive type representing cryptDB and its corresponding elimination and computation rules. By using the automation tool, we can abstract the convolutions of homotopy type theory thus making it more accessible to the broad community of cryptography.
+\citet{Paventhan-2018} models certain cryptographic protocols using homotopy type theory,  introducing a new approach to formally specificying cryptographic schemes using types. The work discusses modeling cryptDB~\citep{Popa-2011} using a framework similar to \citeauthor{Angiuli-2014}'s patch theory. CryptDB employs layered encryption techniques and homomorphic encryption. We can implement cryptDB by modeling the database queries as paths in a higher inductive type and mapping the paths to the universe using singleton types \cite{Angiuli-2014}. The automation tool can be applied to generate code for the higher inductive type representing cryptDB and its corresponding elimination and computation rules. By using the code generator, we can decrease the length and increase the readability of the definitions, hopefully making it more accessible to the broad cryptographic community.
 
-A formal specification of a cryptographic construction promises correctness of properties related to security and implementation. The downside of formal specification is that it introduces a framework which requires expert knowledge on theorem proving and a strong mathematical background. By automating the code constructions for the mathematical part such as the higher inductive type implementation, we simplify formal specification to a considerable extent and make it more accessible to regular programmers without a strong mathematical background.
+%%% This makes no sense without the one after it, so i'm commenting it
+%A formal specification of a cryptographic construction promises increased assurance that an implementation is correct.. The downside of formal specification is that it introduces a framework which requires expert knowledge on theorem proving and a strong mathematical background.
+
+
+%%% This next sentence is probably not true, unfortunately
+% By automating the code constructions for the mathematical part such as the higher inductive type implementation, we simplify formal specification to a considerable extent and make it more accessible to regular programmers without a strong mathematical background.
 
 \section{Related Work}
 
-There are other works which use the Agda's reflection library for performing different meta-programming tasks. \emph{Auto in Agda} \cite{Kokke-2015} implements a library for proof search using Agda's reflection primitives. It discusses implementing a Prolog interpreter in the style of Stutterheim et al \cite{Stutterheim-2013}. It employs a hint database, associated with a customizable depth-first traversal, with lemmas to assist in the proof search. The implementation of \emph{Auto in Agda} used an older version of Agda's reflection library which does not include the support for elaborator reflection. 
+\citet{Kokke-2015} implemented a library for proof search using Agda's old reflection primitives, from before it had elaborator reflection. They describe a Prolog interpreter in the style of \citet{Stutterheim-2013}. It employs a hint database and a customizable depth-first traversal, with lemmas to assist in the proof search.
 
-The work of \cite{Walt-2013} \cite{Walt-2012} discusses automating specific categories of proofs using \emph{proof by reflection}. It presents \emph{Autoquote}, an Agda library, for translation of a quoted expression, based on a conversion table, to a representation defined by the user using a non-dependent datatype. It gives an overview of a prior version of Agda's reflection library and also sites its limitations such as the inability to introduce top-level definitions. However, the new Agda reflection library has addressed a lot of those limitations.
+\citet{Walt-2013} and \citet{Walt-2012} discuss automating specific categories of proofs using proof by reflection.
+A key component of this proof technique is a means for converting an expression into a quoted representation.
+They automate this process, giving a user-defined datatype. \citeauthor{Walt-2012} gives an overview of Agda's old metaprogramming tools.
+
+Ongoing work on cubical type theories~\citep{cohen, Angiuli-2017, cubicalHIT} provides a computational interpretation of univalence and HITs.
+We strenuously hope that these systems quickly reach maturity, rendering our code generator obsolete.
+In the meantime, however, these systems are not yet as mature as Agda.
 
 \section{Conclusion and Future Work}
 
-We presented an automation tool developed using the new reflection library of Agda extended with support for elaborator reflection. Our automation tool handles code generation for inductive types with constructors taking zero arguments, one or more arguments, and type being defined itself as an argument. We simplified the syntax for defining higher inductive types through the mechanized construction of the boiler-plate code segments. By automating the generation of the elimination and the computation rules associated with a higher inductive type, we demonstrated an extensive reduction in code size and abstraction of difficulties involved in implementing and using the higher inductive type. Next, we intend to extend the tool to support higher-dimensional paths in the definition of the higher inductive type. Also, we would like to automate code generation for more members of the inductive type family such as the inductive-inductive type and the inductive-recursive type.
+We presented a code generator that generates the encodings of higher inductive types, developed using Agda's new support for Idris-style elaborator reflection.
+In particular, the tool generates formation, introduction, path, and elimination rules for 1-dimensional higher inductive types.
+This syntax is greatly simplified with respect to writing the encoding by hand.
+We demonstrated an extensive reduction in code size by employing our tool. Next, we intend to extend the tool to support higher-dimensional paths in the definition of HITs, bringing its benefits to a wider class of problems.
+%We would also like to automate code generation for more members of the inductive type family such as the inductive-inductive type and the inductive-recursive type.
 
 
 \bibliographystyle{ACM-Reference-Format}
