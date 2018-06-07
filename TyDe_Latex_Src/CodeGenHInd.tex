@@ -1175,27 +1175,27 @@ G_{\mathit{ind}} : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
 & (\mathit{tgt} : G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
 & \begin{array}{@{}l@{}l}(\mathit{C} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
-& (\mathit{f_1} : \Delta_1 \to  \Delta_1^\prime \to \mathit{C}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
-& (\mathit{f_r} : \Delta_r \to  \Delta_r^\prime \to \mathit{C}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
-& (\mathit{k_1} : \Delta_1 \to  \Delta_1^\prime \to transport \, \mathit{C} \, p_1 \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
-& (\mathit{k_r} : \Delta_r \to  \Delta_r^\prime \to transport \, \mathit{C} \, p_r \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
+& (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
+& (\mathit{k_1} : \Delta_1^\prime \to transport \, \mathit{C} \, p_1 \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& (\mathit{k_r} : \Delta_r^\prime \to transport \, \mathit{C} \, p_r \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
 & \mathit{C}\ i_1\ \ldots\ i_n\ \mathit{tgt}
 \end{align*}
 
-Similar to $G_{rec}$, the type of $f_i$ is built the same way as for the normal inductive type $D$. The automation tool builds the type of $k_i$, method for path constructor $p_i$ in $G_{ind}$, by traversing the AST of $p_i$. During the traversal, the references to point constructors $g_i$ of $G$ in the co-domain of $p_i$ are replaced by $f_i$. In the first argument to the identity type in the co-domain of $k_i$, the automation tool adds the quoted {\tt name} of {\tt transport}, reference to the motive {\tt C}, and the path $p_i$. The arguments of $k_i$ are handled the same way as for $f_i$. The schema for the computation rules corresponding to paths $p_i$ is given as follows.
+Similar to $G_{rec}$, the type of $f_i$ is built the same way as for the normal inductive type $D$. The automation tool builds the type of $k_i$, method for path constructor $p_i$ in $G_{ind}$, by traversing the AST of $p_i$. During the traversal, the automation tool uses the base eliminator $D_{ind}$ to map the point constructors $g_i$ of $G$ in the co-domain of $p_i$ to $f_i$. In the first argument to the identity type in the co-domain of $k_i$, the automation tool adds the quoted {\tt name} of {\tt transport}, reference to the motive {\tt C}, and the path $p_i$. The arguments of $k_i$ are handled the same way as for $f_i$. The schema for the computation rules corresponding to paths $p_i$ is given as follows.
 \begin{align*}
 \beta G_i : & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
 & \begin{array}{@{}l@{}l}(\mathit{C} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
-& (\mathit{f_1} : \Delta_1 \to  \Delta_1^\prime \to \mathit{C}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
-& (\mathit{f_r} : \Delta_r \to  \Delta_r^\prime \to \mathit{C}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
-& (\mathit{k_1} : \Delta_1 \to  \Delta_1^\prime \to transport \, \mathit{C} \, p_1 \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
-& (\mathit{k_r} : \Delta_r \to  \Delta_r^\prime \to transport \, \mathit{C} \, p_r \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
+& (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
+& (\mathit{k_1} : \Delta_1^\prime \to transport \, \mathit{C} \, p_1 \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& (\mathit{k_r} : \Delta_r^\prime \to transport \, \mathit{C} \, p_r \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
 & \mathit{apd} \, (\lambda \, x \to G_{ind} \, x \, C \, f_1 \, f_r \, k_1 \, k_r) \, (p_i \ldots) \equiv (k_i \ldots)
 \end{align*}
 
 The automation tool builds the type of $\beta G_{ind}$ using the same approach as for the induction rule $G_{ind}$. The type of $G_{ind}$ and $\beta G_{ind}$ is similar except for the mapping $(g : G) \to C g$ in $G_{ind}$ which is replaced by the term representing the action of function $G_{ind}$ on the path $(p_i \, \ldots)$. The function {\tt apd} (sec. \ref{sec:sec2.2}) applies $G_{ind}$, which is nested inside a lambda function, on the path $(p_i \ldots)$.
 
-For the type {\tt S} with point constructor {\tt base} and path constructor {\tt loop}, to define a mapping {\tt indS : (x : S) → C x}, we need {\tt cbase : C} and {\tt cloop : C}, where {\tt cloop} is a heterogeneous path transported over {\tt loop}. The automation tool builds the type of {\tt cloop} by traversing the abstract syntax tree of {\tt loop} and adding relevant type information into it. For the codomain of {\tt cloop}, which is an identity type, we insert the quoted {\tt name} of {\tt transport} with arguments {\tt C}, {\tt loop} and {\tt cbase}. The automation tool applies the base eliminator to the arguments of the path {\tt loop} during the construction of the co-domain of {\tt cloop}. The following declaration gives the type of {\tt indS}.
+For the type {\tt S} with point constructor {\tt base} and path constructor {\tt loop}, to define a mapping {\tt indS : (x : S) → C x}, we need {\tt cbase : C base} and {\tt cloop : transport C loop cbase ≡ cbase}, where {\tt cloop} is a heterogeneous path transported over {\tt loop}. The automation tool builds the type of {\tt cloop} by traversing the abstract syntax tree of {\tt loop} and adding relevant type information into it. For the codomain of {\tt cloop}, which is an identity type, we insert the quoted {\tt name} of {\tt transport} with arguments {\tt C}, {\tt loop} and {\tt cbase}. The automation tool applies the eliminator of base type {\tt S*} to map {\tt base} to {\tt cbase} during the construction of the co-domain of {\tt cloop}. The following declaration gives the type of {\tt indS}.
 \begin{center}
 \begin{BVerbatim}
 
