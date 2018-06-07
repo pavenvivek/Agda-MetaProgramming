@@ -141,7 +141,7 @@
 
 
 \begin{abstract}
-Higher inductive types are inductive types that include nontrivial higher-dimensional structure, represented as identifications at the type that are not reflexivity. While work proceeds on type theories with a computational interpretation of univalence and higher inductive types, it is convenient to encode these structures in more traditional type theories. However, these encodings involve a great deal of error-prone additional syntax. We present a library that uses Agda's metaprogramming facilities to automate this process, allowing higher inductive types to be specified with minimal additional syntax.
+Higher inductive types are inductive types that include nontrivial higher-dimensional structure, represented as identifications that are not reflexivity. While work proceeds on type theories with a computational interpretation of univalence and higher inductive types, it is convenient to encode these structures in more traditional type theories with mature implementations. However, these encodings involve a great deal of error-prone additional syntax. We present a library that uses Agda's metaprogramming facilities to automate this process, allowing higher inductive types to be specified with minimal additional syntax.
 \end{abstract}
 
 %
@@ -175,25 +175,34 @@ Higher inductive types are inductive types that include nontrivial higher-dimens
 \section{Introduction}
 \label{sec:intro}
 
-A metaprogram is a program used to create other programs. In dependently-typed programming languages like Agda and Coq, a reflection library provides metaprogramming interfaces to support code generation for proofs and programs. Elaborator reflection \cite{David-2016}, a new paradigm for metaprogramming, provides the language users with a powerful set of interfaces for efficient code generation. An $elaborator$ is a metaprogram that converts a high-level language syntax in its abstract representation to a core language which is then type checked independently. By exposing a primitive monad to elaboration framework in Idris, Christiansen \cite{David-2016} showed how to write termination proofs for general recursive functions by automating Bove-Capretta \cite{Bove-2005} transformation, and how to generate data types matching schemas of external data sources based on Idris’s type providers \cite{David-2013}.
+Type theory unites programming and mathematics in a delightful synthesis, in which we can write programs and proofs in the same language.
+Work on higher-dimensional type theory has revealed a beautiful higher-dimensional structure, lurking just beyond reach.
+In particular, higher inductive types provide a natural encoding of many otherwise-difficult mathematical concepts, and univalence lets us work in our type theory the way we do on paper: up to isomorphism.
+Homotopy type theory, however, is not yet done.
+We do not yet have a mature theory or a mature implementation.
 
-Agda is a proof-assistant based on Martin-Löf’s intensional type theory. Unlike Idris, which has a dedicated elaborator to convert the high-level syntax to its core language, Agda’s elaboration mechanism is a part of its type checker. Inspired by Idris’s elaborator reflection, Agda development team extended the reflection library of Agda by exposing its elaboration monad to its high-level metaprogramming instructions. The elaboration monad provides an interface to the Agda type checker through a set of primitive operations which can be used to retrieve static type information regarding various code segments. The primitive operations can also be used to build code fragments using constructs of an abstract syntax tree, and to convert an abstract syntax tree to its concrete syntax.
+While work proceeds on prototype implementations of higher-dimensional type theories~\todo{Cite Coquand's group and Harper's group}, much work remains before they will be as convenient for experimentation with new ideas as Coq, Agda, or Idris is today.
+In the meantime, it is useful to be able to experiment with ideas from higher-dimensional type theory in our existing systems.
+If one is willing to put up with some boilerplate code, it is possible to encode higher inductive types and univalence using a mixture of postulated identities and traditional datatypes.
+We use a technique developed by Dan Licata~\cite{Licata-2011}.
 
-In this paper, we discuss metaprogramming using elaborator reflection in Agda. By using the elaboration monad, we performed code generation for the elimination and computation rules of inductive types and higher inductive types. We also automated the code generation for the boiler-plate code segment used to implement the higher inductive type defined using Dan Licata's method \cite{Licata-2011}. We discuss the construction process in detail and introduce new metaprogramming interfaces which build the code segments using elaborator reflection. The interfaces extensively use Agda’s reflection primitives and build the abstract syntax tree of the code segments with static type information obtained using the reflection primitives. The generated code is then brought into scope by another top-level reflection primitive.
+Boilerplate postulates, however, are not just inconvenient, they are also an opportunity to make mistakes.
+Luckily, this boilerplate code can be mechanically generated using Agda's recent support for \emph{elaborator reflection}~\cite{David-2016}, a paradigm for metaprogramming in an implementation of type theory.
+An elaborator is the part of the implementation that translates a convenient language designed for humans into a much simpler, more explicit, verbose language designed to be easy for a machine to process.
+Elaborator reflection directly exposes the primitive components of the elaborator to metaprograms written in the language being elaborated, allowing them to put these components to new uses.
 
-Elaborator reflection is a powerful mechanism which allows us to create more interesting metaprograms. By performing the above automation, we abstracted the difficulties involved in implementing and using inductive types and higher inductive types by automating the construction of their corresponding elimination and computation rules. We also achieved an extensive reduction in code size, and we demonstrated how to extend a language without modifying the compiler or depending on the language implementers. More specifically, we discuss the following contributions in this paper.\todo{Rewrite contributions list to focus on actually novel things - many people have automated eliminator generation before}
 
+Using Agda's elaborator reflection, we automatically generate the support code for higher inductive types, including datatype definitions, postulated paths, induction principles, and their computational behavior.
+\citeauthor{Angiuli-2014}'s encoding of patch theory as a higher inductive type~\citep{Angiuli-2014} requires approximately 1500 lines of code. Using our library, the encoding can be expressed in just 70 lines.
+
+
+This paper makes the following contributions:
 \begin{itemize}
-\item We demonstrate using the Agda's new metaprogramming library, extended with support for elaborator reflection, and show how to automate the construction of the recursion and the induction principles for inductive types using the library.
-
-\item We discuss the automation of code generation of boiler-plate code for a higher inductive type defined inside a module. The boiler-plate code depends on a base type defined as private inside the module. The constructors of the private base type are not accessible outside the module.
-
-\item We discuss the automation of code generation of the elimination and the computation rules for a higher inductive type with point and path constructors. We demonstrate the code generation of the reduction rules, specified as postulates, for the path constructors of the higher inductive type.
-
-\item We discuss the automation of code generation for patch theory \cite{Angiuli-2014} implementation enriched with patches of encryption. We also examine the usage of the automation tool in a cryptography application \cite{Paventhan-2018}.
+\item We describe the design and implementation of a metaprogram that automates an encoding of higher inductive types using Agda's new metaprogramming system.
+\item We demonstrate applications of this metaprogram to examples from the literature, including both standard textbook examples of higher inductive types as well as larger systems, including both patch theory and specifying cryptographic schemes.
+\item This metaprogram serves as an example of the additional power available in Agda's elaborator reflection relative to earlier metaprogramming APIs.
 \end{itemize}
 
-The automation tool abstracts the implementation difficulties of a higher inductive type and its recursion and induction principles. We automated the code generation of approximately 1500 lines of code of the patch theory implementation with just 70 lines of automation code. The automation code extensively uses the static type information queried from the type checker using the reflection primitives.
 
 \section{Background}
 \label{sec:sec2}
