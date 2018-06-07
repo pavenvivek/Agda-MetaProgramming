@@ -38,13 +38,13 @@ indVec A (.succ k) (cons x xs) mot b s =
 data W (A : Set) (B : A -> Set) : Set where
   sup : (x : A) (f : B x -> W A B) -> W A B
 
-recW : (A : Set) -> (B : A -> Set) ->
-       (tgt : W A B) ->
-       (C : Set) ->
-       (f-sup : (x : A) -> (f : B x -> W A B) -> (f' : (b : B x) -> C) -> C) ->
+recW : ∀ {A B}
+       (tgt : W A B) →
+       (C : Set) →
+       (step : (x : A) → (f : B x → W A B) → (f' : (b : B x) → C) → C) →
        C
-recW A B (sup x f) C f-sup =
-  f-sup x f λ b → recW A B (f b) C f-sup
+recW (sup x f) C step =
+  step x f (λ b → recW (f b) C step)
 
 
 indW : (A : Set) -> (B : A -> Set) ->
