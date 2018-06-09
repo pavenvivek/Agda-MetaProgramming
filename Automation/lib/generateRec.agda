@@ -90,11 +90,11 @@ getClause' l ref R ty irefs (i ∷ is) (x ∷ xs) =
       }
 getClause' l ref R ty irefs x y = pure [] -- Invalid case
 
-getClause : Nat → Nat → (R : Name) → (ty : Name) → (indList : List Nat) → (lcons : List Name) → TC (List Clause)
-getClause l ref R ty indList lcons =
-  do lbs ← getIndexRefInfo R indList lcons
-     indLs ← getIndex R indList
-     getClause' l ref R ty lbs indLs lcons
+getClause : Nat → Nat → (R : Name) → (ty : Name) → (lcons : List Name) → TC (List Clause)
+getClause l ref R ty lcons =
+  do exp ← getExpRef R
+     lbs ← getIndexRefInfo R exp lcons
+     getClause' l ref R ty lbs exp lcons
 
 
 {-# TERMINATING #-}
@@ -202,11 +202,11 @@ getMapConsTypeList R Cref Crefbase pars (i ∷ is) (x ∷ xs) =
       }
 getMapConsTypeList R Cref Crefbase pars x y = pure unknown -- Invalid case
 
-getRtype : (R : Name) → (indexList : List Nat) → (ref : Nat) → (RTy : Type) → TC Type
-getRtype R indLs ref (pi (arg (arg-info vis rel) t1) (abs s t2)) =
-  do t2' ← (getRtype R indLs (suc ref) t2)
+getRtype : (R : Name) → (ref : Nat) → (RTy : Type) → TC Type
+getRtype R ref (pi (arg (arg-info vis rel) t1) (abs s t2)) =
+  do t2' ← (getRtype R (suc ref) t2)
      pure (pi (arg (arg-info hidden rel) t1) (abs s t2'))
-getRtype R indLs ref (agda-sort Level) =
+getRtype R ref (agda-sort Level) =
   do cns ← (getConstructors R)
      ty ← (getConsTypes cns)
      lcons ← (getLength cns)
@@ -217,17 +217,17 @@ getRtype R indLs ref (agda-sort Level) =
      argInfoL ← (getHidArgs Rty')
      Rargs ← (generateRefTerm' argInfoL ls)
      pars ← (takeTC d refls)
-     funType ← (getMapConsTypeList R zero lcons pars indLs cns)
+     exp ← (getExpRef R)
+     funType ← (getMapConsTypeList R zero lcons pars exp cns)
      pure (pi (vArg (def R Rargs)) (abs "R" (pi (vArg (agda-sort (lit 0))) (abs "C" funType))))
-getRtype R indLs ref x = pure unknown
+getRtype R ref x = pure unknown
 
-generateRec : Arg Name → Name → (indexList : List Nat) → TC ⊤
-generateRec (arg i f) t indLs =
-  do indLs' ← getIndex t indLs
-     cns ← getConstructors t
+generateRec : Arg Name → Name → TC ⊤
+generateRec (arg i f) t =
+  do cns ← getConstructors t
      lcons ← getLength cns
-     cls ← getClause lcons zero t f indLs cns
+     cls ← getClause lcons zero t f cns
      RTy ← getType t
-     funType ← getRtype t indLs' zero RTy
+     funType ← getRtype t zero RTy
      declareDef (arg i f) funType
      defineFun f cls

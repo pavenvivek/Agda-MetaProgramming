@@ -15,11 +15,11 @@ open import Automation.lib.generateHit
 
 module Automation.lib.generateIndHit where
 
-getPathClauseDep : (lpoints : Nat) → (lpaths : Nat) → (baseTyp : Name) → (baseRec : Name) →
+getPathClauseDep' : (lpoints : Nat) → (lpaths : Nat) → (baseTyp : Name) → (baseRec : Name) →
   (indLs : List Nat) → (cns : List Name) → TC (List Clause)
-getPathClauseDep lpoints lpaths baseTyp baseRec [] [] = pure []
-getPathClauseDep lpoints lpaths baseTyp baseRec (i ∷ is) (x ∷ xs) =
-  do xs' ← (getPathClauseDep lpoints lpaths baseTyp baseRec is xs)
+getPathClauseDep' lpoints lpaths baseTyp baseRec [] [] = pure []
+getPathClauseDep' lpoints lpaths baseTyp baseRec (i ∷ is) (x ∷ xs) =
+  do xs' ← (getPathClauseDep' lpoints lpaths baseTyp baseRec is xs)
      y ← (getType x)
      d ← (getParameters baseTyp)
      y' ← (rmPars d y)
@@ -41,7 +41,14 @@ getPathClauseDep lpoints lpaths baseTyp baseRec (i ∷ is) (x ∷ xs) =
      clargs ← (generateRefTermHid clargsRef')
      clvars ← (getClauseVarsHid zero (d + i))
      pure ((clause (clvars ++L (vArg (con x laP) ∷ vArg (var "C") ∷ vars)) (def baseRec (clargs ++L (vArg (con x refargs) ∷ argTerms)))) ∷ xs')
-getPathClauseDep lpoints lpaths baseTyp baseRec x y = pure [] -- Invalid case
+getPathClauseDep' lpoints lpaths baseTyp baseRec x y = pure [] -- Invalid case
+
+getPathClauseDep : (lpoints : Nat) → (lpaths : Nat) → (baseTyp : Name) → (baseRec : Name) →
+  (cns : List Name) → TC (List Clause)
+getPathClauseDep lpoints lpaths baseTyp baseRec cns =
+  do exp ← (getExpRef baseTyp)
+     (getPathClauseDep' lpoints lpaths baseTyp baseRec exp cns)
+
 
 {-# TERMINATING #-}
 getMapConstructorTypeInd2 : (Cref : Nat) → (cName : Name) → (pars : List Nat) → (inds : List Nat) → (args : List Nat) →
@@ -273,11 +280,11 @@ getPathsDep baseRec CRefBase pars cons baseTyp indTyp (x ∷ xs) =
      pure (pi (vArg x') (abs "_" xs'))
 
 getRtypePathDep : (baseTyp : Name) → (indTyp : Name) → (baseRec : Name) → (points : List Name) → (pathList : List Name) →
-  (ref : Nat) → (indLs : List Nat) → (RTy : Type) → TC Type
-getRtypePathDep baseTyp indTyp baseRec points pathList ref indLs (pi (arg (arg-info vis rel) t1) (abs s t2)) =
-  do t2' ← (getRtypePathDep baseTyp indTyp baseRec points pathList (suc ref) indLs t2)
+  (ref : Nat) → (RTy : Type) → TC Type
+getRtypePathDep baseTyp indTyp baseRec points pathList ref (pi (arg (arg-info vis rel) t1) (abs s t2)) =
+  do t2' ← (getRtypePathDep baseTyp indTyp baseRec points pathList (suc ref) t2)
      pure (pi (arg (arg-info hidden rel) t1) (abs s t2'))
-getRtypePathDep baseTyp indTyp baseRec points pathList ref indLs (agda-sort Level) =
+getRtypePathDep baseTyp indTyp baseRec points pathList ref (agda-sort Level) =
   do cns ← (getConstructors baseTyp)
      ty ← (getConsTypes cns)
      lcons ← (getLength cns)
@@ -289,15 +296,16 @@ getRtypePathDep baseTyp indTyp baseRec points pathList ref indLs (agda-sort Leve
      consPath ← (generateRef (suc lcons)) -- +1 for "C"
      refls' ← (generateRef ((suc (suc ref)) + lcons)) -- +1 for "R" and +1 for "C"
      parsPath ← (takeTC d refls')
+     exp ← (getExpRef baseTyp)
      paths ← (getPathsDep baseRec lcons parsPath consPath baseTyp indTyp pathList)
-     funType ← (getMapConsTypeListInd' baseTyp zero paths pars indLs points cns)
+     funType ← (getMapConsTypeListInd' baseTyp zero paths pars exp points cns)
      Rty' ← (getType baseTyp)
      ls ← (generateRef ref)
      argInfoL ← (getHidArgs Rty')
      Rargs ← (generateRefTerm' argInfoL ls)
      CType ← (getCTypeInd indTyp pars' d Rty')
      pure (pi (vArg (def indTyp Rargs)) (abs "R" (pi (vArg CType) (abs "C" funType))))
-getRtypePathDep baseTyp indType baseRec points pathList ref indLs x = pure unknown
+getRtypePathDep baseTyp indType baseRec points pathList ref x = pure unknown
 
 {-# TERMINATING #-}
 βIndMapPath' : (Rpath : Name) → (RpathRef : Nat) → (indRec : Name) → (pars : List Nat) → (cons : List Nat) → (index : List Nat) →
@@ -420,23 +428,22 @@ generateβIndHit'' (x ∷ xs) (p ∷ ps) (suc pathInd) baseType baseRec indType 
 generateβIndHit'' [] p pathInd baseType baseRec indType indRec indLs points paths = pure tt
 generateβIndHit'' n p pathInd baseType baseRec indType indRec indLs points paths = pure tt
 
-generateβIndHit : List (Arg Name) → (baseType : Name) → (indexList : List Nat) → (baseRec : Name) →
+generateβIndHit : List (Arg Name) → (baseType : Name) → (baseRec : Name) →
   (indType : Name) → (indRec : Name) → (points : List Name) → (paths : List Name) → TC ⊤
-generateβIndHit argD baseType indLs baseRec indType indRec points paths =
-  do indLs' ← (getIndex baseType indLs)
+generateβIndHit argD baseType baseRec indType indRec points paths =
+  do exp ← (getExpRef baseType)
      argL ← (getLength argD) 
-     (generateβIndHit'' argD paths argL baseType baseRec indType indRec indLs' points paths)
+     (generateβIndHit'' argD paths argL baseType baseRec indType indRec exp points paths)
 
-generateIndHit : Arg Name → List (Arg Name) → (baseType : Name) → (indLs : List Nat) → (baseRec : Name) →
+generateIndHit : Arg Name → List (Arg Name) → (baseType : Name) → (baseRec : Name) →
   (indType : Name) → (points : List Name) → (paths : List Name) → TC ⊤
-generateIndHit (arg i f) argD baseType indLs baseRec indType points paths =
-  do indLs' ← getIndex baseType indLs
-     lcons ← getConstructors baseType
+generateIndHit (arg i f) argD baseType baseRec indType points paths =
+  do lcons ← getConstructors baseType
      lpoints ← getLength points
      lpaths ← getLength paths
-     clauses ← getPathClauseDep lpoints lpaths baseType baseRec indLs' lcons
+     clauses ← getPathClauseDep lpoints lpaths baseType baseRec lcons
      RTy ← getType baseType
-     funTypePath ← getRtypePathDep baseType indType baseRec points paths zero indLs' RTy
+     funTypePath ← getRtypePathDep baseType indType baseRec points paths zero RTy
      declareDef (arg i f) funTypePath
      defineFun f clauses
-     generateβIndHit argD baseType indLs baseRec indType f points paths
+     generateβIndHit argD baseType baseRec indType f points paths

@@ -53,10 +53,10 @@ module Circle1 where
 --}
 
   unquoteDecl recS₁* = generateRec (vArg recS₁*)
-                                   (quote S₁*) (0 ∷ [])
+                                   (quote S₁*)
 
   unquoteDecl recS₁ βrecS₁ = generateRecHit (vArg recS₁) ((vArg βrecS₁) ∷ [])
-                                     (quote S₁*) (0 ∷ [])
+                                     (quote S₁*)
                                      (quote recS₁*)
                                      (quote S₁) S₁points S₁paths
 
@@ -79,10 +79,10 @@ module Circle1 where
 --}
 
   unquoteDecl indS₁* = generateInd (vArg indS₁*)
-                                   (quote S₁*) []
+                                   (quote S₁*)
 
   unquoteDecl indS₁ βindS₁ = generateIndHit (vArg indS₁) ((vArg βindS₁) ∷ [])
-                                     (quote S₁*) []
+                                     (quote S₁*)
                                      (quote indS₁*)
                                      (quote S₁) S₁points S₁paths
 
@@ -136,10 +136,10 @@ module Circle2 where
 --}
 
   unquoteDecl recS₂* = generateRec (vArg recS₂*)
-                                   (quote S₂*) (0 ∷ 0 ∷ [])
+                                   (quote S₂*)
 
   unquoteDecl recS₂ βreceastS₂ βrecwestS₂ = generateRecHit (vArg recS₂) ((vArg βreceastS₂) ∷ (vArg βrecwestS₂) ∷ [])
-                                     (quote S₂*) (0 ∷ 0 ∷ [])
+                                     (quote S₂*)
                                      (quote recS₂*)
                                      (quote S₂) S₂points S₂paths
 
@@ -171,10 +171,10 @@ module Circle2 where
 --}
 
   unquoteDecl indS₂* = generateInd (vArg indS₂*)
-                                   (quote S₂*) []
+                                   (quote S₂*)
 
   unquoteDecl indS₂ βindeastS₂ βindwestS₂ = generateIndHit (vArg indS₂) ((vArg βindeastS₂) ∷ (vArg βindwestS₂) ∷ [])
-                                                           (quote S₂*) []
+                                                           (quote S₂*)
                                                            (quote indS₂*)
                                                            (quote S₂) S₂points S₂paths
 
@@ -241,10 +241,10 @@ module Pushout where
 --}
 
   unquoteDecl recPush* = generateRec (vArg recPush*)
-                                     (quote Pushout*) (0 ∷ 0 ∷ [])
+                                     (quote Pushout*)
 
   unquoteDecl recPush βrecPush = generateRecHit (vArg recPush) ((vArg βrecPush) ∷ [])
-                                       (quote Pushout*) (0 ∷ 0 ∷ [])
+                                       (quote Pushout*)
                                        (quote recPush*)
                                        (quote Pushout) Pushoutpoints Pushoutpaths
 
@@ -272,10 +272,10 @@ module Pushout where
 --}
 
   unquoteDecl indPush* = generateInd (vArg indPush*)
-                                     (quote Pushout*) []
+                                     (quote Pushout*)
 
   unquoteDecl indPush βindPush = generateIndHit (vArg indPush) ((vArg βindPush) ∷ [])
-                                                (quote Pushout*) []
+                                                (quote Pushout*)
                                                 (quote indPush*)
                                                 (quote Pushout) Pushoutpoints Pushoutpaths
 
@@ -330,10 +330,10 @@ module Susp where
 --}
 
   unquoteDecl recΣₛ* = generateRec (vArg recΣₛ*)
-                                   (quote Σₛ*) (0 ∷ 0 ∷ [])
+                                   (quote Σₛ*)
 
   unquoteDecl recΣₛ βrecΣₛ = generateRecHit (vArg recΣₛ) ((vArg βrecΣₛ) ∷ [])
-                                     (quote Σₛ*) (0 ∷ 0 ∷ [])
+                                     (quote Σₛ*)
                                      (quote recΣₛ*)
                                      (quote Σₛ) Σₛpoints Σₛpaths
 
@@ -356,10 +356,10 @@ module Susp where
 --}
 
   unquoteDecl indΣₛ* = generateInd (vArg indΣₛ*)
-                                   (quote Σₛ*) []
+                                   (quote Σₛ*)
 
   unquoteDecl indΣₛ βindΣₛ = generateIndHit (vArg indΣₛ) ((vArg βindΣₛ) ∷ [])
-                                            (quote Σₛ*) []
+                                            (quote Σₛ*)
                                             (quote indΣₛ*)
                                             (quote Σₛ) Σₛpoints Σₛpaths
 

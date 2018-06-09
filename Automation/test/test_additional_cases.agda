@@ -28,7 +28,7 @@ data W : Set where
   g : (A → W) → B → W → W
 
 unquoteDecl recW = generateRec (vArg recW)
-                               (quote W) []
+                               (quote W)
 
 
 recursionW : W → (P : Set) → (d : (A → W) → (A → P) → B → W → P → P) → P
@@ -38,7 +38,7 @@ thm1 : thm-prv recW ≡ thm-prv recursionW
 thm1 = refl
 
 unquoteDecl indW = generateInd (vArg indW)
-                               (quote W) []
+                               (quote W)
 
 inductionW : (w : W) → (P : W → Set) → (d : (α : A → W) → ((a : A) → P (α a)) → (β : B) → (ω : W) → P ω → P (g α β ω)) → P w
 inductionW (g α β ω) P d = d α (λ a → inductionW (α a) P d) β ω (inductionW ω P d) 
@@ -52,7 +52,7 @@ data W' : Set where
   g : (A → W') → (B → C → W') → D → W' → W'
 
 unquoteDecl recW' = generateRec (vArg recW')
-                                (quote W') []
+                                (quote W')
 
 recursionW' : W' → (P : Set) → (d : (A → W') → (A → P) → (B → C → W') → (B → C → P) → D → W' → P → P) → P
 recursionW' (g α β δ ω) P d = d α (λ a → recursionW' (α a) P d) β (λ b c → recursionW' (β b c) P d) δ ω (recursionW' ω P d) 
@@ -61,7 +61,7 @@ thm3 : thm-prv recW' ≡ thm-prv recursionW'
 thm3 = refl
 
 unquoteDecl indW' = generateInd (vArg indW')
-                                (quote W') []
+                                (quote W')
 
 inductionW' : (w : W') → (P : W' → Set) → (d : (α : A → W') → ((a : A) → P (α a)) → (β : B → C → W') →
               ((b : B) → (c : C) → P (β b c)) → (δ : D) → (ω : W') → P ω → P (g α β δ ω)) → P w
