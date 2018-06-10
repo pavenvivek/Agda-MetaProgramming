@@ -10,6 +10,7 @@ open import Agda.Primitive
 open import Agda.Builtin.Unit
 open import Agda.Builtin.Equality
 open import Data.List
+open import Data.Empty
 
 open import Automation.lib.generateRec
 open import Automation.lib.generateInd
@@ -294,6 +295,30 @@ module Pushout where
   thm14 : thm-prv βindPush ≡ ({A B C : Set} → {f : C → A} → {g : C → B} → (D : Pushout f g → Set) → (f1 : (a : A) → D (inl a)) → (f2 : (b : B) → D (inr b)) →
                                (dglue : (c : C) → transport D (glue c) (f1 (f c)) ≡ (f2 (g c))) → {c : C} → apd (λ x → indPush x D f1 f2 dglue) (glue c) ≡ (dglue c))
   thm14 = refl
+
+-- ---------
+
+module Interval where
+  private
+    data 𝕀* : Set where
+      start* end* : 𝕀*
+
+  unquoteDecl 𝕀 𝕀points start end 𝕀paths ival =
+    data-hit (quote 𝕀*) 𝕀
+      𝕀points (start ∷ end ∷ []) -- point ctors
+      𝕀paths (ival ∷ []) -- path ctors
+      (argPath (start* ≡ end*) ∷ [])
+
+
+module IntervalOops where
+  open Interval
+  -- This is an issue with the technique as implemented. Pattern
+  -- matching can still be used to prove disjointness of constructors.
+  oops : start ≡ end → ⊥
+  oops ()
+
+  double-oops : ⊥
+  double-oops = oops ival
 
 -- ---------
 
