@@ -29,7 +29,7 @@ data ℕ : Set where
 --}
 
 unquoteDecl recNat = generateRec (vArg recNat)
-                                 (quote Nat) []
+                                 (quote Nat)
 
 double : Nat → Nat
 double = (λ x → recNat x Nat 0 (λ n r → suc (suc r)))
@@ -53,8 +53,7 @@ data Vec {a} (A : Set a) : ℕ → Set a where
 --}
 
 unquoteDecl recVec = generateRec (vArg recVec)
-                                 (quote Vec) (0 ∷ 1 ∷ []) -- pass index length of constructors explicitly when it differs from index length of the type
-
+                                 (quote Vec) 
 
 recVec' : ∀{a} {A : Set a} → {n : Nat} → Vec A n → (C : Set) → C → 
          ({m : Nat} → (x : A) → (xs : Vec A m) → C → C) → C
@@ -73,7 +72,7 @@ data List {a} (A : Set a) : Set a where
 --}
 
 unquoteDecl recList = generateRec (vArg recList)
-                                  (quote List) []
+                                  (quote List)
 
 recList' : ∀{a} {A : Set a} → List A → (C : Set) → C → 
          ((x : A) → (xs : List A) → C → C) → C
@@ -92,7 +91,7 @@ data Fin : Nat → Set where
 --}
 
 unquoteDecl recFin = generateRec (vArg recFin)
-                                 (quote Fin) []
+                                 (quote Fin)
 
 recFin' : {n : Nat} → (xs : Fin n) → (C : Set) → (cnil : C) → -- (cnil : {n : Nat} → C) →
          (csuc : {n : Nat} → (x : Fin n) → C → C) → C
@@ -110,8 +109,8 @@ data Bool : Set where
 --}
 
 unquoteDecl recBool = generateRec (vArg recBool)
-                                  (quote Bool) []
-
+                                  (quote Bool)
+                                  
 recBool' : Bool → (C : Set) → C → C → C
 recBool' false C el th = el
 recBool' true C el th = th
@@ -126,7 +125,7 @@ data W (A : Set) (B : A → Set) : Set where
 
 unquoteDecl recW = generateRec
                    (vArg recW)
-                   (quote W) []
+                   (quote W)
 
 recW' : {A : Set} {B : A → Set} → W A B → (C : Set) → ((x : A) → (B x → W A B) → (z : B x → C ) → C) → C
 recW' {A} {B} (sup a b) C csup = csup a b (λ v → recW' {A} {B} (b v) C csup)

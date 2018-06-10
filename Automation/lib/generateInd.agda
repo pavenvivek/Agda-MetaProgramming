@@ -65,10 +65,11 @@ getClauseDep' l ref R ty irefs (i ∷ is) (x ∷ xs) =
      pure ((clause (vArg (con x laP) ∷ vArg (var (showNat lenlfarg)) ∷ vars) (var Ccon ltm)) ∷ xs')
 getClauseDep' l ref R ty irefs x y = pure [] -- Invalid case
 
-getClauseDep : Nat → Nat → (R : Name) → (ty : Name) → (indexList : List Nat) → (lcons : List Name) → TC (List Clause)
-getClauseDep l ref R ty indList lcons =
-  do lbs ← (getIndexRefInfo R indList lcons)
-     (getClauseDep' l ref R ty lbs indList lcons)
+getClauseDep : Nat → Nat → (R : Name) → (ty : Name) → (lcons : List Name) → TC (List Clause)
+getClauseDep l ref R ty lcons =
+  do exp ← (getExpRef R)
+     lbs ← (getIndexRefInfo R exp lcons)
+     (getClauseDep' l ref R ty lbs exp lcons)
 
 {-# TERMINATING #-}
 getMapConstructorTypeInd : (Cref : Nat) → (pars : List Nat) → (inds : List Nat) →
@@ -216,11 +217,11 @@ getCTypeInd R pars (suc x) (pi (arg info t1) (abs s t2)) = do t2' ← (getCTypeI
                                                               pure t2'
 getCTypeInd R pars x ty = pure unknown
 
-getRtypeInd : (R : Name) → (ref : Nat) → (indLs : List Nat) → (RTy : Type) → TC Type
-getRtypeInd R ref indLs (pi (arg (arg-info vis rel) t1) (abs s t2)) =
-  do t2' ← (getRtypeInd R (suc ref) indLs t2)
+getRtypeInd : (R : Name) → (ref : Nat) → (RTy : Type) → TC Type
+getRtypeInd R ref (pi (arg (arg-info vis rel) t1) (abs s t2)) =
+  do t2' ← (getRtypeInd R (suc ref) t2)
      pure (pi (arg (arg-info hidden rel) t1) (abs s t2'))
-getRtypeInd R ref indLs (agda-sort Level) =
+getRtypeInd R ref (agda-sort Level) =
   do cns ← (getConstructors R)
      ty ← (getConsTypes cns)
      lcons ← (getLength cns)
@@ -230,21 +231,21 @@ getRtypeInd R ref indLs (agda-sort Level) =
      pars ← (takeTC d refls)
      pars' ← (takeTC d refls')
      ls ← (generateRef ref)
-     funType ← (getMapConsTypeListInd R zero lcons pars indLs cns)
+     exp ← (getExpRef R)
+     funType ← (getMapConsTypeListInd R zero lcons pars exp cns)
      RType ← (getType R)
      argInfoL ← (getHidArgs RType)
      Rargs ← (generateRefTerm' argInfoL ls)
      CType ← (getCTypeInd R pars' d RType)
      pure (pi (vArg (def R Rargs)) (abs "R" (pi (vArg CType) (abs "C1" funType))))     
-getRtypeInd R ref indLs x = pure unknown
+getRtypeInd R ref x = pure unknown
 
-generateInd : Arg Name → Name → (indexList : List Nat) → TC ⊤
-generateInd (arg i f) t indLs =
-  do indLs' ← getIndex t indLs
-     cns ← getConstructors t
+generateInd : Arg Name → Name → TC ⊤
+generateInd (arg i f) t =
+  do cns ← getConstructors t
      lcons ← getLength cns
-     cls ← getClauseDep lcons zero t f indLs' cns
+     cls ← getClauseDep lcons zero t f cns
      RTy ← getType t
-     funType ← getRtypeInd t zero indLs' RTy
+     funType ← getRtypeInd t zero RTy
      declareDef (arg i f) funType
      defineFun f cls

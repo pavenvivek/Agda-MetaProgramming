@@ -479,6 +479,68 @@ changeCodomain Cref (pi (arg info dom) (abs s cdom)) = bindTC (changeCodomain (s
                                                               (λ cdom' → returnTC (pi (arg info dom) (abs s cdom')))
 changeCodomain Cref x = returnTC unknown
 
+
+foldl' : {A B : Set} → (B → A → TC B) → B → List A → TC B
+foldl' f z [] = returnTC z
+foldl' f z (x ∷ xs) = bindTC (f z x)
+                        (λ x' → bindTC (foldl' f x' xs)
+                        (λ xs' → returnTC xs'))
+-- foldl f (f z x) xs
+
+
+{-# TERMINATING #-}
+retExprRef' : (cons : Type) → TC Nat
+retExprRef' (def x lsargs) = do ls ← map' (λ { (arg i term) →
+                                             do t ← retExprRef' term
+                                                pure t }) lsargs
+                                b ← isMember 1 ls
+                                case b of λ
+                                 { true → pure 1
+                                 ; false → pure 0
+                                 }
+retExprRef' (con x lsargs) = do ls ← map' (λ { (arg i term) →
+                                             do t ← retExprRef' term
+                                                pure t }) lsargs
+                                b ← isMember 1 ls
+                                case b of λ
+                                 { true → pure 1
+                                 ; false → pure 0
+                                 }
+retExprRef' (var ref lsargs) = pure 1
+retExprRef' x = pure 0
+
+retExprRef : (indType : Name) → (cons : Type) → TC Nat
+retExprRef ind (pi (arg info t1) (abs s t2)) =
+  do t2' ← retExprRef ind t2
+     pure t2'
+retExprRef ind (def x lsargs) =
+  case (primQNameEquality ind x) of λ
+   { true →
+     do cp ← getParameters ind
+        lsargs' ← dropTC cp lsargs
+        ln ← foldl' (λ {a (arg i term) →
+                           do b' ← (retExprRef' term)
+                              pure (a + b') }) zero lsargs'
+        pure ln
+   ; false → pure 0
+   }
+retExprRef ind x = pure 0
+
+
+getExprRef : (indType : Name) → (cons : List Name) → TC (List Nat)
+getExprRef ind [] = pure []
+getExprRef ind (c ∷ cs) =
+  do cTy ← getType c
+     l ← retExprRef ind cTy
+     ls ← getExprRef ind cs
+     pure (l ∷ ls)
+
+getExpRef : (indType : Name) → TC (List Nat)
+getExpRef ind =
+  do lcons ← (getConstructors ind)
+     (getExprRef ind lcons)
+
+
 {-# TERMINATING #-}
 printArgs : List (Arg Term) → TC ⊤
 printArgs [] = returnTC tt

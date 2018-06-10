@@ -38,7 +38,7 @@ data ℕ : Set where
 --}
 
 unquoteDecl indNat = generateInd (vArg indNat)
-                                 (quote Nat) []
+                                 (quote Nat)
 
 
 indℕ : (n : Nat) → (C : Nat → Set) → C 0 → ((n : Nat) → C n → C (suc n)) → C n
@@ -84,8 +84,8 @@ data Vec {a} (A : Set a) : ℕ → Set a where
 --}
 
 unquoteDecl indVec = generateInd (vArg indVec)
-                                 (quote Vec) (0 ∷ 1 ∷ []) -- pass index length of constructors explicitly when it differs from index length of the type
-
+                                 (quote Vec)
+                                 
 indVec' : {a : Level} → {A : Set a} → {n : Nat} → (xs : Vec A n) → (C : {n : Nat} → Vec A n → Set) → 
          C [] →  ({m : Nat} → (x : A) → (xs : Vec A m) → C xs → C (x ∷ xs)) → C xs
 indVec' [] C cnil ccons = cnil
@@ -103,7 +103,7 @@ data List {a} (A : Set a) : Set a where
 --}
 
 unquoteDecl indList = generateInd (vArg indList)
-                                  (quote List) []
+                                  (quote List)
 
 indList' : {a : Level} → {A : Set a} → (xs' : List A) → (C : List A → Set) → C [] → 
          ((x : A) → (xs : List A) → C xs → C (x ∷ xs)) → C xs'
@@ -122,7 +122,7 @@ data Fin : Nat → Set where
 --}
 
 unquoteDecl indFin = generateInd (vArg indFin)
-                                 (quote Fin) []
+                                 (quote Fin)
 
 indFin' : {n : Nat} → (xs : Fin n) → (C : {n : Nat} → Fin n → Set) → ({n : Nat} → C {(suc n)} zero) →
           ({n : Nat} → (x : Fin n) → C {n} x → C {(suc n)} (suc x)) → C xs
@@ -140,7 +140,7 @@ data Bool : Set where
 --}
 
 unquoteDecl indBool = generateInd (vArg indBool)
-                                  (quote Bool) []
+                                  (quote Bool)
 
 indBool' : (b : Bool) → (C : Bool → Set) → C false → C true → C b
 indBool' false C el th = el
@@ -156,7 +156,7 @@ data W (A : Set) (B : A → Set) : Set where
 
 unquoteDecl indW = generateInd
                    (vArg indW)
-                   (quote W) []
+                   (quote W)
 
 indW' : {A : Set} {B : A → Set} → (c : W A B) → (C : W A B → Set) → ((x : A) → (y : B x → W A B) → (z : (v : B x) → C (y v)) → C (sup x y)) → C c
 indW' {A} {B} (sup a b) C csup = csup a b (λ v -> indW' {A} {B} (b v) C csup)
