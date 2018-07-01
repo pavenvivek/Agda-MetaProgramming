@@ -229,5 +229,6 @@ generateRec (arg i f) t =
      cls ← getClause lcons zero t f cns
      RTy ← getType t
      funType ← getRtype t zero RTy
+     (debugPrint "tc.sample.debug" 20 (strErr "**generateRe [3] ---> " ∷ termErr funType ∷ []))
      declareDef (arg i f) funType
      defineFun f cls

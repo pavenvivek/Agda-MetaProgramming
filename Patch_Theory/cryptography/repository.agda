@@ -1,5 +1,7 @@
 {-# OPTIONS --type-in-type #-}
 {-# OPTIONS --no-auto-inline #-}
+{-# OPTIONS --rewriting #-}
+{-# OPTIONS --verbose tc.sample.debug:20 #-}
 
 open import Function renaming (_∘_ to _○_)
 open import Data.Product using (_×_; _,_; Σ; Σ-syntax; proj₁; proj₂)
@@ -26,6 +28,12 @@ open import Automation.lib.generateRecHit
 open import Automation.lib.generateIndHit
 open import Automation.utils.reflectionUtils
 open import Automation.utils.pathUtils
+open import Automation.lib.generateBetaRecHit
+open import Automation.lib.generateBetaRecHitPath using (generateβRecHitPath)
+open import Automation.lib.generateBetaRec
+open import Automation.lib.generateBetaIndHit
+open import Automation.lib.generateBetaIndHitPath using (generateβIndHitPath)
+open import Automation.lib.generateBetaInd
 
 
 module Patch_Theory.cryptography.repository where
@@ -34,54 +42,104 @@ module History_hit where
 
 {-- Records : Higher inductive type which stores the instances of all the queries executed --}
 
-  private
-    data #History : Nat → Nat → Set where
-      #[]R : {m : Nat} → #History m m
-      #ID-R:: : {m n : Nat} → #History m n → #History m n
-      #INSERT_at_::_ : {m n : Nat} → (value : Int) → (i : Nat) → #History m n → #History m (suc n)
-      #DELETE_::_ : {m n : Nat} → (i : Nat) → #History m (suc n) → #History m n
-      #RSA-ENCRYPT_,_::_ : {m n : Nat} → (p : Nat) → (q : Nat) → #History m n → #History m n
-      #RSA-DECRYPT_,_::_ : {m n : Nat} → (p : Nat) → (q : Nat) → #History m n → #History m n
-      #PAILLIER-ENCRYPT_,_::_ : {m n : Nat} → (p : Nat) → (q : Nat) → #History m n → #History m n
-      #PAILLIER-DECRYPT_,_::_ : {m n : Nat} → (p : Nat) → (q : Nat) → #History m n → #History m n
-      #OPE-ENCRYPT::_ : {m n : Nat} → #History m n → #History m n
-      #OPE-DECRYPT::_ : {m n : Nat} → #History m n → #History m n
-      #ELGAMAL-ENCRYPT_::_ : {m n : Nat} → (p : Nat) → #History m n → #History m n
-      #ELGAMAL-DECRYPT_::_ : {m n : Nat} → (p : Nat) → #History m n → #History m n
-      #INCREMENT100_::_ : {m n : Nat} → (i : Nat) → #History m n → #History m n
-      #CRYPT-INCREMENT100_,_,_::_ : {m n : Nat} → (p q : Nat) → (i : Nat) → #History m n → #History m n
+  postulate
+      History : Nat → Nat → Set
+      []R : {m : Nat} → History m m
+      ID-R:: : {m n : Nat} → History m n → History m n
+      INSERT_at_::_ : {m n : Nat} → (value : Nat) → (i : Nat) → History m n → History m (suc n)
+      DELETE_::_ : {m n : Nat} → (i : Nat) → History m (suc n) → History m n
+      RSA-ENCRYPT_,_::_ : {m n : Nat} → (p : Nat) → (q : Nat) → History m n → History m n
+      RSA-DECRYPT_,_::_ : {m n : Nat} → (p : Nat) → (q : Nat) → History m n → History m n
+      PAILLIER-ENCRYPT_,_::_ : {m n : Nat} → (p : Nat) → (q : Nat) → History m n → History m n
+      PAILLIER-DECRYPT_,_::_ : {m n : Nat} → (p : Nat) → (q : Nat) → History m n → History m n
+      OPE-ENCRYPT::_ : {m n : Nat} → History m n → History m n
+      OPE-DECRYPT::_ : {m n : Nat} → History m n → History m n
+      ELGAMAL-ENCRYPT_::_ : {m n : Nat} → (p : Nat) → History m n → History m n
+      ELGAMAL-DECRYPT_::_ : {m n : Nat} → (p : Nat) → History m n → History m n
+      INCREMENT100_::_ : {m n : Nat} → (i : Nat) → History m n → History m n
+      CRYPT-INCREMENT100_,_,_::_ : {m n : Nat} → (p q : Nat) → (i : Nat) → History m n → History m n
+      PAILLIER-HOMOMORPHISM_,_,_::_ : {m n : Nat} → (p q : Nat) → (i : Nat) → (r : History m n) →
+                                      (PAILLIER-DECRYPT_,_::_ {m} {n} p q (CRYPT-INCREMENT100_,_,_::_ {m} {n} p q i
+                                      (PAILLIER-ENCRYPT_,_::_ {m} {n} p q r))) ≡ (INCREMENT100_::_  {m} {n} i r)
+
+  Recpoints : List Name
+  Recpoints = ((quote []R) ∷ (quote ID-R::) ∷ (quote INSERT_at_::_) ∷ (quote DELETE_::_) ∷ (quote RSA-ENCRYPT_,_::_) ∷ (quote RSA-DECRYPT_,_::_) ∷
+               (quote PAILLIER-ENCRYPT_,_::_) ∷ (quote PAILLIER-DECRYPT_,_::_) ∷ (quote OPE-ENCRYPT::_) ∷ (quote OPE-DECRYPT::_) ∷ (quote ELGAMAL-ENCRYPT_::_) ∷
+               (quote ELGAMAL-DECRYPT_::_) ∷ (quote INCREMENT100_::_) ∷ (quote CRYPT-INCREMENT100_,_,_::_) ∷ [])
+
+  Recpaths : List Name
+  Recpaths = (quote PAILLIER-HOMOMORPHISM_,_,_::_) ∷ []
+
+  unquoteDecl recHistory* β[]R* βID-R::* βINSERT_at_::_* βDELETE_::_* βRSA-ENCRYPT_,_::_* βRSA-DECRYPT_,_::_* βPAILLIER-ENCRYPT_,_::_* βPAILLIER-DECRYPT_,_::_*
+                                βOPE-ENCRYPT::_* βOPE-DECRYPT::_* βELGAMAL-ENCRYPT_::_* βELGAMAL-DECRYPT_::_* βINCREMENT100_::_* βCRYPT-INCREMENT100_,_,_::_*
+                                = generateβRec (vArg recHistory*)
+                                     ((vArg β[]R*) ∷ (vArg βID-R::*) ∷ (vArg βINSERT_at_::_*) ∷ (vArg βDELETE_::_*) ∷ (vArg βRSA-ENCRYPT_,_::_*) ∷ (vArg βRSA-DECRYPT_,_::_*) ∷
+                                      (vArg βPAILLIER-ENCRYPT_,_::_*) ∷ (vArg βPAILLIER-DECRYPT_,_::_*) ∷ (vArg βOPE-ENCRYPT::_*) ∷ (vArg βOPE-DECRYPT::_*) ∷ (vArg βELGAMAL-ENCRYPT_::_*) ∷
+                                      (vArg βELGAMAL-DECRYPT_::_*) ∷ (vArg βINCREMENT100_::_*) ∷ (vArg βCRYPT-INCREMENT100_,_,_::_*) ∷ [])
+                                     (quote History) 0 Recpoints
+
+  {-# REWRITE β[]R* #-}
+  {-# REWRITE βID-R::* #-}
+  {-# REWRITE βINSERT_at_::_* #-}
+  {-# REWRITE βDELETE_::_* #-}
+  {-# REWRITE βRSA-ENCRYPT_,_::_* #-}
+  {-# REWRITE βRSA-DECRYPT_,_::_* #-}
+  {-# REWRITE βPAILLIER-ENCRYPT_,_::_* #-}
+  {-# REWRITE βPAILLIER-DECRYPT_,_::_* #-}
+  {-# REWRITE βOPE-ENCRYPT::_* #-}
+  {-# REWRITE βOPE-DECRYPT::_* #-}
+  {-# REWRITE βELGAMAL-ENCRYPT_::_* #-}
+  {-# REWRITE βELGAMAL-DECRYPT_::_* #-}
+  {-# REWRITE βINCREMENT100_::_* #-}
+  {-# REWRITE βCRYPT-INCREMENT100_,_,_::_* #-}
 
 
-  unquoteDecl History Recpoints []R ID-R:: INSERT_at_::_ DELETE_::_ RSA-ENCRYPT_,_::_ RSA-DECRYPT_,_::_ PAILLIER-ENCRYPT_,_::_ PAILLIER-DECRYPT_,_::_
-                                OPE-ENCRYPT::_ OPE-DECRYPT::_ ELGAMAL-ENCRYPT_::_ ELGAMAL-DECRYPT_::_ INCREMENT100_::_ CRYPT-INCREMENT100_,_,_::_
-                      Recpaths PAILLIER-HOMOMORPHISM_,_,_::_ = data-hit (quote #History) History
-                                                                    Recpoints ([]R ∷ ID-R:: ∷ INSERT_at_::_ ∷ DELETE_::_ ∷ RSA-ENCRYPT_,_::_ ∷ RSA-DECRYPT_,_::_ ∷
-                                                                               PAILLIER-ENCRYPT_,_::_ ∷ PAILLIER-DECRYPT_,_::_ ∷ OPE-ENCRYPT::_ ∷ OPE-DECRYPT::_ ∷ ELGAMAL-ENCRYPT_::_ ∷
-                                                                               ELGAMAL-DECRYPT_::_ ∷ INCREMENT100_::_ ∷ CRYPT-INCREMENT100_,_,_::_ ∷ []) -- point constructors
-                                                                    Recpaths (PAILLIER-HOMOMORPHISM_,_,_::_ ∷ []) -- path constructors
-                                                                    (argPath ({m n : Nat} → (p q : Nat) → (i : Nat) → (r : #History m n) →
-                                                                             (#PAILLIER-DECRYPT_,_::_ {m} {n} p q (#CRYPT-INCREMENT100_,_,_::_ {m} {n} p q i
-                                                                             (#PAILLIER-ENCRYPT_,_::_ {m} {n} p q r))) ≡ (#INCREMENT100_::_  {m} {n} i r)) ∷ [])
-                                                                    --  argPath ({m n : Nat} → (p q : Nat) → (r : #History m n) →
-                                                                       --       (#PAILLIER-DECRYPT_,_::_ p q (#PAILLIER-ENCRYPT_,_::_ p q r)) ≡ (#ID-R:: r)) ∷ [])
+  unquoteDecl recHistory = generateRecHit (vArg recHistory)
+                                     (quote History)
+                                     (quote recHistory*) 0 Recpoints Recpaths
 
 
-  unquoteDecl recHistory* = generateRec (vArg recHistory*)
-                                        (quote #History) (1 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ [])
+
+  unquoteDecl βrecHistory-paiHom = generateβRecHitPath (quote recHistory)
+                                     ((vArg βrecHistory-paiHom) ∷ [])
+                                     (quote History)
+                                     (quote recHistory*) 0 Recpoints Recpaths
+
+-- -------
+
+  unquoteDecl indHistory* iβ[]R* iβID-R::* iβINSERT_at_::_* iβDELETE_::_* iβRSA-ENCRYPT_,_::_* iβRSA-DECRYPT_,_::_* iβPAILLIER-ENCRYPT_,_::_* iβPAILLIER-DECRYPT_,_::_*
+                                iβOPE-ENCRYPT::_* iβOPE-DECRYPT::_* iβELGAMAL-ENCRYPT_::_* iβELGAMAL-DECRYPT_::_* iβINCREMENT100_::_* iβCRYPT-INCREMENT100_,_,_::_*
+                                = generateβInd (vArg indHistory*)
+                                     ((vArg iβ[]R*) ∷ (vArg iβID-R::*) ∷ (vArg iβINSERT_at_::_*) ∷ (vArg iβDELETE_::_*) ∷ (vArg iβRSA-ENCRYPT_,_::_*) ∷ (vArg iβRSA-DECRYPT_,_::_*) ∷
+                                      (vArg iβPAILLIER-ENCRYPT_,_::_*) ∷ (vArg iβPAILLIER-DECRYPT_,_::_*) ∷ (vArg iβOPE-ENCRYPT::_*) ∷ (vArg iβOPE-DECRYPT::_*) ∷ (vArg iβELGAMAL-ENCRYPT_::_*) ∷
+                                      (vArg iβELGAMAL-DECRYPT_::_*) ∷ (vArg iβINCREMENT100_::_*) ∷ (vArg iβCRYPT-INCREMENT100_,_,_::_*) ∷ [])
+                                     (quote History) 0 Recpoints
+
+  {-# REWRITE iβ[]R* #-}
+  {-# REWRITE iβID-R::* #-}
+  {-# REWRITE iβINSERT_at_::_* #-}
+  {-# REWRITE iβDELETE_::_* #-}
+  {-# REWRITE iβRSA-ENCRYPT_,_::_* #-}
+  {-# REWRITE iβRSA-DECRYPT_,_::_* #-}
+  {-# REWRITE iβPAILLIER-ENCRYPT_,_::_* #-}
+  {-# REWRITE iβPAILLIER-DECRYPT_,_::_* #-}
+  {-# REWRITE iβOPE-ENCRYPT::_* #-}
+  {-# REWRITE iβOPE-DECRYPT::_* #-}
+  {-# REWRITE iβELGAMAL-ENCRYPT_::_* #-}
+  {-# REWRITE iβELGAMAL-DECRYPT_::_* #-}
+  {-# REWRITE iβINCREMENT100_::_* #-}
+  {-# REWRITE iβCRYPT-INCREMENT100_,_,_::_* #-}
 
 
-  unquoteDecl recHistory βrecHistory-paiHom = generateRecHit (vArg recHistory) ((vArg βrecHistory-paiHom) ∷ [])
-                                                             (quote #History) (1 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ [])
-                                                             (quote recHistory*)
-                                                             (quote History) Recpoints Recpaths
+  unquoteDecl indHistory = generateIndHit (vArg indHistory)
+                                     (quote History)
+                                     (quote indHistory*) 0 Recpoints Recpaths
 
-  unquoteDecl indHistory* = generateInd (vArg indHistory*)
-                                        (quote #History) (1 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ [])
 
-  unquoteDecl indHistory βindHistory-paiHom = generateIndHit (vArg indHistory) ((vArg βindHistory-paiHom) ∷ [])
-                                                             (quote #History) (1 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ 2 ∷ [])
-                                                             (quote indHistory*)
-                                                             (quote History) Recpoints Recpaths
+  unquoteDecl βindHistory-paiHom = generateβIndHitPath (quote indHistory)
+                                     ((vArg βindHistory-paiHom) ∷ [])
+                                     (quote History)
+                                     (quote indHistory*) 0 Recpoints Recpaths
 
 
   postulate
@@ -159,69 +217,93 @@ module Document_hit where
 
 {-- cryptR : Higher inductive type representing the database tables as points and encryption, decryption functions and queries as paths --}
 
-  private
-    data #cryptR : Set where
-      #ctab_ : {n : Nat} → History 0 n → #cryptR
-      #ctabRSA_ : {n : Nat} → History 0 n → #cryptR
-      #ctabPL_ : {n : Nat} → History 0 n → #cryptR
-      #ctabOPE_ : {n : Nat} → History 0 n → #cryptR
-      #ctabEG_ : {n : Nat} → History 0 n → #cryptR
-                    
-  unquoteDecl cryptR cryptRpoints ctab_ ctabRSA_ ctabPL_ ctabOPE_ ctabEG_
-                     cryptRpaths insert-query delete-query rsa-enc rsa-dec
-                                 paillier-enc paillier-dec ope-enc ope-dec
-                                 elgamalrsa-enc elgamalrsa-dec elgamalope-enc elgamalope-dec 
-                                 increment-by-100 crypt-increment-by-100 id-cryptR = data-hit (quote #cryptR) cryptR
-                                                                    cryptRpoints (ctab_ ∷ ctabRSA_ ∷ ctabPL_ ∷ ctabOPE_ ∷ ctabEG_ ∷ []) -- point constructors
-                                                                    cryptRpaths (insert-query ∷ delete-query ∷ rsa-enc ∷ rsa-dec ∷ paillier-enc ∷ paillier-dec ∷ ope-enc ∷ ope-dec ∷
-                                                                                 elgamalrsa-enc ∷ elgamalrsa-dec ∷ elgamalope-enc ∷ elgamalope-dec ∷ increment-by-100 ∷ crypt-increment-by-100 ∷
-                                                                                 id-cryptR ∷ []) -- path constructors
-                                                                    (argPath ({n : Nat} → (value : Int) → (i : Nat) → (r : History 0 n) → (#ctab r) ≡ (#ctab (INSERT value at i :: r))) ∷
-                                                                     argPath ({n : Nat} → (i : Nat) → (r : History 0 (suc n)) → (#ctab r) ≡ (#ctab (DELETE i :: r))) ∷
-                                                                     argPath ({n : Nat} → (p : Nat) → (q : Nat) → (r : History 0 n) → (#ctab r) ≡ (#ctabRSA (RSA-ENCRYPT p , q :: r))) ∷
-                                                                     argPath ({n : Nat} → (p : Nat) → (q : Nat) → (r : History 0 n) → (#ctabRSA r) ≡ (#ctab (RSA-DECRYPT p , q :: r))) ∷
-                                                                     argPath ({n : Nat} → (p : Nat) → (q : Nat) → (r : History 0 n) → (#ctab r) ≡ (#ctabPL (PAILLIER-ENCRYPT p , q :: r))) ∷
-                                                                     argPath ({n : Nat} → (p : Nat) → (q : Nat) → (r : History 0 n) → (#ctabPL r) ≡ (#ctab (PAILLIER-DECRYPT p , q :: r))) ∷
-                                                                     argPath ({n : Nat} → (r : History 0 n) → (#ctab r) ≡ (#ctabOPE (OPE-ENCRYPT:: r))) ∷
-                                                                     argPath ({n : Nat} → (r : History 0 n) → (#ctabPL r) ≡ (#ctab (OPE-DECRYPT:: r))) ∷
-                                                                     argPath ({n : Nat} → (p : Nat) → (r : History 0 n) → (#ctabRSA r) ≡ (#ctabEG (ELGAMAL-ENCRYPT p :: r))) ∷
-                                                                     argPath ({n : Nat} → (p : Nat) → (r : History 0 n) → (#ctabEG r) ≡ (#ctabRSA (ELGAMAL-DECRYPT p :: r))) ∷
-                                                                     argPath ({n : Nat} → (p : Nat) → (r : History 0 n) → (#ctabOPE r) ≡ (#ctabEG (ELGAMAL-ENCRYPT p :: r))) ∷
-                                                                     argPath ({n : Nat} → (p : Nat) → (r : History 0 n) → (#ctabEG r) ≡ (#ctabOPE (ELGAMAL-DECRYPT p :: r))) ∷
-                                                                     argPath ({n : Nat} → (i : Nat) → (r : History 0 n) → (#ctab r) ≡ (#ctab (INCREMENT100 i :: r))) ∷
-                                                                     argPath ({n : Nat} → (p q : Nat) → (i : Nat) → (r : History 0 n) → (#ctabPL r) ≡ (#ctabPL (CRYPT-INCREMENT100 p , q , i :: r))) ∷
-                                                                     argPath ({n : Nat} → (r : History 0 n) → (#ctab r) ≡ (#ctab (ID-R:: r))) ∷ [])
+  postulate
+    cryptR : Set
+    ctab_ : {n : Nat} → History 0 n → cryptR
+    ctabRSA_ : {n : Nat} → History 0 n → cryptR
+    ctabPL_ : {n : Nat} → History 0 n → cryptR
+    ctabOPE_ : {n : Nat} → History 0 n → cryptR
+    ctabEG_ : {n : Nat} → History 0 n → cryptR
+    insert-query : {n : Nat} → (value : Int) → (i : Nat) → (r : History 0 n) → (ctab r) ≡ (ctab (INSERT value at i :: r))
+    delete-query : {n : Nat} → (i : Nat) → (r : History 0 (suc n)) → (ctab r) ≡ (ctab (DELETE i :: r))
+    rsa-enc : {n : Nat} → (p : Nat) → (q : Nat) → (r : History 0 n) → (ctab r) ≡ (ctabRSA (RSA-ENCRYPT p , q :: r))
+    rsa-dec : {n : Nat} → (p : Nat) → (q : Nat) → (r : History 0 n) → (ctabRSA r) ≡ (ctab (RSA-DECRYPT p , q :: r))
+    paillier-enc : {n : Nat} → (p : Nat) → (q : Nat) → (r : History 0 n) → (ctab r) ≡ (ctabPL (PAILLIER-ENCRYPT p , q :: r))
+    paillier-dec : {n : Nat} → (p : Nat) → (q : Nat) → (r : History 0 n) → (ctabPL r) ≡ (ctab (PAILLIER-DECRYPT p , q :: r))
+    ope-enc : {n : Nat} → (r : History 0 n) → (ctab r) ≡ (ctabOPE (OPE-ENCRYPT:: r))
+    ope-dec : {n : Nat} → (r : History 0 n) → (ctabPL r) ≡ (ctab (OPE-DECRYPT:: r))
+    elgamalrsa-enc : {n : Nat} → (p : Nat) → (r : History 0 n) → (ctabRSA r) ≡ (ctabEG (ELGAMAL-ENCRYPT p :: r))
+    elgamalrsa-dec : {n : Nat} → (p : Nat) → (r : History 0 n) → (ctabEG r) ≡ (ctabRSA (ELGAMAL-DECRYPT p :: r))
+    elgamalope-enc : {n : Nat} → (p : Nat) → (r : History 0 n) → (ctabOPE r) ≡ (ctabEG (ELGAMAL-ENCRYPT p :: r))
+    elgamalope-dec : {n : Nat} → (p : Nat) → (r : History 0 n) → (ctabEG r) ≡ (ctabOPE (ELGAMAL-DECRYPT p :: r))
+    increment-by-100 : {n : Nat} → (i : Nat) → (r : History 0 n) → (ctab r) ≡ (ctab (INCREMENT100 i :: r))
+    crypt-increment-by-100 : {n : Nat} → (p q : Nat) → (i : Nat) → (r : History 0 n) → (ctabPL r) ≡ (ctabPL (CRYPT-INCREMENT100 p , q , i :: r))
+    id-cryptR : {n : Nat} → (r : History 0 n) → (ctab r) ≡ (ctab (ID-R:: r))
 
-  unquoteDecl reccryptR* = generateRec (vArg reccryptR*)
-                                       (quote #cryptR) (0 ∷ 0 ∷ 0 ∷ 0 ∷ 0 ∷ [])
+  cryptRpoints : List Name
+  cryptRpoints = ((quote ctab_) ∷ (quote ctabRSA_) ∷ (quote ctabPL_) ∷ (quote ctabOPE_) ∷ (quote ctabEG_) ∷ [])
+
+  cryptRpaths : List Name
+  cryptRpaths = ((quote insert-query) ∷ (quote delete-query) ∷ (quote rsa-enc) ∷ (quote rsa-dec) ∷
+                 (quote paillier-enc) ∷ (quote paillier-dec) ∷ (quote ope-enc) ∷ (quote ope-dec) ∷
+                 (quote elgamalrsa-enc) ∷ (quote elgamalrsa-dec) ∷ (quote elgamalope-enc) ∷ (quote elgamalope-dec) ∷
+                 (quote increment-by-100) ∷ (quote crypt-increment-by-100) ∷ (quote id-cryptR) ∷ [])
 
 
-  unquoteDecl reccryptR βreccryptR-insertQ βreccryptR-deleteQ βreccryptR-rsaE βreccryptR-rsaD βreccryptR-paillierE βreccryptR-paillierD
+  unquoteDecl reccryptR* βctab_* βctabRSA_* βctabPL_* βctabOPE_* βctabEG_*
+                                = generateβRec (vArg reccryptR*)
+                                     ((vArg βctab_*) ∷ (vArg βctabRSA_*) ∷ (vArg βctabPL_*) ∷ (vArg βctabOPE_*) ∷ (vArg βctabEG_*) ∷ [])
+                                     (quote cryptR) 0 cryptRpoints
+
+  {-# REWRITE βctab_* #-}
+  {-# REWRITE βctabRSA_* #-}
+  {-# REWRITE βctabPL_* #-}
+  {-# REWRITE βctabOPE_* #-}
+  {-# REWRITE βctabEG_* #-}
+
+  unquoteDecl reccryptR = generateRecHit (vArg reccryptR)
+                                     (quote cryptR)
+                                     (quote reccryptR*) 0 cryptRpoints cryptRpaths
+
+  unquoteDecl βreccryptR-insertQ βreccryptR-deleteQ βreccryptR-rsaE βreccryptR-rsaD βreccryptR-paillierE βreccryptR-paillierD
               βreccryptR-OPEE βreccryptR-OPED βreccryptR-ElgRSAE βreccryptR-ElgRSAD βreccryptR-ElgOPEE βreccryptR-ElgOPED
               βreccryptR-increment100 βreccryptR-crypt-inc βreccryptR-id
-              = generateRecHit (vArg reccryptR)
-                               ((vArg βreccryptR-insertQ) ∷ (vArg βreccryptR-deleteQ) ∷ (vArg βreccryptR-rsaE) ∷ (vArg βreccryptR-rsaD) ∷
-                                (vArg βreccryptR-paillierE) ∷ (vArg βreccryptR-paillierD) ∷ (vArg βreccryptR-OPEE) ∷ (vArg βreccryptR-OPED) ∷
-                                (vArg βreccryptR-ElgRSAE) ∷ (vArg βreccryptR-ElgRSAD) ∷ (vArg βreccryptR-ElgOPEE) ∷ (vArg βreccryptR-ElgOPED) ∷
-                                (vArg βreccryptR-increment100) ∷ (vArg βreccryptR-crypt-inc) ∷ (vArg βreccryptR-id) ∷ [])
-                               (quote #cryptR) (0 ∷ 0 ∷ 0 ∷ 0 ∷ 0 ∷ [])
-                               (quote reccryptR*)
-                               (quote cryptR) cryptRpoints cryptRpaths
+              = generateβRecHitPath (quote reccryptR)
+                                    ((vArg βreccryptR-insertQ) ∷ (vArg βreccryptR-deleteQ) ∷ (vArg βreccryptR-rsaE) ∷ (vArg βreccryptR-rsaD) ∷
+                                     (vArg βreccryptR-paillierE) ∷ (vArg βreccryptR-paillierD) ∷
+                                     (vArg βreccryptR-OPEE) ∷ (vArg βreccryptR-OPED) ∷
+                                     (vArg βreccryptR-ElgRSAE) ∷ (vArg βreccryptR-ElgRSAD) ∷ (vArg βreccryptR-ElgOPEE) ∷ (vArg βreccryptR-ElgOPED) ∷
+                                     (vArg βreccryptR-increment100) ∷ (vArg βreccryptR-crypt-inc) ∷ (vArg βreccryptR-id) ∷ [])
+                                    (quote cryptR)
+                                    (quote reccryptR*) 0 cryptRpoints cryptRpaths
 
-  unquoteDecl indcryptR* = generateInd (vArg indcryptR*)
-                                       (quote #cryptR) (0 ∷ 0 ∷ 0 ∷ 0 ∷ 0 ∷ [])
+-- -----
 
-  unquoteDecl indcryptR βindcryptR-insertQ βindcryptR-deleteQ βindcryptR-rsaE βindcryptR-rsaD βindcryptR-paillierE βindcryptR-paillierD
+  unquoteDecl indcryptR* iβctab_* iβctabRSA_* iβctabPL_* iβctabOPE_* iβctabEG_*
+                                = generateβInd (vArg indcryptR*)
+                                     ((vArg iβctab_*) ∷ (vArg iβctabRSA_*) ∷ (vArg iβctabPL_*) ∷ (vArg iβctabOPE_*) ∷ (vArg iβctabEG_*) ∷ [])
+                                     (quote cryptR) 0 cryptRpoints
+
+  {-# REWRITE iβctab_* #-}
+  {-# REWRITE iβctabRSA_* #-}
+  {-# REWRITE iβctabPL_* #-}
+  {-# REWRITE iβctabOPE_* #-}
+  {-# REWRITE iβctabEG_* #-}
+
+  unquoteDecl indcryptR = generateIndHit (vArg indcryptR)
+                                     (quote cryptR)
+                                     (quote indcryptR*) 0 cryptRpoints cryptRpaths
+
+  unquoteDecl βindcryptR-insertQ βindcryptR-deleteQ βindcryptR-rsaE βindcryptR-rsaD βindcryptR-paillierE βindcryptR-paillierD
               βindcryptR-OPEE βindcryptR-OPED βindcryptR-ElgRSAE βindcryptR-ElgRSAD βindcryptR-ElgOPEE βindcryptR-ElgOPED
               βindcryptR-increment100 βindcryptR-crypt-inc βindcryptR-id
-              = generateIndHit (vArg indcryptR)
-                               ((vArg βindcryptR-insertQ) ∷ (vArg βindcryptR-deleteQ) ∷ (vArg βindcryptR-rsaE) ∷ (vArg βindcryptR-rsaD) ∷
-                                (vArg βindcryptR-paillierE) ∷ (vArg βindcryptR-paillierD) ∷ (vArg βindcryptR-OPEE) ∷ (vArg βindcryptR-OPED) ∷
-                                (vArg βindcryptR-ElgRSAE) ∷ (vArg βindcryptR-ElgRSAD) ∷ (vArg βindcryptR-ElgOPEE) ∷ (vArg βindcryptR-ElgOPED) ∷
-                                (vArg βindcryptR-increment100) ∷ (vArg βindcryptR-crypt-inc) ∷ (vArg βindcryptR-id) ∷ [])
-                               (quote #cryptR) (0 ∷ 0 ∷ 0 ∷ 0 ∷ 0 ∷ [])
-                               (quote indcryptR*)
-                               (quote cryptR) cryptRpoints cryptRpaths
+              = generateβIndHitPath (quote indcryptR)
+                                    ((vArg βindcryptR-insertQ) ∷ (vArg βindcryptR-deleteQ) ∷ (vArg βindcryptR-rsaE) ∷ (vArg βindcryptR-rsaD) ∷
+                                     (vArg βindcryptR-paillierE) ∷ (vArg βindcryptR-paillierD) ∷ (vArg βindcryptR-OPEE) ∷ (vArg βindcryptR-OPED) ∷
+                                     (vArg βindcryptR-ElgRSAE) ∷ (vArg βindcryptR-ElgRSAD) ∷ (vArg βindcryptR-ElgOPEE) ∷ (vArg βindcryptR-ElgOPED) ∷
+                                     (vArg βindcryptR-increment100) ∷ (vArg βindcryptR-crypt-inc) ∷ (vArg βindcryptR-id) ∷ [])
+                                    (quote cryptR)
+                                    (quote indcryptR*) 0 cryptRpoints cryptRpaths
 
 
   paillier-homRToC : {n : Nat} → (p q : Nat) → (i : Nat) → (r : History 0 n) → (ctab  (PAILLIER-DECRYPT p , q :: (CRYPT-INCREMENT100 p , q , i :: (PAILLIER-ENCRYPT p , q :: r))))
@@ -886,5 +968,4 @@ interp#3 {a} {b} {p} {q} x = coe-biject (apI-path I-cryptR x)
 
 interp#4 : {a b : cryptR} → {p q : a ≡ b} → (x : p ≡ q) → (I-cryptR a ≡ I-cryptR b) → (I-cryptR a ≡ I-cryptR b)
 interp#4 x = coe' (apI-path I-cryptR x)
-
 

@@ -1,7 +1,8 @@
 -- {-# OPTIONS --verbose tc.unquote.decl:20 #-}
 -- {-# OPTIONS --verbose tc.unquote.def:10 #-}
 -- {-# OPTIONS --verbose tc.term.expr.top:5 #-}
--- {-# OPTIONS --verbose tc.sample.debug:12 #-}
+{-# OPTIONS --verbose tc.sample.debug:20 #-}
+{-# OPTIONS --rewriting #-}
 
 open import Agda.Builtin.Reflection
 open import Agda.Builtin.Nat
@@ -18,6 +19,14 @@ module Automation.utils.reflectionUtils where
 
 pattern vArg y = arg (arg-info visible relevant) y
 pattern hArg y = arg (arg-info hidden relevant) y
+
+
+infix 30 _↦_
+
+postulate  -- HIT
+  _↦_ : ∀ {i} {A : Set i} → A → A → Set i
+
+{-# BUILTIN REWRITE _↦_ #-}
 
 _>>=_ : ∀ {α β} {A : Set α} {B : Set β} → TC A → (A → TC B) → TC B
 _>>=_ = bindTC
@@ -441,11 +450,10 @@ generateIndexRef-c inds bs argRef = bindTC (countBool true bs)
 
 generateIndexRef : (inds : List Nat) → (irefs : List (List Bool)) → (args : List Nat) → TC (List (Arg Term))
 generateIndexRef inds (ib ∷ ibs) (x ∷ xs) = bindTC (generateIndexRef inds ibs xs)
-                                                   (λ xs' → bindTC (debugPrint "tc.sample.debug" 20 (strErr "Inside generateIndRef ##--> " ∷ []))
-                                                   (λ _ → bindTC (isMemberBool false ib) λ
+                                                   (λ xs' → bindTC (isMemberBool false ib) λ
                                                                    { true → bindTC (generateIndexRef-c inds ib x)
                                                                                    (λ ty → returnTC (vArg ty ∷ xs')) ;
-                                                                     false → returnTC (vArg (var x []) ∷ xs') } ))
+                                                                     false → returnTC (vArg (var x []) ∷ xs') } )
 generateIndexRef inds [] [] = returnTC []
 generateIndexRef inds x y = returnTC []
 
@@ -487,7 +495,7 @@ foldl' f z (x ∷ xs) = bindTC (f z x)
                         (λ xs' → returnTC xs'))
 -- foldl f (f z x) xs
 
-
+{-
 {-# TERMINATING #-}
 retExprRef' : (cons : Type) → TC Nat
 retExprRef' (def x lsargs) = do ls ← map' (λ { (arg i term) →
@@ -540,6 +548,86 @@ getExpRef ind =
   do lcons ← (getConstructors ind)
      (getExprRef ind lcons)
 
+-}
+
+
+getBoolList : {A : Set} → List A → TC (List Bool)
+getBoolList [] = pure []
+getBoolList (x ∷ xs) = do lb ← getBoolList xs
+                          pure (false ∷ lb)
+
+setBl : (d : Nat) → List Bool → TC (List Bool)
+setBl d [] = pure []
+setBl zero (x ∷ xs) = pure (true ∷ xs)
+setBl (suc x) (y ∷ ys) = do lb ← setBl x ys
+                            pure (y ∷ lb)
+
+countB : List Bool → TC Nat
+countB [] = pure 0
+countB (x ∷ xs) = do c ← countB xs
+                     case x of λ
+                      { true → pure (suc c)
+                      ; false → pure c
+                      }
+
+
+{-# TERMINATING #-}
+retExprRef' : (refLs : List Nat) → List Bool → (cons : Type) → TC (List Bool)
+retExprRef' refLs lb (def x lsargs) = do ls ← foldl' (λ { lb' (arg i term) →
+                                                               do lb'' ← retExprRef' refLs lb' term
+                                                                  pure lb'' }) lb lsargs
+                                         pure ls
+retExprRef' refLs lb (con x lsargs) = do ls ← foldl' (λ { lb' (arg i term) →
+                                                               do lb'' ← retExprRef' refLs lb' term
+                                                                  pure lb'' }) lb lsargs
+                                         pure ls
+retExprRef' refLs lb (var ref lsargs) = do b ← isMember ref refLs
+                                           case b of λ
+                                            { true →
+                                                 do lb' ← reverseTC lb
+                                                    lb'' ← setBl ref lb'
+                                                    lb''' ← reverseTC lb''
+                                                    pure lb'''
+                                            ; false → pure lb
+                                            }
+retExprRef' refLs lb x = pure []
+
+retExprRef : (indType : Name) → (refLs : List Nat) → (cons : Type) → TC Nat
+retExprRef ind ref (pi (arg info t1) (abs s t2)) =
+    do let ref' = (map (λ z → z + 1) ref)
+           ref'' = (ref' ∷L 0)
+       t2' ← retExprRef ind ref'' t2
+       pure t2'
+retExprRef ind ref (def x lsargs) =
+    case (primQNameEquality ind x) of λ
+     { true →
+       do cp ← getParameters ind
+          lsargs' ← dropTC cp lsargs
+          ref' ← dropTC cp ref
+          lb ← getBoolList ref'
+          lb' ← foldl' (λ {lb' (arg i term) →
+                           do b' ← (retExprRef' ref' lb' term)
+                              pure b' }) lb lsargs'
+          ln ← countB lb'
+          pure ln
+     ; false → pure 0
+     }
+retExprRef ind ref x = pure 0
+
+
+getExprRef : (indType : Name) → (cons : List Name) → TC (List Nat)
+getExprRef ind [] = pure []
+getExprRef ind (c ∷ cs) =
+    do cTy ← getType c
+       l ← retExprRef ind [] cTy
+       ls ← getExprRef ind cs
+       pure (l ∷ ls)
+
+getExpRef : (indType : Name) → TC (List Nat)
+getExpRef ind =
+    do lcons ← (getConstructors ind)
+       (getExprRef ind lcons)
+
 
 {-# TERMINATING #-}
 printArgs : List (Arg Term) → TC ⊤
@@ -564,7 +652,7 @@ printArgs (x ∷ xs) = bindTC (returnTC x) λ
 
 printList : List Nat → TC ⊤
 printList [] = returnTC tt
-printList (x ∷ xs) = bindTC (debugPrint "tc.sample.debug" 12 (strErr (showNat x) ∷ []))
+printList (x ∷ xs) = bindTC (debugPrint "tc.sample.debug" 20 (strErr "printList **" ∷ strErr (showNat x) ∷ []))
                             (λ _ → printList xs)
 
 {-# TERMINATING #-}
@@ -577,9 +665,9 @@ updateArgs refList (x ∷ xs) =
          do args' ← updateArgs refList args
             refList' ← reverseTC refList
             x' ← getListElement dis refList'
-            debugPrint "tc.sample.debug" 12 (strErr "Inside updateAgrs" ∷ [])
-            printList refList'
-            debugPrint "tc.sample.debug" 12 (strErr (showNat dis) ∷ strErr " and " ∷ strErr (showNat x') ∷ [])
+            -- debugPrint "tc.sample.debug" 12 (strErr "Inside updateAgrs" ∷ [])
+            -- printList refList'
+            -- debugPrint "tc.sample.debug" 12 (strErr (showNat dis) ∷ strErr " and " ∷ strErr (showNat x') ∷ [])
             pure ((arg info (var x' args')) ∷ xs')
        ; (arg info (def y args)) →
          do args' ← updateArgs refList args
@@ -588,7 +676,7 @@ updateArgs refList (x ∷ xs) =
          do args' ← updateArgs refList args
             pure ((arg info (con y args')) ∷ xs')
        ; (arg info term) →
-         do debugPrint "tc.sample.debug" 12 (strErr "unmatched case" ∷ [])
+         do -- debugPrint "tc.sample.debug" 12 (strErr "unmatched case" ∷ [])
             pure ((arg info term) ∷ xs')
        }
 
@@ -599,15 +687,15 @@ changeCodomainInd Cref refL pars (def nm x) =
      pars'' ← generateRefTerm pars'
      d ← getParameters nm
      index ← dropTC d x
-     debugPrint "tc.sample.debug" 12 (strErr "changeCodomainInd 1 -----> " ∷ [])
-     printArgs x
+     -- debugPrint "tc.sample.debug" 12 (strErr "changeCodomainInd 1 -----> " ∷ [])
+     -- printArgs x
      index' ← updateArgs refL index
      indexH ← changeVisToHid index
-     debugPrint "tc.sample.debug" 12 (strErr "changeCodomainInd -----> " ∷ [])
-     printList refL
-     debugPrint "tc.sample.debug" 12 (strErr "ListEnd ----" ∷ [])
-     debugPrint "tc.sample.debug" 12 (termErr (def nm []) ∷ [])
-     printArgs indexH
+     -- debugPrint "tc.sample.debug" 12 (strErr "changeCodomainInd -----> " ∷ [])
+     -- printList refL
+     -- debugPrint "tc.sample.debug" 12 (strErr "ListEnd ----" ∷ [])
+     -- debugPrint "tc.sample.debug" 12 (termErr (def nm []) ∷ [])
+     -- printArgs indexH
      pure (var Cref (indexH ++L (vArg (var pars pars'') ∷ [])))
 changeCodomainInd Cref refL pars (pi (arg info dom) (abs s cdom)) =
   do let refL' = map (λ z → z + 1) refL

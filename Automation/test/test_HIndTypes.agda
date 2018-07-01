@@ -1,9 +1,10 @@
 -- {-# OPTIONS --verbose tc.unquote.decl:20 #-}
 -- {-# OPTIONS --verbose tc.unquote.def:10 #-}
 -- {-# OPTIONS --verbose tc.term.expr.top:5 #-}
--- {-# OPTIONS --verbose tc.sample.debug:12 #-}
+{-# OPTIONS --verbose tc.sample.debug:20 #-}
 -- {-# OPTIONS --type-in-type #-}
 {-# OPTIONS --no-auto-inline #-}
+{-# OPTIONS --rewriting #-}
 
 open import Agda.Builtin.Reflection
 open import Agda.Primitive
@@ -17,6 +18,12 @@ open import Automation.lib.generateInd
 open import Automation.lib.generateHit
 open import Automation.lib.generateRecHit
 open import Automation.lib.generateIndHit
+open import Automation.lib.generateBetaRecHit
+open import Automation.lib.generateBetaRecHitPath using (generateβRecHitPath)
+open import Automation.lib.generateBetaRec
+open import Automation.lib.generateBetaIndHit
+open import Automation.lib.generateBetaIndHitPath using (generateβIndHitPath)
+open import Automation.lib.generateBetaInd
 open import Automation.utils.reflectionUtils
 open import Automation.utils.pathUtils
 
@@ -28,50 +35,48 @@ macro
                           (λ type → unify hole type)
 
 module Circle1 where
-  private 
-    data S₁* : Set where
-      base* : S₁*
 
-{--
-  S : Set
-  S = S*
-
-  base : S
-  base = base*
-
-  postulate 
+  postulate
+    S₁ : Set
+    base : S₁
     loop : base ≡ base
---}
 
-  unquoteDecl S₁ S₁points base S₁paths loop = data-hit (quote S₁*) S₁
-                                                S₁points (base ∷ []) -- point constructors
-                                                S₁paths (loop ∷ []) -- path constructors
-                                                (argPath (base* ≡ base*) ∷ []) -- base* will be replaced by base
+  S₁points : List Name
+  S₁points = ((quote base) ∷ [])
+
+  S₁paths : List Name
+  S₁paths = ((quote loop) ∷ [])
 
 {--
   recS : S → (C : Set) → (cbase : C) → (cloop : cbase ≡ cbase) → C
   recS base* C cbase cloop = cbase
 --}
 
-  unquoteDecl recS₁* = generateRec (vArg recS₁*)
-                                   (quote S₁*)
+  unquoteDecl recS* βbase* = generateβRec (vArg recS*)
+                                     ((vArg βbase*) ∷ [])
+                                     (quote S₁) 0 S₁points
 
-  unquoteDecl recS₁ βrecS₁ = generateRecHit (vArg recS₁) ((vArg βrecS₁) ∷ [])
-                                     (quote S₁*)
-                                     (quote recS₁*)
-                                     (quote S₁) S₁points S₁paths
+  {-# REWRITE βbase* #-}
 
-  thm1 : thm-prv recS₁ ≡ (S₁ → (C : Set) → (cbase : C) → (cloop : cbase ≡ cbase) → C)
-  thm1 = refl
+  unquoteDecl recS = generateRecHit (vArg recS)
+                                    (quote S₁)
+                                    (quote recS*) 0 S₁points S₁paths
 
-{--
+{-
   postulate
     βrecS : (C : Set) → (cbase : C) → (cloop : cbase ≡ cbase) → 
       ap (λ x → recS x C cbase cloop) loop ≡ cloop
---}
+-}
 
-  thm2 : thm-prv βrecS₁ ≡ ((C : Set) → (cbase : C) → (cloop : cbase ≡ cbase) → ap (λ x → recS₁ x C cbase cloop) loop ≡ cloop)
+  unquoteDecl βloop = generateβRecHitPath (quote recS)
+                                     ((vArg βloop) ∷ [])
+                                     (quote S₁)
+                                     (quote recS*) 0 S₁points S₁paths
+
+
+  thm2 : thm-prv βloop ≡ ((C : Set) → (cbase : C) → (cloop : cbase ≡ cbase) → ap (λ x → recS x C cbase cloop) loop ≡ cloop)
   thm2 = refl
+
 
 {--
   indS : (circle : S) → (C : S → Set) → 
@@ -79,56 +84,51 @@ module Circle1 where
   indS base* C cbase cloop = cbase
 --}
 
-  unquoteDecl indS₁* = generateInd (vArg indS₁*)
-                                   (quote S₁*)
+  unquoteDecl indS* βibase* = generateβInd (vArg indS*)
+                                        ((vArg βibase*) ∷ [])
+                                        (quote S₁) 0 S₁points
 
-  unquoteDecl indS₁ βindS₁ = generateIndHit (vArg indS₁) ((vArg βindS₁) ∷ [])
-                                     (quote S₁*)
-                                     (quote indS₁*)
-                                     (quote S₁) S₁points S₁paths
+  {-# REWRITE βibase* #-}
 
-  thm3 : thm-prv indS₁ ≡ ((circle : S₁) → (C : S₁ → Set) → (cbase : C base) → (cloop : transport C loop cbase ≡ cbase) → C circle)
-  thm3 = refl
 
-{--
+  unquoteDecl indS = generateIndHit (vArg indS)
+                                    (quote S₁)
+                                    (quote indS*) 0 S₁points S₁paths
+
+{-
   postulate
-    βindS : (C : S → Set) → 
+    βindS : (C : S₁ → Set) → 
       (cbase : C base) → (cloop : transport C loop cbase ≡ cbase) → 
       apd (λ x → indS x C cbase cloop) loop ≡ cloop
---}
+-}
 
-  thm4 : thm-prv βindS₁ ≡ ((C : S₁ → Set) → (cbase : C base) → (cloop : transport C loop cbase ≡ cbase) → apd (λ x → indS₁ x C cbase cloop) loop ≡ cloop)
+  unquoteDecl βiloop = generateβIndHitPath (quote indS)
+                                     ((vArg βiloop) ∷ [])
+                                     (quote S₁)
+                                     (quote indS*) 0 S₁points S₁paths
+
+  thm4 : thm-prv βiloop ≡ ((C : S₁ → Set) → (cbase : C base) → (cloop : transport C loop cbase ≡ cbase) → apd (λ x → indS x C cbase cloop) loop ≡ cloop)
   thm4 = refl
 
 -- ---------
 
+
 module Circle2 where
-  private 
-    data S₂* : Set where
-      south* : S₂*
-      north* : S₂*
 
-{--
-  S¹' : Set
-  S¹' = S¹'*
-
-  south : S¹'
-  south = south*
-
-  north : S¹'
-  north = north*
-
-  postulate 
+  postulate
+    S₂ : Set
+    south : S₂
+    north : S₂
     east : south ≡ north
     west : south ≡ north
---}
 
-  unquoteDecl S₂ S₂points south north S₂paths east west = data-hit (quote S₂*) S₂
-                                                            S₂points (south ∷ north ∷ []) -- point constructors
-                                                            S₂paths (east ∷ west ∷ []) -- path constructors
-                                                            (argPath (south* ≡ north*) ∷ 
-                                                             argPath (south* ≡ north*) ∷ []) -- south* and north* will be replaced by south and north resp. 
+  S₂points : List Name
+  S₂points = ((quote south) ∷ (quote north) ∷ [])
 
+  S₂paths : List Name
+  S₂paths = ((quote east) ∷ (quote west) ∷ [])
+  
+  
 {--
   recS¹' : S¹' → (C : Set) → 
     (csouth cnorth : C) → (ceast cwest : csouth ≡ cnorth) → C
@@ -136,30 +136,37 @@ module Circle2 where
   recS¹' north* csouth cnorth ceast cwest = cnorth
 --}
 
-  unquoteDecl recS₂* = generateRec (vArg recS₂*)
-                                   (quote S₂*)
+  unquoteDecl recS₂* βsouth* βnorth* = generateβRec (vArg recS₂*)
+                                     ((vArg βsouth*) ∷ (vArg βnorth*) ∷ [])
+                                     (quote S₂) 0 S₂points
 
-  unquoteDecl recS₂ βreceastS₂ βrecwestS₂ = generateRecHit (vArg recS₂) ((vArg βreceastS₂) ∷ (vArg βrecwestS₂) ∷ [])
-                                     (quote S₂*)
-                                     (quote recS₂*)
-                                     (quote S₂) S₂points S₂paths
+  {-# REWRITE βsouth* #-}
+  {-# REWRITE βnorth* #-}
 
-  thm5 : thm-prv recS₂ ≡ (S₂ → (C : Set) → (csouth cnorth : C) → (ceast cwest : csouth ≡ cnorth) → C)
-  thm5 = refl
+  unquoteDecl recS₂ = generateRecHit (vArg recS₂)
+                                     (quote S₂)
+                                     (quote recS₂*) 0 S₂points S₂paths
 
-{--
+
+{-
   postulate
-    βreceastS¹' : (C : Set) → 
+    βreceastS¹ : (C : Set) → 
       (csouth cnorth : C) → (ceast cwest : csouth ≡ cnorth) → 
-      ap (λ x → recS¹' x C csouth cnorth ceast cwest) east ≡ ceast
-    βrecwestS¹' : (C : Set) → 
+      ap (λ x → recS₂ x C csouth cnorth ceast cwest) east ≡ ceast
+    βrecwestS¹ : (C : Set) → 
       (csouth cnorth : C) → (ceast cwest : csouth ≡ cnorth) → 
-      ap (λ x → recS¹' x C csouth cnorth ceast cwest) west ≡ cwest
---}
-  thm6 : thm-prv βreceastS₂ ≡ ((C : Set) → (csouth cnorth : C) → (ceast cwest : csouth ≡ cnorth) → ap (λ x → recS₂ x C csouth cnorth ceast cwest) east ≡ ceast)
+      ap (λ x → recS₂ x C csouth cnorth ceast cwest) west ≡ cwest
+-}
+
+  unquoteDecl βreceast βrecwest = generateβRecHitPath (quote recS₂)
+                                     ((vArg βreceast) ∷ (vArg βrecwest) ∷ [])
+                                     (quote S₂)
+                                     (quote recS₂*) 0 S₂points S₂paths
+
+  thm6 : thm-prv βreceast ≡ ((C : Set) → (csouth cnorth : C) → (ceast cwest : csouth ≡ cnorth) → ap (λ x → recS₂ x C csouth cnorth ceast cwest) east ≡ ceast)
   thm6 = refl
 
-  thm7 : thm-prv βrecwestS₂ ≡ ((C : Set) → (csouth cnorth : C) → (ceast cwest : csouth ≡ cnorth) → ap (λ x → recS₂ x C csouth cnorth ceast cwest) west ≡ cwest)
+  thm7 : thm-prv βrecwest ≡ ((C : Set) → (csouth cnorth : C) → (ceast cwest : csouth ≡ cnorth) → ap (λ x → recS₂ x C csouth cnorth ceast cwest) west ≡ cwest)
   thm7 = refl
 
 {--
@@ -171,67 +178,63 @@ module Circle2 where
   indS¹' north* C csouth cnorth ceast cwest = cnorth
 --}
 
-  unquoteDecl indS₂* = generateInd (vArg indS₂*)
-                                   (quote S₂*)
+  unquoteDecl indS₂* βisouth* βinorth* = generateβInd (vArg indS₂*)
+                                     ((vArg βisouth*) ∷ (vArg βinorth*) ∷ [])
+                                     (quote S₂) 0 S₂points
 
-  unquoteDecl indS₂ βindeastS₂ βindwestS₂ = generateIndHit (vArg indS₂) ((vArg βindeastS₂) ∷ (vArg βindwestS₂) ∷ [])
-                                                           (quote S₂*)
-                                                           (quote indS₂*)
-                                                           (quote S₂) S₂points S₂paths
+  {-# REWRITE βisouth* #-}
+  {-# REWRITE βinorth* #-}
+
+  unquoteDecl indS₂ = generateIndHit (vArg indS₂)
+                                     (quote S₂)
+                                     (quote indS₂*) 0 S₂points S₂paths
+
+{-
+  postulate
+    βindeastS¹' : (C : S₂ → Set) → 
+      (csouth : C south) → (cnorth : C north) → 
+      (ceast : transport C east csouth ≡ cnorth) → 
+      (cwest : transport C west csouth ≡ cnorth) → 
+      apd (λ x → indS₂ x C csouth cnorth ceast cwest) east ≡ ceast
+    βindwestS¹' : (C : S₂ → Set) → 
+      (csouth : C south) → (cnorth : C north) → 
+      (ceast : transport C east csouth ≡ cnorth) → 
+      (cwest : transport C west csouth ≡ cnorth) → 
+      apd (λ x → indS₂ x C csouth cnorth ceast cwest) west ≡ cwest
+-}
+
+  unquoteDecl βindeast βindwest = generateβIndHitPath (quote indS₂)
+                                     ((vArg βindeast) ∷ (vArg βindwest) ∷ [])
+                                     (quote S₂)
+                                     (quote indS₂*) 0 S₂points S₂paths
 
   thm8 : thm-prv indS₂ ≡ ((circle : S₂) → (C : S₂ → Set) → (csouth : C south) → (cnorth : C north) →  (ceast : transport C east csouth ≡ cnorth) → 
                            (cwest : transport C west csouth ≡ cnorth) → C circle)
   thm8 = refl
 
-{--
-  postulate
-    βindeastS¹' : (C : S¹' → Set) → 
-      (csouth : C south) → (cnorth : C north) → 
-      (ceast : transport C east csouth ≡ cnorth) → 
-      (cwest : transport C west csouth ≡ cnorth) → 
-      apd (λ x → indS¹' x C csouth cnorth ceast cwest) east ≡ ceast
-    βindwestS¹' : (C : S¹' → Set) → 
-      (csouth : C south) → (cnorth : C north) → 
-      (ceast : transport C east csouth ≡ cnorth) → 
-      (cwest : transport C west csouth ≡ cnorth) → 
-      apd (λ x → indS¹' x C csouth cnorth ceast cwest) west ≡ cwest
---}
-
-  thm9 : thm-prv βindeastS₂ ≡ ((C : S₂ → Set) → (csouth : C south) → (cnorth : C north) → (ceast : transport C east csouth ≡ cnorth) → (cwest : transport C west csouth ≡ cnorth) → 
+  thm9 : thm-prv βindeast ≡ ((C : S₂ → Set) → (csouth : C south) → (cnorth : C north) → (ceast : transport C east csouth ≡ cnorth) → (cwest : transport C west csouth ≡ cnorth) → 
                                 apd (λ x → indS₂ x C csouth cnorth ceast cwest) east ≡ ceast)
   thm9 = refl
 
-  thm10 : thm-prv βindwestS₂ ≡ ((C : S₂ → Set) → (csouth : C south) → (cnorth : C north) → (ceast : transport C east csouth ≡ cnorth) → (cwest : transport C west csouth ≡ cnorth) → 
+  thm10 : thm-prv βindwest ≡ ((C : S₂ → Set) → (csouth : C south) → (cnorth : C north) → (ceast : transport C east csouth ≡ cnorth) → (cwest : transport C west csouth ≡ cnorth) → 
                                  apd (λ x → indS₂ x C csouth cnorth ceast cwest) west ≡ cwest)
   thm10 = refl
 
 -- ---------
 
 module Pushout where
-  private
-    data Pushout* {A B C : Set} (f : C → A) (g : C → B) : Set where
-      inl* : A → Pushout* f g 
-      inr* : B → Pushout* f g
-
-{--
-  Pushout : {A B C : Set} → (f : C → A) → (g : C → B) → Set
-  Pushout = Pushout*
-
-  inl : {A B C : Set} → {f : C → A} → {g : C → B} → A → Pushout f g
-  inl = inl*
-
-  inr : {A B C : Set} → {f : C → A} → {g : C → B} → B → Pushout f g
-  inr = inr*
 
   postulate
+    Pushout : {A B C : Set} → (f : C → A) → (g : C → B) → Set
+    inl : {A B C : Set} → {f : C → A} → {g : C → B} → A → Pushout f g
+    inr : {A B C : Set} → {f : C → A} → {g : C → B} → B → Pushout f g
     glue : {A B C : Set} → {f : C → A} → {g : C → B} → (c : C) → (inl {A} {B} {C} {f} {g} (f c)) ≡ (inr (g c))
---}
 
-  unquoteDecl Pushout Pushoutpoints inl inr Pushoutpaths glue = data-hit (quote Pushout*) Pushout
-                                                                  Pushoutpoints (inl ∷ inr ∷ []) -- point constructors
-                                                                  Pushoutpaths (glue ∷ []) -- path constructors
-                                                                  (argPath ({A B C : Set} → {f : C → A} → {g : C → B} → (c : C) → (inl* {A} {B} {C} {f} {g} (f c)) ≡ (inr* (g c))) ∷ [])
-                                                                  -- inl* and inr* will be replaced by inl and inr respectively
+  Pushoutpoints : List Name
+  Pushoutpoints = ((quote inl) ∷ (quote inr) ∷ [])
+
+  Pushoutpaths : List Name
+  Pushoutpaths = ((quote glue) ∷ [])
 
 {--
   recPush : {A B C : Set} → {f : C → A} → {g : C → B} →
@@ -241,28 +244,43 @@ module Pushout where
   recPush (inr* b) D f1 f2 dglue = (f2 b)
 --}
 
-  unquoteDecl recPush* = generateRec (vArg recPush*)
-                                     (quote Pushout*)
+  unquoteDecl recP* βinl* βinr* = generateβRec (vArg recP*)
+                                     ((vArg βinl*) ∷ (vArg βinr*) ∷ [])
+                                     (quote Pushout) 5 Pushoutpoints
 
-  unquoteDecl recPush βrecPush = generateRecHit (vArg recPush) ((vArg βrecPush) ∷ [])
-                                       (quote Pushout*)
-                                       (quote recPush*)
-                                       (quote Pushout) Pushoutpoints Pushoutpaths
+  {-# REWRITE βinl* #-}
+  {-# REWRITE βinr* #-}
 
-  thm11 : thm-prv recPush ≡ ({A B C : Set} → {f : C → A} → {g : C → B} → Pushout f g → (D : Set) → (f1 : A → D) → (f2 : B → D) → (dglue : (c : C) → (f1 (f c)) ≡ (f2 (g c))) → D)
+  unquoteDecl recP = generateRecHit (vArg recP)
+                                    (quote Pushout)
+                                    (quote recP*) 5 Pushoutpoints Pushoutpaths
+
+  thm11 : thm-prv recP ≡ ({A B C : Set} → {f : C → A} → {g : C → B} → Pushout f g → (D : Set) → (f1 : A → D) → (f2 : B → D) → (dglue : (c : C) → (f1 (f c)) ≡ (f2 (g c))) → D)
   thm11 = refl
 
-{--
+{-
   postulate
     βrecPush' : {A B C : Set} → {f : C → A} → {g : C → B} →
                (D : Set) → (f1 : A → D) → (f2 : B → D) →
                (dglue : (c : C) → (f1 (f c)) ≡ (f2 (g c))) →
-               {c : C} → ap (λ x → recPush2 x D f1 f2 dglue) (P2glue {A} {B} {C} {f} {g} c) ≡ (dglue c)
---}
+               {c : C} → ap (λ x → recP x D f1 f2 dglue) (glue {A} {B} {C} {f} {g} c) ≡ (dglue c)
+-}
 
-  thm12 : thm-prv βrecPush ≡ ({A B C : Set} → {f : C → A} → {g : C → B} → (D : Set) → (f1 : A → D) → (f2 : B → D) → (dglue : (c : C) → (f1 (f c)) ≡ (f2 (g c))) →
-                               {c : C} → ap (λ x → recPush x D f1 f2 dglue) (glue {A} {B} {C} {f} {g} c) ≡ (dglue c))
+  unquoteDecl βglue = generateβRecHitPath (quote recP)
+                                     ((vArg βglue) ∷ [])
+                                     (quote Pushout)
+                                     (quote recP*) 5 Pushoutpoints Pushoutpaths
+
+  thm12 : thm-prv βglue ≡ ({A B C : Set} → {f : C → A} → {g : C → B} → (D : Set) → (f1 : A → D) → (f2 : B → D) → (dglue : (c : C) → (f1 (f c)) ≡ (f2 (g c))) →
+                               {c : C} → ap (λ x → recP x D f1 f2 dglue) (glue {A} {B} {C} {f} {g} c) ≡ (dglue c))
   thm12 = refl
+
+  unquoteDecl indP* iβinl* iβinr* = generateβInd (vArg indP*)
+                                     ((vArg iβinl*) ∷ (vArg iβinr*) ∷ [])
+                                     (quote Pushout) 5 Pushoutpoints
+
+  {-# REWRITE iβinl* #-}
+  {-# REWRITE iβinr* #-}
 
 {--
   indPush : {A B C : Set} → {f : C → A} → {g : C → B} →
@@ -272,43 +290,184 @@ module Pushout where
   indPush (inr* b) D f1 f2 dglue = (f2 b)
 --}
 
-  unquoteDecl indPush* = generateInd (vArg indPush*)
-                                     (quote Pushout*)
+  unquoteDecl indP = generateIndHit (vArg indP)
+                                    (quote Pushout)
+                                    (quote indP*) 5 Pushoutpoints Pushoutpaths
 
-  unquoteDecl indPush βindPush = generateIndHit (vArg indPush) ((vArg βindPush) ∷ [])
-                                                (quote Pushout*)
-                                                (quote indPush*)
-                                                (quote Pushout) Pushoutpoints Pushoutpaths
-
-  thm13 : thm-prv indPush ≡ ({A B C : Set} → {f : C → A} → {g : C → B} → (p : Pushout f g) → (D : Pushout f g → Set) → (f1 : (a : A) → D (inl a)) → (f2 : (b : B) → D (inr b)) →
+  thm13 : thm-prv indP ≡ ({A B C : Set} → {f : C → A} → {g : C → B} → (p : Pushout f g) → (D : Pushout f g → Set) → (f1 : (a : A) → D (inl a)) → (f2 : (b : B) → D (inr b)) →
                               (dglue : (c : C) → transport D (glue c) (f1 (f c)) ≡ (f2 (g c))) → D p)
   thm13 = refl
 
-{--
+{-
   postulate
     βindPush : {A B C : Set} → {f : C → A} → {g : C → B} →
                (D : Pushout f g → Set) → (f1 : (a : A) → D (inl a)) → (f2 : (b : B) → D (inr b)) →
                (dglue : (c : C) → transport D (glue c) (f1 (f c)) ≡ (f2 (g c))) →
-               {c : C} → apd (λ x → indPush x D f1 f2 dglue) (glue c) ≡ (dglue c)
---}
+               {c : C} → apd (λ x → indP x D f1 f2 dglue) (glue c) ≡ (dglue c)
+-}
 
-  thm14 : thm-prv βindPush ≡ ({A B C : Set} → {f : C → A} → {g : C → B} → (D : Pushout f g → Set) → (f1 : (a : A) → D (inl a)) → (f2 : (b : B) → D (inr b)) →
-                               (dglue : (c : C) → transport D (glue c) (f1 (f c)) ≡ (f2 (g c))) → {c : C} → apd (λ x → indPush x D f1 f2 dglue) (glue c) ≡ (dglue c))
+  unquoteDecl iβglue = generateβIndHitPath (quote indP)
+                                     ((vArg iβglue) ∷ [])
+                                     (quote Pushout)
+                                     (quote indP*) 5 Pushoutpoints Pushoutpaths
+
+  thm14 : thm-prv iβglue ≡ ({A B C : Set} → {f : C → A} → {g : C → B} → (D : Pushout f g → Set) → (f1 : (a : A) → D (inl a)) → (f2 : (b : B) → D (inr b)) →
+                               (dglue : (c : C) → transport D (glue c) (f1 (f c)) ≡ (f2 (g c))) → {c : C} → apd (λ x → indP x D f1 f2 dglue) (glue c) ≡ (dglue c))
   thm14 = refl
 
 -- ---------
 
+module Susp where
+
+  postulate
+    Σₛ : (A : Set) → Set
+    N : {A : Set} → Σₛ A
+    S : {A : Set} → Σₛ A
+    merid : {A : Set} → (a : A) → (N {A} ≡ S {A})
+
+  Σₛpoints : List Name
+  Σₛpoints = ((quote N) ∷ (quote S) ∷ [])
+
+  Σₛpaths : List Name
+  Σₛpaths = ((quote merid) ∷ [])
+
+{--
+  recₛ : {A : Set} → Σₛ A → (B : Set) → (n s : B) → (m : A → (n ≡ s)) → B
+  recₛ N* B n s m = n
+  recₛ S* B n s m = s
+--}
+
+
+  unquoteDecl recΣ* βΣn* βΣs* = generateβRec (vArg recΣ*)
+                                     ((vArg βΣn*) ∷ (vArg βΣs*) ∷ [])
+                                     (quote Σₛ) 1 Σₛpoints
+
+  {-# REWRITE βΣn* #-}
+  {-# REWRITE βΣs* #-}
+
+  unquoteDecl recΣ = generateRecHit (vArg recΣ)
+                                    (quote Σₛ)
+                                    (quote recΣ*) 1 Σₛpoints Σₛpaths
+
+  thm15 : thm-prv recΣ ≡ ({A : Set} → Σₛ A → (B : Set) → (n s : B) → (m : A → (n ≡ s)) → B)
+  thm15 = refl
+
+{-
+  postulate
+    βrecΣ : {A : Set} → (B : Set) → (n s : B) → (m : A → (n ≡ s)) →
+            {a : A} → ap (λ x → recΣ x B n s m) (merid a) ≡ m a
+-}
+
+  unquoteDecl βmerid = generateβRecHitPath (quote recΣ)
+                                     ((vArg βmerid) ∷ [])
+                                     (quote Σₛ)
+                                     (quote recΣ*) 1 Σₛpoints Σₛpaths
+
+  thm16 : thm-prv βmerid ≡ ({A : Set} → (B : Set) → (n s : B) → (m : A → (n ≡ s)) → {a : A} → ap (λ x → recΣ x B n s m) (merid a) ≡ m a)
+  thm16 = refl
+
+{--
+  indₛ : {A : Set} → (x : Σₛ A) → (B : Σₛ A → Set) → (n : B (N {A})) → (s : B (S {A})) → (m : (a : A) → (transport B (merid a) n ≡ s)) → B x
+  indₛ N* B n s m = n
+  indₛ S* B n s m = s
+--}
+
+  unquoteDecl indΣ* iβΣn* iβΣs* = generateβInd (vArg indΣ*)
+                                     ((vArg iβΣn*) ∷ (vArg iβΣs*) ∷ [])
+                                     (quote Σₛ) 1 Σₛpoints
+
+  {-# REWRITE iβΣn* #-}
+  {-# REWRITE iβΣs* #-}
+
+  unquoteDecl indΣ = generateIndHit (vArg indΣ)
+                                    (quote Σₛ)
+                                    (quote indΣ*) 1 Σₛpoints Σₛpaths
+
+  thm17 : thm-prv indΣ ≡ ({A : Set} → (x : Σₛ A) → (B : Σₛ A → Set) → (n : B (N {A})) → (s : B (S {A})) → (m : (a : A) → (transport B (merid a) n ≡ s)) → B x)
+  thm17 = refl
+
+{-
+  postulate
+    βindₛ : {A : Set} → (B : Σₛ A → Set) → (n : B N) → (s : B S) → (m : (a : A) → (transport B (merid a) n ≡ s)) →
+            {a : A} → apd (λ x → indΣ x B n s m) (merid a) ≡ m a  
+-}
+
+  unquoteDecl iβmerid = generateβIndHitPath (quote indΣ)
+                                     ((vArg iβmerid) ∷ [])
+                                     (quote Σₛ)
+                                     (quote indΣ*) 1 Σₛpoints Σₛpaths
+
+  thm18 : thm-prv iβmerid ≡ ({A : Set} → (B : Σₛ A → Set) → (n : B N) → (s : B S) → (m : (a : A) → (transport B (merid a) n ≡ s)) →
+                            {a : A} → apd (λ x → indΣ x B n s m) (merid a) ≡ m a)
+  thm18 = refl
+
+
+{-
+open Susp public
+
+absurd' : {A : Set} → (a : A) → (N {A} ≡ S {A}) → ⊥
+absurd' {A} a ()
+-}
+
+
 module Interval where
-  private
-    data 𝕀* : Set where
-      start* end* : 𝕀*
 
-  unquoteDecl 𝕀 𝕀points start end 𝕀paths ival =
-    data-hit (quote 𝕀*) 𝕀
-      𝕀points (start ∷ end ∷ []) -- point ctors
-      𝕀paths (ival ∷ []) -- path ctors
-      (argPath (start* ≡ end*) ∷ [])
+  postulate
+    𝕀 : Set
+    start : 𝕀
+    end : 𝕀
+    seg : start ≡ end
 
+  𝕀points : List Name
+  𝕀points = ((quote start) ∷ (quote end) ∷ [])
+
+  𝕀paths : List Name
+  𝕀paths = ((quote seg) ∷ [])
+
+  unquoteDecl rec𝕀* βstart* βend* = generateβRec (vArg rec𝕀*)
+                                     ((vArg βstart*) ∷ (vArg βend*) ∷ [])
+                                     (quote 𝕀) 0 𝕀points
+
+  {-# REWRITE βstart* #-}
+  {-# REWRITE βend* #-}
+
+  unquoteDecl rec𝕀 = generateRecHit (vArg rec𝕀)
+                                    (quote 𝕀)
+                                    (quote rec𝕀*) 0 𝕀points 𝕀paths
+
+  thm15 : thm-prv rec𝕀 ≡ (𝕀 → (B : Set) → (st end : B) → (seg : st ≡ end) → B)
+  thm15 = refl
+
+  unquoteDecl βseg = generateβRecHitPath (quote rec𝕀)
+                                     ((vArg βseg) ∷ [])
+                                     (quote 𝕀)
+                                     (quote rec𝕀*) 0 𝕀points 𝕀paths
+
+  thm16 : thm-prv βseg ≡ ((B : Set) → (s e : B) → (sg : s ≡ e) → ap (λ x → rec𝕀 x B s e sg) seg ≡ sg)
+  thm16 = refl
+
+  unquoteDecl ind𝕀* iβstart* iβend* = generateβInd (vArg ind𝕀*)
+                                     ((vArg iβend*) ∷ (vArg iβstart*) ∷ [])
+                                     (quote 𝕀) 0 𝕀points
+
+  {-# REWRITE iβstart* #-}
+  {-# REWRITE iβend* #-}
+
+  unquoteDecl ind𝕀 = generateIndHit (vArg ind𝕀)
+                                    (quote 𝕀)
+                                    (quote ind𝕀*) 0 𝕀points 𝕀paths
+
+  thm17 : thm-prv ind𝕀 ≡ ((x : 𝕀) → (B : 𝕀 → Set) → (s : B start) → (e : B end) → (sg : (transport B seg s ≡ e)) → B x)
+  thm17 = refl
+
+  unquoteDecl iβseg = generateβIndHitPath (quote ind𝕀)
+                                     ((vArg iβseg) ∷ [])
+                                     (quote 𝕀)
+                                     (quote ind𝕀*) 0 𝕀points 𝕀paths
+
+  thm18 : thm-prv iβseg ≡ ((B : 𝕀 → Set) → (s : B start) → (e : B end) → (sg : transport B seg s ≡ e) →
+                            apd (λ x → ind𝕀 x B s e sg) seg ≡ sg)
+  thm18 = refl
 
 module IntervalOops where
   open Interval
@@ -318,86 +477,5 @@ module IntervalOops where
   oops ()
 
   double-oops : ⊥
-  double-oops = oops ival
-
--- ---------
-
-module Susp where
-
-  private
-    data Σₛ* (A : Set) : Set where
-      N* : Σₛ* A
-      S* : Σₛ* A
-
-{--
-  Σₛ : (A : Set) → Set
-  Σₛ = Σₛ*
-
-  N : {A : Set} → Σₛ A
-  N = N*
-
-  S : {A : Set} → Σₛ A
-  S = S*
-
-  postulate
-    merid : {A : Set} → (a : A) → (N {A} ≡ S {A})
---}
-
-  unquoteDecl Σₛ Σₛpoints N S Σₛpaths merid = data-hit (quote Σₛ*) Σₛ
-                                               Σₛpoints (N ∷ S ∷ []) -- point constructors
-                                               Σₛpaths (merid ∷ []) -- path constructors
-                                               (argPath ({A : Set} → (a : A) → (N* {A} ≡ S* {A})) ∷ []) -- N* and S* will be replaced by N and S resp.
-
-{--
-  recₛ : {A : Set} → Σₛ A → (B : Set) → (n s : B) → (m : A → (n ≡ s)) → B
-  recₛ N* B n s m = n
-  recₛ S* B n s m = s
---}
-
-  unquoteDecl recΣₛ* = generateRec (vArg recΣₛ*)
-                                   (quote Σₛ*)
-
-  unquoteDecl recΣₛ βrecΣₛ = generateRecHit (vArg recΣₛ) ((vArg βrecΣₛ) ∷ [])
-                                     (quote Σₛ*)
-                                     (quote recΣₛ*)
-                                     (quote Σₛ) Σₛpoints Σₛpaths
-
-  thm15 : thm-prv recΣₛ ≡ ({A : Set} → Σₛ A → (B : Set) → (n s : B) → (m : A → (n ≡ s)) → B)
-  thm15 = refl
-
-{--
-  postulate
-    βrecₛ : {A : Set} → (B : Set) → (n s : B) → (m : A → (n ≡ s)) →
-            {a : A} → ap (λ x → recₛ x B n s m) (merid a) ≡ m a
---}
-
-  thm16 : thm-prv βrecΣₛ ≡ ({A : Set} → (B : Set) → (n s : B) → (m : A → (n ≡ s)) → {a : A} → ap (λ x → recΣₛ x B n s m) (merid a) ≡ m a)
-  thm16 = refl
-
-{--
-  indₛ : {A : Set} → (x : Σₛ A) → (B : Σₛ A → Set) → (n : B (N {A})) → (s : B (S {A})) → (m : (a : A) → (transport B (merid a) n ≡ s)) → B x
-  indₛ N* B n s m = n
-  indₛ S* B n s m = s
---}
-
-  unquoteDecl indΣₛ* = generateInd (vArg indΣₛ*)
-                                   (quote Σₛ*)
-
-  unquoteDecl indΣₛ βindΣₛ = generateIndHit (vArg indΣₛ) ((vArg βindΣₛ) ∷ [])
-                                            (quote Σₛ*)
-                                            (quote indΣₛ*)
-                                            (quote Σₛ) Σₛpoints Σₛpaths
-
-  thm17 : thm-prv indΣₛ ≡ ({A : Set} → (x : Σₛ A) → (B : Σₛ A → Set) → (n : B (N {A})) → (s : B (S {A})) → (m : (a : A) → (transport B (merid a) n ≡ s)) → B x)
-  thm17 = refl
-
-{--
-  postulate
-    βindₛ : {A : Set} → (B : Σₛ A → Set) → (n : B N) → (s : B S) → (m : (a : A) → (transport B (merid a) n ≡ s)) →
-            {a : A} → apd (λ x → indₛ x B n s m) (merid a) ≡ m a  
---}
-
-  thm18 : thm-prv βindΣₛ ≡ ({A : Set} → (B : Σₛ A → Set) → (n : B N) → (s : B S) → (m : (a : A) → (transport B (merid a) n ≡ s)) →
-                            {a : A} → apd (λ x → indΣₛ x B n s m) (merid a) ≡ m a)
-  thm18 = refl
+  double-oops = oops seg
 

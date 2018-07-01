@@ -1,4 +1,4 @@
--- {-# OPTIONS --verbose tc.sample.debug:20 #-}
+{-# OPTIONS --verbose tc.sample.debug:20 #-}
 
 open import Data.List
 open import Function hiding (flip)
@@ -11,7 +11,7 @@ open import Automation.utils.reflectionUtils
 open import Automation.utils.pathUtils
 open import Automation.lib.generateRec using (getMapConstructorType; generateRec)
 
-module Automation.lib.generateRecHit where
+module Automation.lib.generateBetaRecHitPath where
 
 -- -----
 
@@ -52,16 +52,6 @@ getExprRef2 ind d (c ∷ cs) =
        pure (l ∷ ls)
 
 -- -----
-
-
-getPathClause : (lpoints : Nat) → (lpaths : Nat) → (baseRec : Name) → TC (List Clause)
-getPathClause lpoints lpaths baseRec =
-  do vars' ← (getClauseVars zero (lpoints + lpaths))
-     vars ← (reverseTC vars')
-     args ← (generateRef (suc (suc lpoints))) -- +1 for "C" and +1 for constructor
-     args' ← (pure (map (λ z → z + lpaths) args))
-     argTerms ← (generateRefTerm args')
-     pure ((clause (vArg (var "x") ∷ vArg (var "C1") ∷ vars) (def baseRec argTerms)) ∷ [])
 
 {-# TERMINATING #-}
 getMapConstructorType' : (Cref : Nat) → (pars : List Nat) → (R : Name) → (mapTy : Bool) → Type → TC Type
@@ -239,49 +229,127 @@ getMapConstructorPathType baseRec pars cons index indTyp (suc x) (pi (arg info t
      pure (pi (arg info t1) (abs s ty))
 getMapConstructorPathType baseRec pars cons index indTyp x y = pure unknown                                                                            
 
-getPaths : (baseRec : Name) → (CRefBase : Nat) → (pars : List Nat) → (cons : List Nat) → (baseTyp : Name) → (indType : Name) → (params : Nat) → (paths : List Name) → TC Type
-getPaths baseRec CRefBase pars cons baseTyp indTyp d [] = pure (var CRefBase [])
-getPaths baseRec CRefBase pars cons baseTyp indTyp d (x ∷ xs) =
+{-# TERMINATING #-}
+βrecMapPath' : (Rpath : Name) → (RpathRef : Nat) → (indRec : Name) → (pars : List Nat) → (cons : List Nat) → (index : List Nat) →
+  (args : List Nat) → (argInfo : List ArgInfo) → (indTyp : Name) → Type → TC Type
+βrecMapPath' Rpath RpathRef indRec pars cons index args argInf indTyp (pi (arg info t1) (abs s t2)) =
   do let cons' = (map (λ z → z + 1) cons)
          pars' = (map (λ z → z + 1) pars)
-     xs' ← (getPaths baseRec (suc CRefBase) pars' cons' baseTyp indTyp d xs)
+         index' = (map (λ z → z + 1) index)
+         args' = (map (λ z → z + 1) args)
+         args'' = (args' ∷L 0)
+         argInfo' = (argInf ∷L info)
+     t1' ← (βrecMapPath' Rpath RpathRef indRec pars cons index args argInf indTyp t1)
+     t2' ← (βrecMapPath' Rpath (suc RpathRef) indRec pars' cons' index' args'' argInfo' indTyp t2)
+     pure (pi (hArg t1') (abs s t2'))
+βrecMapPath' Rpath RpathRef indRec pars cons index args argInf indTyp (def x lsargs) =
+  case (primQNameEquality x (quote _≡_)) of λ
+   { true →
+     do let cons' = (map (λ z → z + 1) cons) -- +1 for lam "x"
+            index' = (map (λ z → z + 1) index) -- +1 for lam "x"
+        argCons ← (generateRefTerm cons')
+        argPars ← (generateRefTermHid pars)
+        argInds ← (generateRefTermHid index)
+        argInds' ← (generateRefTermHid index')
+        argInfo' ← (getHidArgs' argInf)
+        argArgs ← (generateRefTerm' argInfo' args)
+        args' ← (pure ((argPars ++L argInds) ++L argArgs))
+        argIndRec ← (pure (lam visible (abs "x" (def indRec (vArg (var 0 []) ∷ argCons)))))
+        pathTyp ← (pure (def Rpath args'))
+        CpathTyp ← (pure (var RpathRef argArgs))
+        pure (def (quote _≡_) (vArg (def (quote ap) (vArg argIndRec ∷ vArg pathTyp ∷ [])) ∷ vArg CpathTyp ∷ []))
+   ; false → pure unknown
+   }
+βrecMapPath' Rpath RpathRef indRec pars cons index args argInf indTyp (var ref lsargs) =
+  do let pind = (pars ++L index)
+         refL = (pind ++L args)
+     refL' ← (reverseTC refL)
+     x ← (getListElement ref refL')
+     case (null lsargs) of λ
+      { true → pure (var x [])
+      ; false →
+        do lsargs' ← (map' (λ { (arg i term) →
+                                   do term' ← (βrecMapPath' Rpath RpathRef indRec pars cons index args argInf indTyp term)
+                                      pure (arg i term') }) lsargs)
+           pure (var x lsargs')
+      }
+βrecMapPath' Rpath RpathRef indRec pars cons index args argInf indTyp x = pure x
+
+βrecMapPath : (Rpath : Name) → (RpathRef : Nat) → (indRec : Name) → (pars : List Nat) → (cons : List Nat) → (index : List Nat) → (indTyp : Name) → (indLength : Nat) → Type → TC Type
+βrecMapPath Rpath RpathRef indRec pars cons index indTyp 0 x = βrecMapPath' Rpath RpathRef indRec pars cons index [] [] indTyp x
+βrecMapPath Rpath RpathRef indRec pars cons index indTyp (suc x) (pi (arg info t1) (abs s t2)) =
+  do let cons' = (map (λ z → z + 1) cons)
+         pars' = (map (λ z → z + 1) pars)
+         index' = (map (λ z → z + 1) index)
+         index'' = (index' ∷L 0)
+     ty ← (βrecMapPath Rpath (suc RpathRef) indRec pars' cons' index'' indTyp x t2)
+     pure (pi (hArg t1) (abs s ty))
+βrecMapPath Rpath RpathRef indRec pars cons index indTyp x y = pure unknown
+
+getβrecPaths : (baseRec : Name) → (params : Nat) → (mapPath : Type) → (pars : List Nat) → (cons : List Nat) → (indType : Name) → (paths : List Name) → TC Type
+getβrecPaths baseRec d mapPath pars cons indTyp [] = pure mapPath
+getβrecPaths baseRec d mapPath pars cons indTyp (x ∷ xs) =
+  do let cons' = (map (λ z → z + 1) cons)
+         pars' = (map (λ z → z + 1) pars)
+     xs' ← (getβrecPaths baseRec d mapPath pars' cons' indTyp xs)
      ty ← (getType x)
      ty' ← (rmPars d ty)
-     ty2 ← (getType indTyp)
-     index ← (getIndexValue zero d ty2)
+     t ← (getType indTyp)
+     index ← (getIndexValue zero d t)
      x' ← (getMapConstructorPathType baseRec pars cons [] indTyp index ty')
      pure (pi (vArg x') (abs "_" xs'))
 
-getRtypePath : (baseTyp : Name) → (indTyp : Name) → (baseRec : Name) → (param : Nat) → (points : List Name) → (pathList : List Name) → (ref : Nat) → (RTy : Type) → TC Type
-getRtypePath baseTyp indTyp baseRec d points pathList ref (pi (arg (arg-info vis rel) t1) (abs s t2)) =
-  do t2' ← (getRtypePath baseTyp indTyp baseRec d points pathList (suc ref) t2)
+getβrecRtypePath : (Rpoint : Name) → (indTyp : Name) → (pntInd : Nat) → (elim : Name) → (baseElim : Name) → 
+  (indexList : List Nat) → (points : List Name) → (paths : List Name) → (param : Nat) → (pars : Nat) → (ref : Nat) → (RTy : Type) → TC Type
+getβrecRtypePath Rpnt indTyp pntInd elim baseElim indLs points paths d1 0 ref (pi (arg (arg-info vis rel) t1) (abs s t2)) =
+  do t2' ← (getβrecRtypePath Rpnt indTyp pntInd elim baseElim indLs points paths d1 0 ref t2)
+     pure t2'
+getβrecRtypePath Rpnt indTyp pntInd elim baseElim indLs points paths d1 (suc d) ref (pi (arg (arg-info vis rel) t1) (abs s t2)) =
+  do t2' ← (getβrecRtypePath Rpnt indTyp pntInd elim baseElim indLs points paths d1 d (suc ref) t2)
      pure (pi (arg (arg-info hidden rel) t1) (abs s t2'))
-getRtypePath baseTyp indTyp baseRec d points pathList ref (agda-sort Level) =
+getβrecRtypePath Rpnt indTyp pntInd elim baseElim indLs points paths d1 d ref (agda-sort Level) =
   do lcons ← (getLength points)
-     refls ← (generateRef (suc (suc ref))) -- +1 for "R" and +1 for "C"
-     pars ← (takeTC d refls)
-     consPath ← (generateRef (suc lcons)) -- +1 for "C"
-     refls' ← (generateRef ((suc (suc ref)) + lcons)) -- +1 for "R" and +1 for "C"
-     parsPath ← (takeTC d refls')
-     exp ← (getExprRef2 indTyp d points)
-     paths ← (getPaths baseRec lcons parsPath consPath baseTyp indTyp d pathList)
-     funType ← (getMapConsTypeList' indTyp d zero paths pars exp points)
-     Rty' ← (getType indTyp)
-     ls ← (generateRef ref)
-     argInfoL ← (getHidArgs Rty')
-     Rargs ← (generateRefTerm' argInfoL ls)
-     pure (pi (vArg (def indTyp Rargs)) (abs "R" (pi (vArg (agda-sort (lit 0))) (abs "C3" funType)))) 
-getRtypePath baseTyp indType baseRec d points pathList ref x = pure unknown
+     refls ← (generateRef (suc ref)) -- +1 for "C"
+     pars ← (takeTC d1 refls)
+     consPnt ← (generateRef (suc lcons)) -- +1 for "C"
+     lpaths ← (getLength paths)
+     consPath ← (generateRef ((suc lcons) + lpaths)) -- +1 for "C"
+     refls' ← (generateRef ((suc ref) + lcons)) -- +1 for "C"
+     parsPnt ← (takeTC d1 refls')
+     parsPath ← (pure (map (λ z → z + lpaths) parsPnt))
+     t ← (getType indTyp)
+     index ← (getIndexValue zero d1 t)
+     pntTyp ← (getType Rpnt)
+     pntTyp' ← (rmPars d1 pntTyp)
+     mapPnt ← (βrecMapPath Rpnt pntInd elim parsPath consPath [] indTyp index pntTyp')
+     -- (βrecMapPath Rpnt (pntInd + lpaths) elim lpaths d1 parsPath consPath [] indTyp indL indL pntTyp')
+     (debugPrint "tc.sample.debug" 20 (strErr "index length " ∷ strErr (showNat index) ∷ []))
+     pathTyp ← (getβrecPaths baseElim d1 mapPnt parsPnt consPnt indTyp paths)
+     funType ← (getMapConsTypeList' indTyp d1 zero pathTyp pars indLs points)
+     pure (pi (vArg (agda-sort (lit 0))) (abs "C" funType))
+getβrecRtypePath Rpnt indType pntInd elim baseElim indLs points paths d1 d ref x = pure unknown
 
 
-generateRecHit : Arg Name → (indType : Name) → (baseRec : Name) → (param : Nat) → (points : List Name) → (paths : List Name) → TC ⊤
-generateRecHit (arg i f) indType baseRec d points paths =
-  do lpoints ← getLength points
-     lpaths ← getLength paths
-     clauses ← getPathClause lpoints lpaths baseRec
-     RTy ← getType indType
-     funTypePath ← getRtypePath indType indType baseRec d points paths zero RTy
-     declareDef (arg i f) funTypePath
-     defineFun f clauses
+generateβRecHit' : Arg Name → (R : Name) → (pntInd : Nat) → (elim : Name) → (baseElim : Name) → 
+  (indexList : List Nat) → (indType : Name) → (param : Nat) → (points : List Name) → (paths : List Name) → TC ⊤
+generateβRecHit' (arg i f) R pntInd elim baseElim indLs indType d points paths = 
+  do RTy ← (getType indType)
+     funTypePath ← (getβrecRtypePath R indType pntInd elim baseElim indLs points paths d d zero RTy)
+     (debugPrint "tc.sample.debug" 20 (strErr "issue : checking here ---> for paths comp " ∷ termErr funTypePath ∷ []))
+     (declarePostulate (arg i f) funTypePath)
 
+generateβRecHit'' : List (Arg Name) → (Lpaths : List Name) → (pntInd : Nat) → (elim : Name) → (baseElim : Name) → 
+  (indexList : List Nat) → (indType : Name) → (params : Nat) → (points : List Name) → (paths : List Name) → TC ⊤
+generateβRecHit'' (x ∷ xs) (p ∷ ps) (suc pntInd) elim baseElim indLs indType d points paths =
+  do (generateβRecHit' x p pntInd elim baseElim indLs indType d points paths)
+     (generateβRecHit'' xs ps pntInd elim baseElim indLs indType d points paths)
+generateβRecHit'' [] p pntInd elim baseElim indLs indType d points paths = pure tt
+generateβRecHit'' n p pntInd elim baseElim indLs indType d points paths = pure tt
 
+generateβRecHitPath : (elim : Name) → (comp : List (Arg Name)) →
+  (indType : Name) → (baseElim : Name) → (param : Nat) → (points : List Name) → (paths : List Name) → TC ⊤
+generateβRecHitPath elim comp indType baseElim d points paths =
+  do exp ← (getExprRef2 indType d points)
+     argL ← (getLength comp)
+     (debugPrint "tc.sample.debug" 20 (strErr "coming here" ∷ []))
+     (generateβRecHit'' comp paths argL elim baseElim exp indType d points paths)
