@@ -1,0 +1,1660 @@
+
+%%%%%%%%%%%%%%%%%%%%%%% file typeinst.tex %%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% This is the LaTeX source for the instructions to authors using
+% the LaTeX document class 'llncs.cls' for contributions to
+% the Lecture Notes in Computer Sciences series.
+% http://www.springer.com/lncs       Springer Heidelberg 2006/05/04
+%
+% It may be used as a template for your own input - copy it
+% to a new file with a new name and use it as the basis
+% for your article.
+%
+% NB: the document class 'llncs' has its own and detailed documentation, see
+% ftp://ftp.springer.de/data/pubftp/pub/tex/latex/llncs/latex2e/llncsdoc.pdf
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\documentclass[runningheads]{llncs}
+
+\usepackage{amssymb}
+\setcounter{tocdepth}{3}
+%\usepackage{graphicx}
+\usepackage{fancyvrb}
+%\usepackage{natbib}
+% \usepackage{amssymb}
+\usepackage{bbm}
+\usepackage[greek,english]{babel}
+\usepackage{textgreek}
+ % This handles the translation of unicode to latex:
+
+\usepackage{ucs}
+\usepackage[utf8x]{inputenc}
+\usepackage{autofe}
+\usepackage{textcomp}
+\usepackage{amsmath}
+ % Some characters that are not automatically defined
+ % (you figure out by the latex compilation errors you get),
+ % and you need to define:
+
+\DeclareUnicodeCharacter{8988}{\ensuremath{\ulcorner}}
+\DeclareUnicodeCharacter{8989}{\ensuremath{\urcorner}}
+\DeclareUnicodeCharacter{8803}{\ensuremath{\overline{\equiv}}}
+
+\usepackage[demo]{graphicx}
+\usepackage{caption}
+\usepackage{subfigure}
+
+\usepackage[belowskip=-10pt,aboveskip=-8pt]{caption}
+
+\usepackage{url}
+\urldef{\mailsa}\path||    
+\newcommand{\keywords}[1]{\par\addvspace\baselineskip
+\noindent\keywordname\enspace\ignorespaces#1}
+
+\begin{document}
+
+\mainmatter  % start of an individual contribution
+
+% first the title is needed
+%\title{Encoding Higher Inductive Types Without Boilerplate}
+\title{Code Generation for Higher Inductive Types}
+\subtitle{A Study in Agda Metaprogramming}
+% a short form should be given in case it is too long for the running head
+\titlerunning{A Study in Agda Metaprogramming}
+
+% the name(s) of the author(s) follow(s) next
+%
+% NB: Chinese authors should write their first names(s) in front of
+% their surnames. This ensures that the names appear correctly in
+% the running heads and the author index.
+%
+%\author{%
+%%
+%}
+\author{Paventhan Vivekanandan}
+%\authornote{with author1 note}          %% \authornote is optional;
+                                        %% can be repeated if necessary
+%\orcid{nnnn-nnnn-nnnn-nnnn}             %% \orcid is optional
+
+%
+%\authorrunning{A Homotopical Approach to Cryptography}
+% (feature abused for this document to repeat the title also on left hand pages)
+
+% the affiliations are given next; don't give your e-mail address
+% unless you accept that it will be published
+\institute{Indiana University Bloomington
+\mailsa}
+% \url{http://www.springer.com/lncs}}
+
+%
+% NB: a more complex sample for affiliations and the mapping to the
+% corresponding authors can be found in the file "llncs.dem"
+% (search for the string "\mainmatter" where a contribution starts).
+% "llncs.dem" accompanies the document class "llncs.cls".
+%
+
+\toctitle{Lecture Notes in Computer Science}
+\tocauthor{Authors' Instructions}
+\maketitle
+
+
+\begin{abstract}
+Higher inductive types are inductive types that include nontrivial higher-dimensional structure, represented as identifications that are not reflexivity. While work proceeds on type theories with a computational interpretation of univalence and higher inductive types, it is convenient to encode these structures in more traditional type theories with mature implementations. However, these encodings involve a great deal of error-prone additional syntax. We present a library that uses Agda's metaprogramming facilities to automate this process, allowing higher inductive types to be specified with minimal additional syntax.
+\keywords{Higher inductive type, Elaboration, Elimination rules, Computation rules}
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Type theory unites programming and mathematics in a delightful synthesis, in which we can write programs and proofs in the same language.
+Work on higher-dimensional type theory has revealed a beautiful higher-dimensional structure, lurking just beyond reach.
+In particular, higher inductive types provide a natural encoding of many otherwise-difficult mathematical concepts, and univalence lets us work in our type theory the way we do on paper: up to isomorphism.
+Homotopy type theory, however, is not yet done.
+We do not yet have a mature theory or a mature implementation.
+
+While work proceeds on prototype implementations of higher-dimensional type theories \cite{cohen}\cite{Angiuli-2017}, much work remains before they will be as convenient for experimentation with new ideas as Coq, Agda, or Idris is today.
+In the meantime, it is useful to be able to experiment with ideas from higher-dimensional type theory in our existing systems.
+If one is willing to put up with some boilerplate code, it is possible to encode higher inductive types and univalence using a mixture of postulated identities and traditional datatypes \cite{Licata-2011}. We use rewrite rules to define higher inductive type in this paper.
+%We use a technique developed by Licata \cite{Licata-2011}.
+
+Boilerplate postulates, however, are not just inconvenient, they are also an opportunity to make mistakes.
+Luckily, this boilerplate code can be mechanically generated using Agda's recent support for \emph{elaborator reflection}~\cite{David-2016}, a paradigm for metaprogramming in an implementation of type theory.
+An elaborator is the part of the implementation that translates a convenient language designed for humans into a much simpler, more explicit, verbose language designed to be easy for a machine to process.
+Elaborator reflection directly exposes the primitive components of the elaborator to metaprograms written in the language being elaborated, allowing them to put these components to new uses.
+
+
+Using Agda's elaborator reflection, we automatically generate the support code for many useful higher inductive types, specifically those that include additional paths between constructors, but not paths between paths. We automate the production of the recursion principles, induction principles, and their computational behavior.
+Angiuli et al.'s encoding of patch theory as a higher inductive type~\cite{Angiuli-2014} requires approximately 1500 lines of code when represented using rewrite mechanism. Using our library, the encoding can be expressed in just 70 lines.
+
+
+This paper makes the following contributions:
+\begin{itemize}
+\item We describe the design and implementation of a metaprogram that automates an encoding of higher inductive types with one path dimension using Agda's new metaprogramming system.
+\item We demonstrate applications of this metaprogram to examples from the literature, including both standard textbook examples of higher inductive types as well as larger systems, including both patch theory and specifying cryptographic schemes.
+\item This metaprogram serves as an example of the additional power available in Agda's elaborator reflection relative to earlier metaprogramming APIs.
+\end{itemize}
+
+
+\section{Background}
+\label{sec:sec2}
+
+\subsection{Higher Inductive Types}
+\label{sec:sec2.1}
+
+Homotopy type theory~\cite{HoTT-2013} is a research program that aims to develop univalent, higher-dimensional type theories.
+A type theory is \emph{univalent} when equivalences between types are considered equivalent to identifications between types; it is \emph{higher-dimensional} when we allow non-trivial identifications that every structure in the theory must nevertheless respect.
+Identifications between elements of a type are considered to be at the lowest dimension, while identifications between identifications at dimension $n$ are at dimension $n+1$.
+Voevodsky added univalence  to type theories as an axiom, asserting new identifications without providing a means to compute with them.
+While more recent work arranges the computational mechanisms of the type theory such that univalence can be derived, as is done in cubical type theories~\cite{cohen}\cite{Angiuli-2017}, we are concerned with modeling concepts from homotopy type theory in existing, mature implementations of type theory, so we follow Univalent Foundations Program \cite{HoTT-2013} in modeling paths using Martin-Löf's identity type.
+Higher-dimensional structure can arise from univalence, but it can also be introduced by defining new type formers that introduce not only introduction and elimination principles, but also new non-trivial identifications.
+
+In homotopy type theories, one tends to think of types not as collections of distinct elements, but rather through the metaphor of topological spaces.
+The individual elements of the type correspond with points in the topological space, and identifications correspond to paths in this space.
+
+
+% In homotopy type theory, an element of an \emph{identity type} is used to model the notion of a path in a topological space or a morphism in a groupoid. An element of an identity type $a =_A b$ states that $a$ and $b$ are propositionally equal. In type theory, \emph{propositional equality} is a proof-relevant notion of equality, internal to the theory, expressed by identity types. We also have a proof-irrelevant notion of equality, external to the theory, known as \emph{judgmental equality} or \emph{definitional equality}. Definitional equality is used to express equality by definition. For instance, when we have a function $f : Nat \rightarrow Nat$ defined as $f(x) = x^2$ then the expression $f(3)$ is definitionally equal to $3^2$.
+
+While there is not yet a general schematic characterization of a broad class of higher inductive types along the lines of Dybjer's inductive families~\cite{Dybjer1994}, it is convenient to syntactically represent the higher inductive types that we know are acceptable as if we had such a syntax.
+Thus, we sometimes specify a higher inductive type similarly to a traditional inductive type by providing its constructors (\textit{i.e.} its points); we additionally specify the higher-dimensional structure by providing additional constructors for paths. For example, figure~\ref{fig:circle} describes \Verb|Circle|, which is a higher inductive type with one point constructor \Verb|base| and one non-trivial path constructor \Verb|loop|.
+\begin{figure}[h]
+\begin{center}
+%\begingroup
+%\fontsize{7.9pt}{2pt}\selectfont
+\begin{BVerbatim}
+data Circle : Set where
+  base : Circle
+  loop : base ≡ base
+\end{BVerbatim}
+%\endgroup
+\end{center}
+\caption{A specification of a higher inductive type}
+\label{fig:circle}
+\end{figure}
+\normalsize
+Agda~\cite{norell:thesis} is a functional programming language with full dependent types and dependent pattern matching.
+Agda's type theory has gained a number of new features over the years, among them the ability to restrict pattern matching to that subset that does not imply Streicher's Axiom K~\cite{Cockx2014}, which is inconsistent with univalence.
+The convenience of programming in Agda, combined with the ability to avoid axiom K, makes it a good laboratory for experimenting with the idioms and techniques of univalent programming while more practical implementations of univalent type theories are under development.
+
+In Agda, we don't have built-in primitives to support the definition of higher inductive type such as {\tt Circle}. One approach is to use Agda's rewrite rules~\cite{Cockx16} mechanism to define higher inductive types. Another approach is to use Licata's method \cite{Licata-2011}. But Licata's method has inconsistencies \cite{Licata-2011}, and so we use rewrite rules for defining higher inductive types as follows. 
+
+\begin{figure}
+\begin{center}
+\begingroup
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{Verbatim}
+postulate
+  _↦_ : ∀ {i} {A : Set i} → A → A → Set i
+
+
+{-# BUILTIN REWRITE _↦_ #-}
+
+
+
+module Circle where
+
+
+
+  postulate
+    S : Set
+    base : S
+    loop : base ≡ base
+
+
+
+  postulate
+    recS : S → (C : Set) → (cbase : C) → (cloop : cbase ≡ cbase) → C
+    βbase : (C : Set) → (cbase : C) → (cloop : cbase ≡ cbase) → 
+      recS base C cbase cloop ↦ cbase
+
+
+  {-# REWRITE βbase #-}
+
+
+
+  postulate
+    βloop : (C : Set) → (cbase : C) → (cloop : cbase ≡ cbase) → 
+      ap (λ x → recS x C cbase cloop) loop ≡ cloop
+
+
+
+  postulate
+    indS : (x : S) → (C : S → Set) → 
+      (cbase : C base) → (cloop : transport C loop cbase ≡ cbase) → C x
+    iβbase : (C : S → Set) → 
+      (cbase : C base) → (cloop : transport C loop cbase ≡ cbase) → 
+      indS base C cbase cloop ↦ cbase
+
+
+  {-# REWRITE iβbase #-}
+
+
+
+  postulate
+    iβloop : (C : S → Set) → 
+      (cbase : C base) → (cloop : transport C loop cbase ≡ cbase) → 
+      apd (λ x → indS x C cbase cloop) loop ≡ cloop
+\end{Verbatim}
+\endgroup
+\end{center}
+\caption{A HIT encoded using rewrite rules}
+\label{fig:circle-hit}
+\end{figure}
+\normalsize
+
+Inside the module {\tt Circle}, the type {\tt S} and the constructors {\tt base} and {\tt loop} and the recursion and induction principles are declared as postulates. The computation rules for point {\tt base} are declared as rewrite rules using \Verb|{-# REWRITE , ...#-}| pragma. The computation rules for paths are then declared as postulates.
+
+{\tt recS} (fig ~\ref{fig:circle-hit}) ignores the path argument and simply computes to the appropriate answer for the point constructor. The computational behavior for the path constructor loop is postulated using reduction rule {\tt βloop}.
+The operator \texttt{ap} is frequently referred to as \texttt{cong}, because it expresses that propositional equality is a congruence.
+However, when viewed through a homotopy type theory lens, it is often called \texttt{ap}, as it describes the action of a function on paths.
+In a higher inductive type, \texttt{ap} should compute new paths from old ones.
+\begin{center}
+\fontsize{7.9pt}{0pt}\selectfont
+\begin{BVerbatim}
+ap : {A B : Set} {x y : A}
+     (f : A → B) (p : x ≡ y) → f x ≡ f y
+\end{BVerbatim}
+\end{center}
+
+In addition to describing the constructors of the points and paths of \texttt{S}, figure~\ref{fig:circle-hit} additionally demonstrates the dependent eliminator (that is, the induction rule) {\tt indS} and its computational meaning.
+The dependent eliminator relies on another operation on identifications, called \texttt{transport}, that coerces an inhabitant of a family of types at a particular index into an inhabitant at another index.
+Outside of homotopy type theory, \texttt{transport} is typically called \texttt{subst} or \texttt{replace}, because it also expresses that substituting equal elements for equal elements is acceptable.
+\begin{center}
+\fontsize{7.9pt}{0pt}\selectfont
+\begin{BVerbatim}
+transport : {A : Set} {x y : A} → 
+  (P : A → Set) → (p : x ≡ y) → P x → P y
+\end{BVerbatim}
+\end{center}
+
+In the postulated computation rule for \texttt{indS}, the function {\tt apd} is the dependent version of \texttt{ap}: it expresses the action of dependent functions on paths.
+\begin{center}
+%\begingroup
+\fontsize{7.9pt}{0pt}\selectfont
+\begin{BVerbatim}
+apd : {A : Set} {B : A → Set} {x y : A} → 
+      (f : (a : A) → B a) → (p : x ≡ y) →
+      transport B p (f x) ≡ f y
+\end{BVerbatim}
+%\endgroup
+\end{center}
+
+The next section introduces the necessary automation features by describing the automatic generation of eliminators for a variant on Dybjer's inductive families. Section 4 then generalizes this feature to automate the production of eliminators for higher inductive types using rewrite mechanism. Section 5 revisits Angiuli et al.'s encoding of Darcs's patch theory \cite{Angiuli-2014} and demonstrates that the higher inductive types employed in that paper can be generated succinctly using our library \footnote{Please see \url{https://github.com/pavenvivek/WFLP-18}}.
+
+\subsection{Agda Reflection}
+\label{sec:sec2.2}
+Agda's reflection library enables compile-time metaprogramming.
+This reflection library directly exposes parts of the implementation of Agda's type checker and elaborator for use by metaprograms, in a manner that is similar to Idris's elaborator reflection~\cite{davidphd,David-2016} and Lean's tactic metaprogramming~\cite{Ebner2017}.
+The type checker's implementation is exposed as effects in a monad called \texttt{TC}.
+
+Agda exposes a representation of its syntax to metaprograms, including datatypes for expressions (called \texttt{Term}) and definitions (called \texttt{Definition}).
+The primitives exposed in \texttt{TC} include declaring new metavariables, unifying two \texttt{Term}s, declaring new definitions, adding new postulates, computing the normal form or weak head normal form of a \texttt{Term}, inspecting the current context, and constructing fresh names.
+This section describes the primitives that are used in our code generation library; more information on the reflection library can be found in the Agda documentation \cite{Agda-doc-2017}.
+
+\texttt{TC} computations can be invoked in three ways: by macros, which work in expression positions, using the \texttt{unquoteDecl} operator in a declaration position, which can bring new names into scope, and using the \texttt{unquoteDef} operator in a declaration position, which can automate constructions using names that are already in scope.
+This preserves the principle in Agda's design that the system never invents a name.
+
+An Agda \emph{macro} is a function of type {\tt $t_1$ → $t_2$ → $\ldots$ → Term → TC ⊤} that is defined inside a \texttt{macro} block.
+Macros are special: their last argument is automatically supplied by the type checker, and consists of a \texttt{Term} that represents the metavariable to be solved by the macro.
+If the remaining arguments are quoted names or \texttt{Term}s, then the type checker will automatically quote the arguments at the macro's use site.
+At some point, the macro is expected to unify the provided metavariable with some other term, thus solving it.
+
+\begin{figure}[t]
+\centering
+\begin{minipage}{.5\textwidth}
+\centering
+\begingroup
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{Verbatim}
+macro
+  mc1 : Term → Term → TC ⊤
+  mc1 exp hole =
+    do exp' ← quoteTC exp
+       unify hole exp'
+
+
+
+sampleTerm : Term
+sampleTerm = mc1 (λ (n : Nat) → n)
+\end{Verbatim}
+\endgroup
+\captionof{figure}{A macro that quotes its argument}
+\label{fig:macro1}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+\centering
+\begingroup
+\fontsize{7.9pt}{2pt}\selectfont
+\centering
+\begin{Verbatim}
+macro
+  mc2 : Term → Term → TC ⊤
+  mc2 exp hole =
+    do exp' ← unquoteTC exp
+       unify hole exp'
+
+
+
+sampleSyntax : Nat → Nat
+sampleSyntax =
+  mc2 (lam visible (abs "n" (var 0 [])))
+\end{Verbatim}
+\endgroup
+\caption{A macro that unquotes its argument}
+\label{fig:macro2}
+\end{minipage}
+\end{figure}
+
+%\begin{figure}
+%\begingroup
+%\fontsize{7.9pt}{2pt}\selectfont
+%\begin{Verbatim}
+%macro
+%  mc1 : Term → Term → TC ⊤
+%  mc1 exp hole =
+%    do exp' ← quoteTC exp
+%       unify hole exp'
+%
+%sampleTerm : Term
+%sampleTerm = mc1 (λ (n : Nat) → n)
+%\end{Verbatim}
+%%\caption{A macro that quotes its argument}
+%%\label{fig:macro1}
+%%\end{figure}
+%\endgroup
+%\normalsize
+
+Figure~\ref{fig:macro1} demonstrates a macro that quotes its argument.
+The first step is to quote the quoted expression argument again, using \texttt{quoteTC}, yielding a quotation of a quotation.
+This doubly-quoted expression is passed, using Agda's new support for Haskell-style do-notation, into a function that unifies it with the hole.
+Because unification removes one layer of quotation, \texttt{unify} inserts the original quoted term into the hole.
+The value of {\tt sampleTerm} is
+\begin{center}
+\begin{BVerbatim}
+lam visible (abs "n" (var 0 []))
+\end{BVerbatim}
+\end{center}
+The constructor \texttt{lam} represents a lambda, and its body is formed by the abstraction constructor \texttt{abs} that represents a scope in which a new name \texttt{"n"} is bound.
+The body of the abstraction is a reference back to the abstracted name using de~Bruijn index \texttt{0}.
+
+%\begin{figure}
+%\begingroup
+%\fontsize{7.9pt}{2pt}\selectfont
+%\centering
+%\begin{Verbatim}
+%macro
+%  mc2 : Term → Term → TC ⊤
+%  mc2 exp hole =
+%    do exp' ← unquoteTC exp
+%       unify hole exp'
+%
+%sampleSyntax : Nat → Nat
+%sampleSyntax =
+%  mc2 (lam visible (abs "n" (var 0 [])))
+%\end{Verbatim}
+%\endgroup
+%\normalsize
+%\caption{A macro that unquotes its argument}
+%\label{fig:macro2}
+%\end{figure}
+
+The {\tt unquoteTC} primitive removes one level of quotation.
+Figure~\ref{fig:macro2} demonstrates the use of \texttt{unquoteTC}.
+The macro {\tt mc2} expects a quotation of a quotation, and substitutes its unquotation for the current metavariable.
+
+The {\tt unquoteDecl} and {\tt unquoteDef} primitives, which run \texttt{TC} computations in a declaration context, will typically introduce new declarations by side effect.
+A function of a given type is declared using {\tt declareDef}, and it can be given a definition using {\tt defineFun}.
+Similarly, a postulate of a given type is defined using {\tt declarePostulate}.
+Figure~\ref{fig:plus} shows an Agda implementation of addition on natural numbers, while figure~\ref{fig:plusmeta} demonstrates an equivalent metaprogram that adds the same definition to the context.
+
+\begin{figure}[t]
+\centering
+\begin{minipage}{.5\textwidth}
+\centering
+\begingroup
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{Verbatim}
+plus : Nat → Nat → Nat
+plus zero b = b
+plus (suc n) b = suc (plus n b)
+\end{Verbatim}
+\endgroup
+\captionof{figure}{Addition on natural numbers}
+\label{fig:plus}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+\centering
+\begingroup
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{Verbatim}
+pattern vArg x = arg (arg-info visible relevant) x
+pattern _`⇒_ a b = pi (vArg a) (abs "_" b)
+pattern `Nat = def (quote Nat) []
+
+
+
+unquoteDecl plus =
+  do declareDef (vArg plus) (`Nat `⇒ `Nat `⇒ `Nat)
+     defineFun plus
+       (clause (vArg (con (quote zero) []) ::
+                vArg (var "y") ::
+                [])
+          (var 0 []) ::
+        clause (vArg (con (quote suc)
+                       (vArg (var "x") :: [])) ::
+                vArg (var "y") ::
+                [])
+          (con (quote suc)
+            (vArg (def plus
+                    (vArg (var 1 []) ::
+                     vArg (var 0 []) :: [])) ::
+             [])) ::
+        [])
+\end{Verbatim}
+\endgroup
+\caption{Addition, defined by metaprogramming}
+\label{fig:plusmeta}
+\end{minipage}
+\end{figure}
+
+%\begin{figure}[h]
+%\begingroup
+%\fontsize{5.9pt}{2pt}\selectfont
+%\begin{Verbatim}
+%plus : Nat → Nat → Nat
+%plus zero b = b
+%plus (suc n) b = suc (plus n b)
+%\end{Verbatim}
+%\endgroup
+%\normalsize
+%  \caption{Addition on natural numbers}
+%  \label{fig:plus}
+%\end{figure}
+
+%\begin{figure}
+%\begingroup
+%\fontsize{5.9pt}{2pt}\selectfont
+%\begin{Verbatim}
+%pattern vArg x = arg (arg-info visible relevant) x
+%pattern _`⇒_ a b = pi (vArg a) (abs "_" b)
+%pattern `Nat = def (quote Nat) []
+%
+%unquoteDecl plus =
+%  do declareDef (vArg plus) (`Nat `⇒ `Nat `⇒ `Nat)
+%     defineFun plus
+%       (clause (vArg (con (quote zero) []) ::
+%                vArg (var "y") ::
+%                [])
+%          (var 0 []) ::
+%        clause (vArg (con (quote suc)
+%                       (vArg (var "x") :: [])) ::
+%                vArg (var "y") ::
+%                [])
+%          (con (quote suc)
+%            (vArg (def plus
+%                    (vArg (var 1 []) ::
+%                     vArg (var 0 []) :: [])) ::
+%             [])) ::
+%        [])
+%\end{Verbatim}
+%\endgroup
+%%\caption{Addition, defined by metaprogramming}
+%%\label{fig:plusmeta}
+%%\end{figure}
+%\normalsize
+
+In Figure~\ref{fig:plusmeta}, {\tt declareDef} declares the type of {\tt plus}.
+The constructor {\tt pi} represents dependent function types, but a pattern synonym is used to make it shorter.
+Similarly, \texttt{def} constructs references to defined names, and the pattern synonym \Verb|`Nat| abbreviates references to the defined name \texttt{Nat}, and {\tt vArg} represents the desired visibility and relevance settings of the arguments.
+Once declared, \texttt{plus} is defined using {\tt defineFun}, which takes a name and a list of clauses, defining the function by side effect.
+Each clause consists of a pattern and a right-hand side.
+Patterns have their own datatype, while right-hand sides are \texttt{Term}s.
+The name \texttt{con} is overloaded: in patterns, it denotes a pattern that matches a particular constructor, while in \texttt{Term}s, it denotes a reference to a constructor.
+
+
+\section{Code Generation for Inductive Types}
+\label{sec:sec3}
+An inductive type $D$ is a type that is freely generated by a finite collection of constructors. The constructors of $D$ accept zero or more arguments, and result in an $D$. The constructors can also take an element of type $D$ itself as an argument, but only \emph{strictly positively}: any occurrences of the type constructor $D$ in the type of an argument to a constructor of $D$ must not be to the left of any arrows.
+Type constructors can have a number of \emph{parameters}, which may not vary between the constructors, as well as \emph{indices}, which may vary.
+
+
+In Agda, constructors are given a function type. In Agda's reflection library, the constructor {\tt data-type} of the datatype {\tt Definition} stores the constructors of an inductive type as a list of \texttt{Name}s. The type of a constructor can be retrieved by giving its {\tt Name} as an input to the {\tt getType} primitive. In this section, we discuss how to use the list of constructors and their types to generate code for the elimination rules of an inductive type.
+
+\subsection{Non-dependent Eliminators}
+\label{sec:sec3.1}
+
+\newcommand*{\KW}[1]{\textsf{\textbf{#1}}}
+\newcommand*{\SET}{\textsf{Set}}
+
+In Agda, we define an inductive type using {\tt data} keyword. A definition of an inductive datatype declares its type and specifies its constructors.
+While Agda supports a variety of ways to define new datatypes, we will restrict our attention to the subset that correspond closely to Dyber's inductive families. In general, the definition of an inductive datatype $D$ with constructors $c_1 \ldots c_n$ has the following form:
+%\begin{center}
+\begin{center}
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{align*}
+&\KW{data}\ D\ (a_1 : A_1) \ldots (a_n:A_n) : (i_1 : I_1) \rightarrow\ldots\rightarrow (i_m : I_m) \rightarrow \SET{}\ \KW{where}  \\
+&\hspace{0.3cm} c_1 : \Delta_1 \rightarrow D \, a_1 \ldots a_n \, e_{11} \ldots e_{1m}  \\
+&\hspace{3.5cm} \vdots  \\
+&\hspace{0.3cm} c_r : \Delta_n \rightarrow D \, a_1 \ldots a_n \, e_{r1} \ldots e_{rm}  \\
+\end{align*}
+%\endgroup
+\end{center}
+%\normalsize
+where the index instantiations $e_{k1} \ldots e_{km}$ are expressions in the scope induced by the telescope $\Delta_k$. Every expression in the definition must also be well-typed according to the provided declarations.
+
+As an example, the datatype \texttt{Vec} represents lists of a known length. It is defined as follows.
+
+\begin{center}
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{BVerbatim}
+
+data Vec (A : Set) : Nat → Set where
+  []   : Vec A zero
+  _::_ : {n : Nat} →
+         (x : A) → (xs : Vec A n) → 
+         Vec A (suc n)
+
+\end{BVerbatim}
+\end{center}
+\normalsize
+
+There is one parameter, namely \texttt{(A : Set)}, and one index, namely \texttt{Nat}.
+The second constructor, \texttt{\_::\_}, has a recursive instance of \texttt{Vec} as an argument.
+%\begin{figure}
+%\begin{center}
+
+
+%\end{center}
+%\caption{Length-indexed lists}
+%\label{fig:vec}
+%\end{figure}
+
+%The type of $A_i$ can take one of the three forms: a constant type {\tt B}, the inductive type $D$, or a function $B_1 \rightarrow \ldots \rightarrow B_n \rightarrow D$ with codomain $D$. The parameters $(x_1:P_1)\ldots(x_n:P_n)$ are common to all the constructors, and the type of each constructor implicitly encodes the parameter references. However, the indices are different for each constructor. So, the type of each constructor explicitly exhibits the index declaration.
+
+While inductive datatypes are essentially characterized by their constructors, it must also be possible to eliminate their inhabitants, exposing the information in the constructors.
+This section describes an Agda metaprogram that generates a non-dependent recursion principle for an inductive type; section~\ref{sec:sec3.2} generalizes this technique to fully dependent induction principles.
+
+For {\tt Vec}, the recursion principle says that, in order to eliminate a \texttt{Vec A n}, one must provide a result for the empty \texttt{Vec} and a means for transforming the head and tail of a non-empty \texttt{Vec} combined with the result of recursion onto a tail into the desired answer for the entire \texttt{Vec}.
+Concretely, the type of the recursor \texttt{recVec} is given in figure \ref{fig:recV}.
+%\begin{center}
+
+%\begingroup
+%\fontsize{7.9pt}{2pt}\selectfont
+%\begin{BVerbatim}
+%recVec : (A : Set) →
+%         {n : Nat} → Vec A n →
+%         (C : Set) →
+%         (base : C) →
+%         (step : {n : Nat} →
+%                 (x : A) →
+%                 (xs : Vec A n) → C →
+%                 C) →
+%         C
+%\end{BVerbatim}
+%\endgroup
+%\normalsize
+
+The recursor \texttt{recVec} maps the constructor {\tt []}, which takes zero arguments, to \texttt{base}.
+It maps \texttt{(x :: xs)} to {\tt (step x xs (recVec xs C base step))}.
+Because \texttt{step} is applied to a recursive call to the recursor, it takes one more argument than the constructor \texttt{\_::\_}.
+
+
+Based on the schematic presentation of inductive types $D$ earlier in this section, we can define a schematic representation for their non-dependent eliminators $D_{\mathit{rec}}$.
+\begin{center}
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{align*}
+D_{\mathit{rec}} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+& (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
+& (\mathit{tgt} : D\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
+& (\mathit{C} : \SET{}) \to \\
+& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}) \to \ldots \to (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}) \to \\
+& \mathit{C}
+\end{align*}
+\end{center}
+%\normalsize
+The type of $f_i$, which is the method for fulfilling the desired type $C$ when eliminating the constructor $c_i$, is determined by the type of $c_i$.
+The telescope $\Delta_i^\prime$ is the same as $\Delta_i$ for non-recursive constructor arguments.
+However, $\Delta_i^\prime$ binds additional variables when there are recursive occurrences of $D$ in the arguments.
+If $\Delta_i$ has an argument $(y : B)$, where $B$ is not an application of $D$ or a function returning such an application, $\Delta_i^\prime$ binds $(y : B)$ directly.
+If $B$ is an application of $D$, then an additional binding $(y^\prime : C)$ is inserted following $y$.
+Finally, if $B$ is a function type $\Psi \to D$, the additional binding is $(y^\prime : \Psi \to C)$. 
+
+To construct the type of \texttt{recVec}, we need to build the types of {\tt base} and {\tt step}.
+These are derived from the corresponding types of \texttt{[]} and \texttt{\_::\_}, which can be discovered using reflection primitives.
+Since {\tt []} requires no arguments, its corresponding method is {\tt (base : C)}.
+The constructor {\tt pi} of type {\tt Term} encodes the abstract syntax tree (AST) representation of {\tt \_::\_} (figure~\ref{fig:ast-g}). We can retrieve and traverse the AST of {\tt \_::\_}, and add new type information into it to build a new type representing {\tt step}.
+
+\begin{figure}
+\centering
+%\begin{minipage}{.5\textwidth}
+\begingroup
+\fontsize{7.9pt}{8pt}\selectfont
+\begin{Verbatim}
+pattern _[_v]⇒_ a s b = pi (vArg a) (abs s b)
+pattern _[_h]⇒_ a s b = pi (hArg a) (abs s b)
+
+(agda-sort (lit 0) [ "A" h]⇒         -- A
+ (def (quote Nat) [] [ "n" h]⇒       -- n
+  (var 1 [] [ "x" v]⇒                -- x
+   (def (quote Vec)                   -- xs : Vec A n
+        (vArg (var 2 []) ::
+         vArg (var 1 []) :: [])
+         [ "xs" v]⇒
+    def (quote Vec)                  -- Vec A (suc n)
+        (vArg (var 3 []) ::
+         vArg (con (quote suc)
+                (vArg (var 2 []) :: []))
+         :: [])))))
+
+\end{Verbatim}
+\endgroup
+\captionof{figure}{AST for the type of {\tt \_::\_}}
+\label{fig:ast-g}
+%\end{minipage}%
+\end{figure}
+
+During the traversal of abstract syntax tree of the type of {\tt \_::\_}, when the type {\tt Vec} occurs directly as an argument, the result type {\tt C} is added next to it.
+For example, in figure~\ref{fig:ast-g}, a new function is built from the argument {\tt (xs : Vec A n)} by modifying it to {\tt (Vec A n) → C} (figure~\ref{fig:ast-d}).
+Arguments other than \texttt{Vec} require no modifications.
+Therefore, {\tt (x : A)} is copied into the new type without any changes.
+Finally, the codomain \texttt{Vec A (suc n)} of {\tt \_::\_}'s type is replaced with \texttt{C}, resulting in an AST for the type of {\tt step}.
+%\begin{figure}
+%\begin{center}
+%\begingroup
+%\fontsize{7.9pt}{2pt}\selectfont
+%\begin{Verbatim}
+%pattern _[_v]⇒_ a s b = pi (vArg a) (abs s b)
+%pattern _[_h]⇒_ a s b = pi (hArg a) (abs s b)
+%
+%(agda-sort (lit 0) [ "A" h]⇒         -- A
+% (def (quote Nat) [] [ "n" h]⇒       -- n
+%  (var 1 [] [ "x" v]⇒                -- x
+%   (def (quote Vec)                   -- xs : Vec A n
+%        (vArg (var 2 []) ::
+%         vArg (var 1 []) :: [])
+%         [ "xs" v]⇒
+%    def (quote Vec)                  -- Vec A (suc n)
+%        (vArg (var 3 []) ::
+%         vArg (con (quote suc)
+%                (vArg (var 2 []) :: []))
+%         :: [])))))
+%\end{Verbatim}
+%\endgroup
+%%\end{center}
+%%\caption{Abstract syntax tree for the type of {\tt \_::\_}}
+%%\label{fig:ast-g}
+%%\end{figure}
+%\normalsize
+
+\begin{figure}
+%\begin{minipage}{.5\textwidth}
+\centering
+\begingroup
+\fontsize{7.9pt}{8pt}\selectfont
+\begin{BVerbatim}
+recVec : (A : Set) →
+         {n : Nat} → Vec A n →
+         (C : Set) →
+         (base : C) →
+         (step : {n : Nat} →
+                 (x : A) →
+                 (xs : Vec A n) → C →
+                 C) → C
+
+\end{BVerbatim}
+\endgroup
+\caption{Non-dependent eliminator of {\tt Vec}}
+\label{fig:recV}
+%\end{minipage}
+\end{figure}
+
+
+In general, when automating the production of $D_{\mathit{rec}}$, all the information that is needed to produce the type signature is available in the \texttt{TC} monad by looking up $D$'s definition.
+The constructor {\tt data-type} contains the number of parameters occurring in a defined type. It also encodes the constructors of the type as a list of \texttt{Name}s. Metaprograms can retrieve the index count by finding the difference between the number of parameters and the length of the constructor list. The constructors of $D$ refer to the parameter and the index using de~Bruijn indices.
+
+The method {\tt step} for the constructor {\tt \_::\_} in {\tt Vec}, refers to the parameter and the index using de~Bruijn indices.
+During the construction of the type of {\tt step}, the recursor generator updates the de~Bruijn indices accordingly.
+Note that not all indices occur as arguments to a constructor: in {\tt Vec}, the constructor {\tt []} instantiates the index with a constant.
+%Agda does not provide a reflection primitive to retrieve the index count from a constructor name.
+%A workaround is to pass the index count of each constructor explicitly to the metaprogram.\todo{What do these last 2 sentences mean? What is an index count?}
+
+\begin{figure}
+%\begin{minipage}{.5\textwidth}
+\centering
+\begingroup
+\fontsize{7.9pt}{8pt}\selectfont
+%\fontsize{9pt}{10pt}\selectfont
+\begin{Verbatim}
+(agda-sort (lit 0) [ "A" h]⇒              -- A
+ (def (quote Nat) [] [ "n" h]⇒            -- n
+  (def (quote Vec) (vArg (var 1 []) ::     -- Vec A n
+     vArg (var 0 []) :: []) [ "_" v]⇒
+   (agda-sort (lit 0) [ "C" v]⇒           -- C
+    (var 0 [] [ "_" v]⇒                   -- base
+     ((def (quote Nat) [] [ "n" h]⇒       -- step
+       (var 5 [] [ "x" v]⇒                -- x
+        (def (quote Vec)
+          (vArg (var 6 []) ::         
+           vArg (var 1 []) ::
+           [])
+          [ "xs" v]⇒                      -- xs
+          (var 4 [] [ "_" v]⇒             -- → C
+           var 5 []))))                    -- C
+      [ "_" v]⇒ var 2 []))))))            -- C
+\end{Verbatim}
+\endgroup
+%\end{center}
+\caption{Abstract syntax tree of \texttt{recVec}'s type}
+\label{fig:ast-d}
+%\end{minipage}%
+\end{figure}
+
+
+Once the AST for {\tt step}'s type has been found, it is possible to build the type of {\tt recVec} in figure~\ref{fig:ast-d}.
+To quantify over the return type \texttt{(C : Set)}, the \texttt{Term} constructor \texttt{agda-sort} refers to \texttt{Set}. 
+
+The general schema for the computation rules corresponding to $D_{\mathit{rec}}$ and constructors $c_1, \ldots, c_n$ follows:
+
+\newcommand*{\RHSap}[2]{\ensuremath{\mathsf{RHS}\left(#1, #2\right)}}
+\newcommand*{\RHS}[1]{\RHSap{f_{#1}}{\Delta_{#1}^\prime}}
+\begin{center}
+%\begingroup
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{align*}
+& D_\mathit{rec}\ a_1\ \ldots\ a_n\ i_1\ \ldots\ i_m\ (c_1\ {\Delta_1}) \, C \, f_1 \ldots f_r = \\
+&\hspace{0.5cm}\RHS{1}\\
+& \vdots  \\
+& D_\mathit{rec}\ a_1\ \ldots\ a_n\ i_1\ \ldots\ i_m\ (c_r\ {\Delta_r}) \, C \, f_1 \ldots f_r = \\
+&\hspace{0.5cm}\RHS{r}\\ 
+\end{align*}
+%\endgroup
+\end{center}
+\normalsize
+
+Here, $\overline{\Delta_j}$ is the sequence of variables bound in $\Delta_j$.
+$\mathsf{RHS}$ constructs the application of the method $f_j$ to the arguments of $c_j$, such that $C$ is satisfied.
+It is defined by recursion on $\Delta_j$.
+$\RHSap{f_j}{\cdot}$ is $f_j$, because all arguments have been accounted for.
+$\RHSap{f_j}{(y : B)\Delta_k}$ is $\RHSap{f_j\ y}{\Delta_k}$ when $B$ does not mention $D$.
+$\RHSap{f_j}{(y : D) (y^\prime : C)\Delta_k}$ is $\RHSap{f_j\ y\ \left(D_{\mathit{rec}}\ \ldots y \ldots\right)}{\Delta_k}$, where the recursive use of $D_{\mathit{rec}}$ is applied to the recursive constructor argument as well as the appropriate indices, and the parameters, result type, and methods remain constant.
+Higher-order recursive arguments are a generalization of first-order arguments.
+Finally,
+\begin{displaymath}
+\RHSap{f_j}{(y : \Psi \to D) (y^\prime : \Psi \to C)\Delta_k}
+\end{displaymath}
+is
+\begin{displaymath}
+\RHSap{f_j\ y\ \left(\lambda \overline{\Psi} . D_{\mathit{rec}}\ \ldots \left(y\ \overline{\Psi} \right) \ldots\right)}{\Delta_k}
+\end{displaymath}
+where the recursive use of $D_{\mathit{rec}}$ is as before.
+
+%%\begin{figure}
+%%\begin{center}
+%\begingroup
+%\fontsize{7.9pt}{2pt}\selectfont
+%%\fontsize{9pt}{10pt}\selectfont
+%\begin{Verbatim}
+%(agda-sort (lit 0) [ "A" h]⇒              -- A
+% (def (quote Nat) [] [ "n" h]⇒            -- n
+%  (def (quote Vec) (vArg (var 1 []) ::     -- Vec A n
+%     vArg (var 0 []) :: []) [ "_" v]⇒
+%   (agda-sort (lit 0) [ "C" v]⇒           -- C
+%    (var 0 [] [ "_" v]⇒                   -- base
+%     ((def (quote Nat) [] [ "n" h]⇒       -- step
+%       (var 5 [] [ "x" v]⇒                -- x
+%        (def (quote Vec)
+%          (vArg (var 6 []) ::         
+%           vArg (var 1 []) ::
+%           [])
+%          [ "xs" v]⇒                      -- xs
+%          (var 4 [] [ "_" v]⇒             -- → C
+%           var 5 []))))                    -- C
+%      [ "_" v]⇒ var 2 []))))))            -- C
+%\end{Verbatim}
+%\endgroup
+%%\end{center}
+%%\caption{Abstract syntax tree of \texttt{recVec}'s type}
+%%\label{fig:ast-d}
+%%\end{figure}
+%\normalsize
+
+
+After declaring \texttt{recVec}'s type using {\tt declareDef}, it is time to define its computational meaning.
+The computation rule representing the action of function \texttt{recVec} on {\tt []} and {\tt \_::\_} is defined using {\tt clause} (figure~\ref{fig:ast-cdef}). The first argument to {\tt clause} encodes variables corresponding to the above type, and it also includes the abstract representation of the constructors {\tt []} and {\tt \_::\_} on which the pattern matching should occur. The second argument to \texttt{clause}, which is of type {\tt Term}, refers to the variables in the first argument using de~Bruijn indices, and it encodes the output of \texttt{recVec} when the pattern matches.
+The constructor {\tt var} of {\tt Pattern} is used to introduce new variables in the {\tt clause} definition. The type {\tt Pattern} also has another constructor {\tt con} that represents patterns that match specific constructors.
+The type {\tt Term} has similar constructors {\tt var} and {\tt con}, that respectively represent variable references and constructor invocations.
+The computation rules for \texttt{recVec} are given in fig~\ref{fig:BrecV}.
+
+
+\begin{figure}[t]
+\begin{minipage}{.5\textwidth}
+\centering
+\begingroup
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{Verbatim}
+recVec []        C base step =
+  base
+recVec (x :: xs) C base step =
+  step x xs (f xs C base step)
+\end{Verbatim}
+%\end{center}
+\normalsize
+\endgroup
+%\end{center}
+\caption{Computation rules for \texttt{recVec}}
+\label{fig:BrecV}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+\centering
+\begingroup
+%\begin{figure}
+%\centering
+%\begingroup
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{BVerbatim}
+data W (A : Set) (B : A → Set) : Set where
+  sup : (a : A) → (B a → W A B) → W A B
+
+
+
+
+
+
+\end{BVerbatim}
+\endgroup
+%\normalsize
+%\end{center}
+\caption{W-Type}
+\label{fig:W-type}
+\end{minipage}
+\end{figure}
+
+
+\begin{figure}
+%\begin{minipage}{.5\textwidth}
+\centering
+\begingroup
+\fontsize{7.9pt}{8pt}\selectfont
+\begin{Verbatim}
+(clause
+  (vArg (con (quote _::_)           -- _::_
+          (vArg (var "x") ::        -- x
+           vArg (var "xs") :: []))  -- xs
+   vArg (var "C") ::                -- C
+   vArg (var "base") ::             -- base
+   vArg (var "step") :: [])         -- step
+  (var 0                            
+    (vArg (var 4 []) ::             -- x
+     vArg (var 3 []) ::             -- xs
+     vArg
+      (def recVec                   -- recursion
+       (vArg (var 3 [])             -- xs
+        vArg (var 2 []) ::          -- C
+        vArg (var 1 []) ::          -- base
+        vArg (var 0 []) :: [])))))  -- step
+
+\end{Verbatim}
+\endgroup
+  \captionof{figure}{Clause definition for the computation rule of \texttt{\_::\_}}
+  \label{fig:ast-cdef}
+%\end{minipage}
+\end{figure}
+
+%\begingroup
+%\fontsize{7.9pt}{2pt}\selectfont
+%\begin{Verbatim}
+%(clause
+%  (vArg (con (quote _::_)           -- _::_
+%          (vArg (var "x") ::        -- x
+%           vArg (var "xs") :: []))  -- xs
+%   vArg (var "C") ::                -- C
+%   vArg (var "base") ::             -- base
+%   vArg (var "step") :: [])         -- step
+%  (var 0                            
+%    (vArg (var 4 []) ::             -- x
+%     vArg (var 3 []) ::             -- xs
+%     vArg
+%      (def recVec                   -- recursion
+%       (vArg (var 3 [])             -- xs
+%        vArg (var 2 []) ::          -- C
+%        vArg (var 1 []) ::          -- base
+%        vArg (var 0 []) :: [])))))  -- step
+%
+%\end{Verbatim}
+%\endgroup
+%%\end{center}
+%%\caption{Clause definition for the computation rule of \texttt{\_::\_}}
+%%\label{fig:ast-cdef}
+%%\end{figure}
+%\normalsize
+
+
+Figure~\ref{fig:ast-cdef} presents the AST for the clause that matches \texttt{\_::\_}.
+The de~Bruijn index reference increments right-to-left, starting from the last argument.
+Definitions by pattern matching are added to the global context using the \texttt{defineFun} primitive.
+%
+%\begin{figure}
+%\centering
+%%\begingroup
+%\fontsize{7.9pt}{2pt}\selectfont
+%\begin{BVerbatim}
+%data W (A : Set) (B : A → Set) : Set where
+%  sup : (a : A) → (B a → W A B) → W A B
+%\end{BVerbatim}
+%%\endgroup
+%\normalsize
+%%\end{center}
+%\caption{W-Type}
+%\label{fig:W-type}
+%\end{figure}
+%
+
+Figure~\ref{fig:W-type} presents an Agda encoding of Martin-Löf's well-orderings, the so-called \emph{W-type}.
+\texttt{W} is interesting because its constructor exhibits a \emph{higher-order} recursive instance of the type being defined.
+Following the recipe yields the recursor in figure~\ref{fig:recW}, in which the recursive call occurs under a function representing arbitrary choices of tag.
+
+\begin{figure}
+\centering
+\begin{minipage}{.5\textwidth}
+\centering
+\begingroup
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{Verbatim}
+recW : ∀ {A B}
+       (tgt : W A B) →
+       (C : Set) →
+       (step : (x : A) →
+               (f : B x → W A B) →
+               (f' : B x → C) →
+               C) →
+       C
+recW (sup x f) C step =
+  step x f (λ b → recW (f b) C step)
+\end{Verbatim}
+\endgroup
+\captionof{figure}{The non-dependent eliminator for \texttt{W}}
+\label{fig:recW}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+\centering
+\begingroup
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{Verbatim}
+    indW : {A : Set} → {B : A → Set} →
+           (tgt : W A B) →
+       	   (mot : W A B → Set) →
+           (step : (x : A) →
+                   (f : B x → W A B) →
+                   (f' : (b : B x) → mot (f b)) →
+                   mot (sup x f)) →
+           mot tgt
+    indW (sup x f) mot step =
+      step x f (λ b -> indW (f b) mot step)
+\end{Verbatim}
+\endgroup
+%\normalsize
+\caption{The induction principle for \texttt{W}}
+\label{fig:w-ind}
+\end{minipage}
+\end{figure}
+%\begin{figure}
+%  \caption{The non-dependent eliminator for \texttt{W}}
+%  \label{fig:recW}
+%\end{figure}
+
+The type of {\tt step} is built by traversing the AST of {\tt sup}'s type.
+The first argument to {\tt sup}, which is a constant type {\tt A}, is copied directly into \texttt{step}'s type.
+The second argument is a {\tt (B x → W A B)}, which is a function whose codomain is a recursive instance of {\tt W}.
+The resulting arguments must account for the recursion and are thus {\tt (B x → W A B)} and \texttt{(B x → C)}.
+Finally, the codomain {\tt W A B} of {\tt sup} is replaced by {\tt C}.
+
+In the above computation rule (fig.~\ref{fig:recW}), the third argument to {\tt step} is a function that works for any choice of tag \texttt{b}.
+The arguments to {\tt lam} are referenced using de~Bruijn indices inside the lambda body.
+Thus, the de~Bruijn indices for referring variables outside the lambda body must be updated accordingly.
+
+{\tt generateRec} build the computation and elimination rules respectively. The recursion rule generated by {\tt generateRec} is brought into scope using {\tt unquoteDecl}.
+%
+%
+%\begin{figure}
+%\begin{center}
+%\begin{Verbatim}
+%generateRec : Arg Name → Name → TC ⊤
+%generateRec (arg i f) t =
+%  do cns ← getConstructors t
+%     lcons ← getLength cns
+%     cls ← getClause lcons zero t f cns
+%     RTy ← getType t
+%     funType ← getRtype t zero RTy
+%     declareDef (arg i f) funType
+%     defineFun f cls
+%\end{Verbatim}
+%\end{center}
+%\caption{Implementation for {\tt generateRec}}
+%\label{fig:generateRec}
+%\end{figure}
+%
+%Figure~\ref{fig:generateRec} demonstrates the implementation of {\tt generateRec}, which constructs recursors.
+%{\tt generateRec} uses {\tt getClause} and {\tt getRtype} to build the computation and elimination rules respectively. It takes two arguments: the name of the function to be defined (represented by an element of type {\tt Arg Name}), the quoted {\tt Name} of the datatype. {\tt generateRec} can be used to automate the generation of recursion rules for inductive types having the general schema given at the beginning of this section. The recursion rule generated by {\tt generateRec} is brought into scope using {\tt unquoteDecl} as follows.
+
+%\begin{center}
+%\begin{BVerbatim}
+%unquoteDecl f = generateRec (vArg f)
+%                  (quote Vec)
+%\end{BVerbatim}
+%\end{center}
+
+\subsection{Dependent Eliminators}
+\label{sec:sec3.2}
+
+The dependent eliminator for a datatype, also known as the \emph{induction principle}, is used to eliminate elements of a datatype when the type resulting from the elimination mentions the very element being eliminated. The type of the induction principle for $D$ is:
+\begin{center}
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{align*}
+D_{\mathit{ind}} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+& (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
+& (\mathit{tgt} : D\ a_1 \ldots a_n\ i_1\ \ldots\ i_m) \to\\
+& \begin{array}{@{}l@{}l}(\mathit{C} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & D\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
+& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}\ e_{11} \ldots e_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
+& (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}\ e_{r1} \ldots e_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
+& \mathit{C}\ i_1\ \ldots\ i_n\ \mathit{tgt}
+\end{align*}
+\end{center}
+%\normalsize
+Unlike the non-dependent recursion principle $D_{\mathit{rec}}$, the result type is now computed from the target and its indices.
+Because it expresses the reason that the target must be eliminated, the function $C$ is often referred to as the \emph{motive}.
+Similarly to  $D_{\mathit{rec}}$, the type of each method $f_i$ is derived from the type of the constructor $c_i$---the method argument telescope $\Delta_k^\prime$ is similar, except the arguments that represent the result of recursion now apply the motive $C$ to appropriate arguments.
+If $\Delta_i$ has an argument $(y : B)$, where $B$ is not an application of $D$ or a function returning such an application, $\Delta_i^\prime$ still binds $(y : B)$ directly.
+If $B$ is an application of $D$ to parameters $a\ldots$ and indices $e\ldots$, then an additional binding $(y^\prime : C\ e\ldots\ y)$ is inserted following $y$.
+Finally, if $B$ is a function type $\Psi \to D\ a\ldots\ e\ldots$, the additional binding is $(y^\prime : \Psi \to C\ e\ldots (y\ \overline{\Psi}))$. 
+
+The computation rules for the induction principle are the same as for the recursion principle.
+Following these rules, the induction principle for \texttt{W} can be seen in figure~\ref{fig:w-ind}.
+
+%\begin{figure}[h]
+%\begingroup
+%\fontsize{7.9pt}{2pt}\selectfont
+%\begin{Verbatim}
+%    indW : {A : Set} → {B : A → Set} →
+%           (tgt : W A B) →
+%       	   (mot : W A B → Set) →
+%           (step : (x : A) →
+%                   (f : B x → W A B) →
+%                   (f' : (b : B x) → mot (f b)) →
+%                   mot (sup x f)) →
+%           mot tgt
+%    indW (sup x f) mot step =
+%      step x f (λ b -> indW (f b) mot step)
+%\end{Verbatim}
+%\endgroup
+%\normalsize
+%	\caption{The induction principle for \texttt{W}}
+%	\label{fig:w-ind}
+%\end{figure}
+
+Automating the production of the dependent eliminator is an extension of the procedure for automating the production of the non-dependent eliminator.
+
+We can construct the AST of {\tt step} using the static type information obtained from {\tt sup}.
+To construct \texttt{indW}, during the traversal of the AST of \texttt{sup}'s type, the argument {\tt (a : A)} is copied without any changes, just as it is in the case of the non-dependent eliminator.
+The next argument {\tt f}, however, is a function that returns a \texttt{W}.
+An additional argument, representing the induction hypothesis, is needed.
+The induction hypothesis {\tt (f' : (b : B x) → mot (f b))} takes the same arguments as {\tt f}, but it returns the motive instantiated at the application of \texttt{f}.
+The final return type is found by applying the motive to the target and its indices. % (figure~\ref{fig:ast-d'}).
+
+%\begin{figure}
+%\begin{center}
+%\begingroup
+%\fontsize{7pt}{9pt}\selectfont
+%\begin{Verbatim}
+%(agda-sort (lit 0) [ "A" h]⇒               -- A
+% ((var 0 [] [ "_" v]⇒                      -- B : A → Set
+%     agda-sort (lit 0)) [ "B" h]⇒
+%  (def (quote W)
+%       (vArg (var 1 []) ::                 -- tgt : W A B
+%        vArg (var 0 []) :: []) [ "tgt" v]⇒
+%   ((def (quote W)
+%      (vArg (var 2 []) ::                  -- mot : W A B → Set
+%       vArg (var 1 []) :: []) [ "_" v]⇒
+%     agda-sort (lit 0)) [ "mot" v]⇒
+%    ((var 3 [] [ "x" v]⇒                   -- x : A
+%      ((var 3
+%        (vArg (var 0 []) :: [])             -- f : B x → W A B
+%        [ "_" v]⇒
+%        def (quote W)
+%         (vArg (var 5 []) :: 
+%          vArg (var 4 []) :: [])) [ "f" v]⇒
+%       ((var 4 (vArg (var 1 []) ::          -- f' : B x → mot (f x)
+%                [])
+%         [ "f'" v]⇒
+%         var 3
+%          (vArg (var 1 (vArg (var 0 []) ::
+%                        [])) ::
+%                []))
+%        [ "z" v]⇒
+%        var 3                               -- mot (sup x f)
+%        (vArg
+%         (con (quote sup)
+%          (vArg (var 2 []) :: 
+%           vArg (var 1 []) :: []))
+%         :: []))))
+%     [ "_" v]⇒ var 1 (vArg (var 2 []) ::    -- mot tgt
+%                      []))))))
+%\end{Verbatim}
+%\endgroup
+%\end{center}
+%\caption{Abstract syntax tree for the dependent eliminator of {\tt W}}
+%\label{fig:ast-d'}
+%\end{figure}
+%\normalsize
+
+We can construct the type of the induction principle {\tt indW} using the AST of {\tt step}. The type {\tt C} in the mapping {\tt indW} depends on the element of the input type {\tt W A B}.
+Operationally, the induction principle computes just like the recursion principle.
+It is constructed using {\tt clause} definitions following the same approach.
+The generation of induction principles is carried out using {\tt generateInd}.
+
+%The following code gives the implementation of {\tt generateInd}.
+
+%\begin{center}
+%\begingroup
+%\begin{BVerbatim}
+%\begin{figure}
+%\begin{center}
+%\begin{Verbatim}
+%generateInd : Arg Name → Name → TC ⊤
+%generateInd (arg i f) t =
+%  do cns ← getConstructors t
+%     lcons ← getLength cns
+%     cls ← getClauseDep lcons zero t f cns
+%     RTy ← getType t
+%     funType ← getRtypeInd t zero RTy
+%     declareDef (arg i f) funType
+%     defineFun f cls
+%\end{Verbatim}
+%\end{center}
+%\caption{Implementation for {\tt generateInd}}
+%\label{fig:generateInd}
+%\end{figure}
+%\normalsize
+%
+%%\end{BVerbatim}
+%%\endgroup
+%%\end{center}
+%
+%{\tt generateInd} uses {\tt getClauseDep} to generate the {\tt clause} definitions representing the computation rules. The abstract representation of the type is provided by {\tt getRtypeInd}.
+%A version of the induction principle called {\tt indW'} generated by {\tt generateInd} is brought into scope by {\tt unquoteDecl} as follows:
+%\begin{center}
+%\begingroup
+%\begin{BVerbatim}
+%unquoteDecl indW' = generateInd (vArg indW')
+%                      (quote W)
+%\end{BVerbatim}
+%\endgroup
+%\end{center}
+
+\section{Code Generation for Higher Inductive Types}
+\label{sec:sec4}
+
+In Agda, there are no built-in primitives to support the definition of higher inductive types.
+However, we can still define a higher inductive type using rewrite rules, as described in section~\ref{sec:sec2.1}.
+In this section, we discuss the automation of code generation for the elimination and the computation rules of higher inductive types. The schema given in this section follows a pattern similar to Basold et al.'s \cite{Basold-2017} general rules for higher inductive types. However, we do not know how to generalize the formulation of the elimination rules for higher inductive types.
+
+\subsection{Non-dependent Eliminators for HITs}
+\label{sec:sec4.1}
+
+The recursion principle of a higher inductive type $G$ maps the points and paths of $G$ to points and paths in an output type $C$. We extend the general schema of the recursion principle given in section~\ref{sec:sec3.1} by adding methods for path constructors (fig.~\ref{fig:Grec}).
+
+\begin{figure}[t]
+\centering
+\begin{minipage}{.5\textwidth}
+\centering
+\fontsize{5.9pt}{2pt}\selectfont
+\begin{align*}
+G_{\mathit{rec}} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+& (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
+& (\mathit{tgt} : G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
+& (\mathit{C} : \SET{}) \to \\
+& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}) \ldots (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}) \to \\
+& (\mathit{k_1} : \Delta_1^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \vdots \\
+& (\mathit{k_q} : \Delta_q^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \mathit{C}
+\end{align*}
+\captionof{figure}{Generic schema for recursor}
+\label{fig:Grec}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+\centering
+%\begingroup
+\fontsize{5.9pt}{2pt}\selectfont
+\begin{align*}
+\beta G_{rec} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+& (\mathit{C} : \SET{}) \to \\
+& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}) \ldots (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}) \to \\
+& (\mathit{k_1} : \Delta_1^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \vdots \\
+& (\mathit{k_q} : \Delta_q^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \mathit{ap} \  (\lambda \  x . G_{rec} \  x \  C \  f_1 \  \ldots\ f_r \  k_1 \ \ldots\  k_q)\\
+& \hspace{0.25cm} \  (p_i \ldots) \equiv (k_i \ldots)
+\end{align*}
+%\endgroup
+\captionof{figure}{Generic schema for computation rule corresponding to Grec}
+\label{fig:BGrec}
+\end{minipage}
+\end{figure}
+
+%\begin{center}
+%\fontsize{7.9pt}{2pt}\selectfont
+%\begin{align*}
+%G_{\mathit{rec}} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+%& (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
+%& (\mathit{tgt} : G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
+%& (\mathit{C} : \SET{}) \to \\
+%& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}) \ldots (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}) \to \\
+%& (\mathit{k_1} : \Delta_1^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+%& \vdots \\
+%& (\mathit{k_q} : \Delta_q^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+%& \mathit{C}
+%\end{align*}
+%\end{center}
+The schematic definition of $G_{\mathit{rec}}$ supports only one-dimensional paths.
+Our metaprogram currently supports only one-dimensional paths, but we are planning to improve the tool to support higher-dimensional paths in the future. 
+
+The type of the method $f_i$ for a point constructor $g_i$ in $G_{rec}$ is built the same way as for the normal inductive type $D$, as described in section~\ref{sec:sec3.1}.
+The code generator builds the type of $k_i$, method for path constructor $p_i$ in $G_{rec}$, by traversing the AST of $p_i$. The arguments of $k_i$ are handled the same way as for the point constructor's method $f_i$. During the traversal, the code generator uses the base type recursor $D_{rec}$ to map the point constructors $g_i$ of $G$ in the codomain of $p_i$ to $f_i$. Determining the computation rules corresponding to points $g_i$ is similar to the computation rules corresponding to constructors $c_i$ of the inductive type $D$, except that there are additional methods to handle paths. Paths compute new paths; the computation rules that govern the interaction of recursors and paths $p_i$ are named and postulated. They identify the action of the recursor on the path with the corresponding method.
+%\begin{center}
+%\fontsize{7.9pt}{2pt}\selectfont
+%\begin{align*}
+%\beta G_{rec} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+%& (\mathit{C} : \SET{}) \to \\
+%& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}) \ldots (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}) \to \\
+%& (\mathit{k_1} : \Delta_1^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+%& \vdots \\
+%& (\mathit{k_q} : \Delta_q^\prime \to (f_i \ldots) \equiv (f_j \ldots)) \to \\
+%& \mathit{ap} \  (\lambda \  x . G_{rec} \  x \  C \  f_1 \  \ldots\ f_r \  k_1 \ \ldots\  k_q)\\
+%& \hspace{0.25cm} \  (p_i \ldots) \equiv (k_i \ldots)
+%\end{align*}
+%\end{center}
+As an example, if code for the circle HIT from section~\ref{sec:sec2.1} has been generated, and the type is called \texttt{S}, then the recursor needs a method for \texttt{base} and one for \texttt{loop}.
+The method for \texttt{base} should be an inhabitant of \texttt{C}.
+If it is called \texttt{cbase}, then the method for \texttt{loop} should be a path \texttt{cbase ≡ cbase}.
+The types of the path methods depend on the values of the point methods.
+The code generator builds the type of \texttt{loop}'s method by traversing the AST of \texttt{loop}'s type,
+replacing references to point constructors with the result of applying the base type's recursor to the point methods.
+
+%\begin{figure}
+%\begin{center}
+%\begingroup
+%\begin{Verbatim}
+%(def (quote S) [] [ "_" v]⇒    -- S
+% (agda-sort (lit 0) [ "C" v]⇒  -- C : Set
+%  (var 0 [] [ "cbase" v]⇒      -- cbase
+%   (def (quote _≡_)            -- cloop
+%    (vArg (var 0 []) ::
+%     vArg (var 0 []) :: [])
+%    [ "cloop" v]⇒ var 2 []))))
+%\end{Verbatim}
+%\endgroup
+%\end{center}
+%\caption{Abstract syntax tree for {\tt recS}'s type}
+%\label{fig:ast-f}
+%\end{figure}
+%\normalsize
+
+The recursion rule {\tt recS} follows this pattern.
+
+\begin{center}
+%\begingroup
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{BVerbatim}
+
+  recS : S → 
+    (C : Set) →
+    (cbase : C) →
+    (cloop : cbase ≡ cbase) →
+    C
+
+\end{BVerbatim}
+%\endgroup
+\end{center}
+\normalsize
+
+The code generator builds the computation rule for the point constructor {\tt base} using the same approach as described in section~\ref{sec:sec3.1}, as if it were for the base type.
+Additionally, it includes variables in the {\tt clause} definition for the path constructor {\tt loop}.
+The code generator postulates the following computation rule {\tt βloop} for the path constructor {\tt loop}:
+
+\begin{center}
+%\begingroup
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{BVerbatim}
+
+    βloop : (C : Set) → (cbase : C) → 
+      (cloop : cbase ≡ cbase) → 
+      ap (λ x → recS x C cbase cloop) loop 
+      ≡ cloop
+
+\end{BVerbatim}
+%\endgroup
+\end{center}
+\normalsize
+
+The application of function {\tt recS} to the path {\tt loop} substitutes the point {\tt base} for the argument {\tt x}, and it evaluates to the path {\tt cloop} in the output type {\tt C}. In the tool, {\tt generateRecHit} is used to build the elimination rule and the computation rules for points, and {\tt generateβRecHitPath} is used to build the computation rules for paths. 
+% \begin{figure}
+% \begin{center}
+% \begingroup
+% \begin{Verbatim}
+% (agda-sort (lit 0) [ "C" v]⇒
+%  (var 0 [] [ "cbase" v]⇒
+%   (def (quote _≡_)
+%    (vArg (var 0 []) :: vArg (var 0 []) :: [])
+%    [ "cloop" v]⇒
+%    def (quote _≡_)
+%    (vArg
+%     (def (quote ap)
+%      (vArg
+%       (lam visible
+%        (abs "x"
+%         (def (quote recS)
+%          (vArg (var 0 []) ::
+%           vArg (var 3 []) :: vArg (var 2 []) :: 
+%           vArg (var 1 []) :: []))))
+%       :: vArg (def (quote loop) []) :: []))
+%     :: vArg (var 0 []) :: []))))
+% \end{Verbatim}
+% \endgroup
+% \end{center}
+% \caption{AST representing the action of function {\tt recS} on path {\tt loop}}
+% \label{fig:ast-beta-f}
+% \end{figure}
+% \normalsize
+
+%\begin{figure}
+%\begin{center}
+%\begingroup
+%\begin{Verbatim}
+%generateRecHit : Arg Name → List (Arg Name) → 
+%  (baseType : Name) → (baseRec : Name) → 
+%  (indType : Name) → (points : List Name) → 
+%  (paths : List Name) → TC ⊤
+%generateRecHit (arg i f) argD b br i pts paths =
+%  do lcons ← getConstructors b
+%     lpts ← getLength pts
+%     lpaths ← getLength paths
+%     clauses ← getPathClause lpts lpaths br
+%     RTy ← getType b
+%     fTy ← getRtypePath b i br paths zero RTy
+%     declareDef (arg i f) fTy
+%     defineFun f clauses
+%     generateβRecHit argD b br i f pts paths
+%\end{Verbatim}
+%\endgroup
+%\end{center}
+%\caption{Implementation for {\tt generateRecHit}}
+%\label{fig:generateRecHit}
+%\end{figure}
+%\normalsize
+%
+%{\tt generateRecHit} takes the base types' recursion rule as input and uses that to eliminate the points during the construction of the path methods in the recursor $G_{rec}$.
+%The second argument {\tt argD} is a list of terms representing the computation rules for the path constructors.
+%The {\tt generateβRecHit} interface takes {\tt argD} as input and builds the computation rules for the path constructors. Other inputs to {\tt generateRecHit} are the point and path collections declared during the definition of the HIT.
+
+\subsection{Dependent Eliminators for HITs}
+\label{sec:sec4.2}
+
+The dependent eliminator (fig.~\ref{fig:Gind}) for a higher inductive type $G$ is a dependent function that maps an element $g$ of $G$ to an output type $C \, g$. The general schema for the induction principle of $G$ is given in figure \ref{fig:Gind}.
+
+\begin{figure}[t]
+\centering
+\begin{minipage}{.5\textwidth}
+\centering
+\fontsize{5.9pt}{2pt}\selectfont
+\begin{align*}
+G_{\mathit{ind}} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+& (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
+& (\mathit{tgt} : G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
+& \begin{array}{@{}l@{}l}(\mathit{C} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
+& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
+& \vdots\\
+& (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
+& (\mathit{k_1} : \Delta_1^\prime \to \texttt{transport} \, \mathit{C} \, p_1 \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \vdots\\
+& (\mathit{k_q} : \Delta_q^\prime \to \texttt{transport} \, \mathit{C} \, p_q \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \mathit{C}\ i_1\ \ldots\ i_n\ \mathit{tgt}
+\end{align*}
+\captionof{figure}{Generic schema for induction principle}
+\label{fig:Gind}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+\centering
+%\begingroup
+\fontsize{5.9pt}{2pt}\selectfont
+\begin{align*}
+\beta G_i :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+& \begin{array}{@{}l@{}l}(\mathit{C} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
+& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
+& (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
+& (\mathit{k_1} : \Delta_1^\prime \to \texttt{transport} \, \mathit{C} \, p_1 \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& (\mathit{k_r} : \Delta_r^\prime \to \texttt{transport} \, \mathit{C} \, p_r \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+& \texttt{apd} \  (\lambda \  x\ .\ G_{ind} \  x \  C \  f_1 \ \ldots\ f_r \  k_1 \ \ldots\ k_r)\\
+&\hspace{0.5cm} \  (p_i \ldots) \equiv\\
+& (k_i \ldots)
+\end{align*}
+%\endgroup
+\captionof{figure}{Generic schema for computation rule corresponding to Gind}
+\label{fig:BGind}
+\end{minipage}
+\end{figure}
+
+%\begin{center}
+%\fontsize{7.9pt}{2pt}\selectfont
+%\begin{align*}
+%G_{\mathit{ind}} :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+%& (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\
+%& (\mathit{tgt} : G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n) \to\\
+%& \begin{array}{@{}l@{}l}(\mathit{C} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
+%& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
+%& \vdots\\
+%& (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
+%& (\mathit{k_1} : \Delta_1^\prime \to \texttt{transport} \, \mathit{C} \, p_1 \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+%& \vdots\\
+%& (\mathit{k_q} : \Delta_q^\prime \to \texttt{transport} \, \mathit{C} \, p_q \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+%& \mathit{C}\ i_1\ \ldots\ i_n\ \mathit{tgt}
+%\end{align*}
+%\end{center}
+%\normalsize
+Similar to $G_{rec}$, the type of $f_i$ is built the same way as for the normal inductive type $D$.
+The code generator builds the type of the method for path constructor $p_i$, called $k_i$, in $G_{ind}$, by traversing the AST of $p_i$. During the traversal, the code generator uses the base eliminator $D_{ind}$ to map the point constructors $g_i$ of $G$ in the codomain of $p_i$ to $f_i$. In the first argument to the identity type in the codomain of $k_i$, the code generator adds an application of  {\tt transport} to the motive {\tt C} and the path $p_i$. The arguments of $k_i$ are handled the same way as for $f_i$.
+The computation rules corresponding to paths $p_i$ are postulated as given in figure \ref{fig:BGind}.
+%\begin{center}
+%\fontsize{7.9pt}{2pt}\selectfont
+%\begin{align*}
+%\beta G_i :\ & (a_1 : A_1) \to \ldots \to (a_n : A_n) \to\\
+%& \begin{array}{@{}l@{}l}(\mathit{C} :\ & (i_1 : I_1) \to \ldots \to (i_m : I_m) \to\\  & G\ a_1 \ldots a_n\ i_1\ \ldots\ i_n \to\\ &\SET{})\to\end{array} \\
+%& (\mathit{f_1} : \Delta_1^\prime \to \mathit{C}\ j_{11} \ldots j_{1p}\ (c_1\ \overline{\Delta_1})) \to \\
+%& (\mathit{f_r} : \Delta_r^\prime \to \mathit{C}\ j_{r1} \ldots j_{rp}\ (c_r\ \overline{\Delta_r})) \to \\
+%& (\mathit{k_1} : \Delta_1^\prime \to \texttt{transport} \, \mathit{C} \, p_1 \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+%& (\mathit{k_r} : \Delta_r^\prime \to \texttt{transport} \, \mathit{C} \, p_r \, (f_i \ldots) \equiv (f_j \ldots)) \to \\
+%& \texttt{apd} \  (\lambda \  x\ .\ G_{ind} \  x \  C \  f_1 \ \ldots\ f_r \  k_1 \ \ldots\ k_r)\\
+%&\hspace{0.5cm} \  (p_i \ldots) \equiv\\
+%& (k_i \ldots)
+%\end{align*}
+%\end{center}
+%\normalsize
+%%% DTC: I can't understand this paragraph, so I'm just leaving it out for now.
+% The code generator builds the type of $\beta G_{ind}$ using the same approach as for the induction rule $G_{ind}$.
+% The type of $G_{ind}$ and $\beta G_{ind}$ is similar except for the mapping $(g : G) \to C g$ in $G_{ind}$ which is replaced by the term representing the action of function $G_{ind}$ on the path $(p_i \, \ldots)$. The function {\tt apd} (section~\ref{sec:sec2.2}) applies $G_{ind}$, which is nested inside a lambda function, on the path $(p_i \ldots)$.
+
+For the type {\tt S} with point constructor {\tt base} and path constructor {\tt loop}, to define a mapping {\tt indS : (x : S) → C x}, we need {\tt cbase : C base} and {\tt cloop : transport C loop cbase ≡ cbase}, where {\tt cloop} is a heterogeneous path transported over {\tt loop}. The code generator builds the type of {\tt cloop} by adding relevant type information to the type of {\tt loop}.
+The type of the method for the path constructor {\tt cloop} is derived by inserting a call to {\tt transport} with arguments {\tt C}, {\tt loop} and {\tt cbase}. %%% BUT WHY???? This tells the reader nothing.
+The code generator applies the base eliminator to map the point {\tt base} to {\tt cbase} during the construction of the codomain of {\tt cloop}. The following declaration gives the type of {\tt indS}.
+\begin{center}
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{BVerbatim}
+indS : (circle : S) → 
+  (C : S → Set) →
+  (cbase : C base) →
+  (cloop : transport C loop cbase ≡ cbase) →
+  C circle
+\end{BVerbatim}
+\end{center}
+
+The computation rule for {\tt base}, which defines the action of {\tt indS} on {\tt base}, is built using the same approach as for the non-dependent eliminator {\tt recS}.
+The postulated computation rule {\tt iβloop} for the path {\tt loop} uses {\tt apd} which gives the action of dependent function {\tt indS} on the path {\tt loop}.
+\begin{center}
+\fontsize{7.9pt}{2pt}\selectfont
+\begin{BVerbatim}
+iβloop : (C : S → Set) → 
+  (cbase : C base) → 
+  (cloop : transport C loop cbase ≡ cbase) → 
+  apd (λ x → indS x C cbase cloop) loop ≡ cloop
+\end{BVerbatim}
+\end{center}
+
+{\tt generateIndHit} is used to build the elimination rule and the computation rules for points, and {\tt generateβIndHitPath} is used to build the computation rules for paths. 
+
+%\begin{figure}
+%\begin{center}
+%%\begingroup
+%\begin{Verbatim}
+%generateIndHit : Arg Name → List (Arg Name) →
+%  (baseType : Name) → (baseElm : Name) → 
+%  (indType : Name) → (points : List Name) → 
+%  (paths : List Name) → TC ⊤
+%generateIndHit (arg i f) argD b br i pts paths =
+%  do lcons ← getConstructors b
+%     lp1 ← getLength pts
+%     lp2 ← getLength paths
+%     cls ← getPathClauseDep lp1 lp2 b br lcons
+%     RTy ← getType b
+%     fTy ← getRtypePathDep b i br pts paths
+%             zero RTy
+%     declareDef (arg i f) fTy
+%     defineFun f cls
+%     generateβIndHit argD b br i f pts paths
+%\end{Verbatim}
+%%\endgroup
+%\end{center}
+%\caption{Implementation for {\tt generateIndHit}}
+%\label{fig:generateIndHit}
+%\end{figure}
+%\normalsize
+
+
+\section{Applications}
+
+Homotopy type theory has thus far primarily been applied to the encoding of mathematics, rather than to programming.
+Nevertheless, there are a few  applications of homotopy type theory to programming. Applications such as homotopical patch theory \cite{Angiuli-2014} discuss a model of the core of the of Darcs \cite{Darcs-2005} version control system using patch theory \cite{Mimram-2013} encoded as a HIT. Containers in homotopy type theory~\cite{Altenkirch-2014,Abbott-2005} implement data structures such as multisets and cycles. Automating the HIT boilerplate code allows more programmers to begin experimenting with programming with HITs.
+
+%In the next section, we discuss the implementation of patch theory application in Agda and exhibit a tremendous reduction in code size using the automation tool. In section \ref{crypto}, we present a cryptography application and discuss how to abstract the implementation difficulties of a higher inductive type making it more accessible to the cryptographers.
+
+\subsection{Patch Theory Revisited}
+\label{patch-theory}
+
+%A patch is a syntactic representation of a function that modifies a repository when applied. For example, a patch $(s_1 \leftrightarrow s_2 \, @ \, l)$, which replaces string $s_1$ with $s_2$ at line $l$, when applied to a repository containing with string $s_1$ at line $l$ results in a repository with string $s_2$ at line $l$. In homotopical patch theory \cite{Angiuli-2014}, the patches are modeled as paths in a higher inductive type. Because patches are paths, they automatically satisfy groupoid laws, such as that the composition of patches is associative, that all patches have an inverse,  and that inverse patches compose to the identity. Domain-specific laws related to the patches, such as that two swaps at independent lines commute, are implemented as higher dimensional paths.
+%The computational content of the patches is extracted by mapping them to bijections in the universe with the help of univalence. Due to the functoriality of mappings in type theory, the functions preserve the path structures and thus the desired axioms.
+
+We reimplemented Angiuli et al.'s patch theory in Agda.
+We implemented basic patches such as the insertion of a string as line $l_1$ in a file and deletion of a line $l_2$ from a file. The functions implementing insertion and deletion in the universe are not bijective. So, to map the paths representing the patches insert and delete into the universe, we used Angiuli et al.'s patch history approach. According to this approach, we developed a separate higher inductive type \texttt{History} which serves as the types of patches. In addition to basic patches, we also implemented patches involving encryption or decryption with cryptosystems like RSA and Paillier.
+
+Having implemented patch theory, we then reimplemented \texttt{History} and the encrypted repository type \texttt{cryptR} using our code generator. We also automated the code generation for the elimination and the computation rules for the higher inductive types \texttt{History} and \texttt{cryptR}. In addition to easing the implementation difficulties of higher inductive types, the code generator greatly reduced the code size. The type definitions shrank from around 1500 to around 70 lines, resulting in a 60\% decrease in the overall number of lines of code in the development.
+
+\subsection{Cryptographic Protocols}
+\label{crypto}
+
+Vivekanandan \cite{Paventhan-2018} models certain cryptographic protocols using homotopy type theory,  introducing a new approach to formally specificying cryptographic schemes using types. The work discusses modeling cryptDB~\cite{Popa-2011} using a framework similar to Angiuli et al.'s patch theory. CryptDB employs layered encryption techniques and homomorphic encryption. We can implement cryptDB by modeling the database queries as paths in a higher inductive type and mapping the paths to the universe using singleton types \cite{Angiuli-2014}. The code generator can be applied to generate code for the higher inductive type representing cryptDB and its corresponding elimination and computation rules. By using the code generator, we can decrease the length and increase the readability of the definitions, hopefully making it more accessible to the broad cryptographic community.
+
+%%% This makes no sense without the one after it, so i'm commenting it
+%A formal specification of a cryptographic construction promises increased assurance that an implementation is correct.. The downside of formal specification is that it introduces a framework which requires expert knowledge on theorem proving and a strong mathematical background.
+
+
+%%% This next sentence is probably not true, unfortunately
+% By automating the code constructions for the mathematical part such as the higher inductive type implementation, we simplify formal specification to a considerable extent and make it more accessible to regular programmers without a strong mathematical background.
+
+\section{Related Work}
+
+Kokke and Swierstra \cite{Kokke-2015} implemented a library for proof search using Agda's old reflection primitives, from before it had elaborator reflection. They describe a Prolog interpreter in the style of Stutterheim et al. \cite{Stutterheim-2013}. It employs a hint database and a customizable depth-first traversal, with lemmas to assist in the proof search.
+
+van der Walt and Swierstra \cite{Walt-2013} and van der Walt \cite{Walt-2012} discuss automating specific categories of proofs using proof by reflection.
+A key component of this proof technique is a means for converting an expression into a quoted representation.
+They automate this process, giving a user-defined datatype. van Der Walt gives an overview of Agda's old metaprogramming tools.
+
+Ongoing work on cubical type theories~\cite{cohen}\cite{Angiuli-2017}\cite{cubicalHIT} provides a computational interpretation of univalence and HITs.
+We strenuously hope that these systems quickly reach maturity, rendering our code generator obsolete.
+In the meantime, however, these systems are not yet as mature as Agda.
+
+\section{Conclusion and Future Work}
+
+We presented a code generator that generates the encodings of higher inductive types, developed using Agda's new support for Idris-style elaborator reflection.
+In particular, the tool generates the dependent and non-dependent elimination rules and the computational rules for 1-dimensional higher inductive types.
+This syntax is greatly simplified with respect to writing the encoding by hand.
+We demonstrated an extensive reduction in code size by employing our tool. Next, we intend to extend the tool to support higher-dimensional paths in the definition of HITs, bringing its benefits to a wider class of problems.
+
+\begin{thebibliography}{4}
+
+\bibitem{HoTT-2013} The Univalent Foundations Program, Institute for Advanced Study.
+Homotopy Type Theory: Univalent Foundations Of Mathematics (2013). \url{homotopytypetheory.org}
+
+\bibitem{Angiuli-2014} Anguili, C., Morehouse, E., Licata, D., Harper, R.: Homotopical Patch Theory. In: International Conference on Functional Programming (ICFP), Sweden (2014)
+
+\bibitem{Popa-2011} Popa, R.A., Redfield, C.M.S, Zeldovich, N., Hari Balakrishnan, H. : CryptDB: Protecting Confidentiality with Encrypted Query Processing. In: Proceedings of the 23rd ACM Symposium on Operating Systems Principles (SOSP), Portugal (2011)
+
+\bibitem{Agda-2007} Norell, U.: Towards a practical programming language based on dependent type theory. PhD thesis, Chalmers University of Technology, Sweden (2007)
+
+\bibitem{Coq-2009} Coq Development Team. The Coq Proof Assistant Reference Manual,
+version 8.2. INRIA (2009). \url{http://coq.inria.fr/}
+
+\bibitem{Licata-2011} Licata, D.: Running Circles Around (In) Your Proof Assistant; or, Quotients that Compute. \url{http://homotopytypetheory.org/2011/04/23/running-circles-around-in-your-proof-assistant} (2011)
+
+\bibitem{Kokke-2015} Kokke, P., Swierstra, W.: Auto in Agda. In: Hinze R., Voigtländer J. Mathematics of Program Construction. Lecture Notes in Computer Science, vol 9129, Cham (2015).
+
+\bibitem{Agda-doc-2017} Agda's Documentation (2017). \url{https://agda.readthedocs.io/en/latest/}
+
+\bibitem{David-2016} Christiansen, D. and Brady, E.: Elaborator Reflection: Extending Idris in Idris. In: Proceedings of the 21st ACM SIGPLAN International Conference on Functional Programming (ICFP ’16). Nara, Japan (2016).
+
+\bibitem{Darcs-2005} Roundy, D.: Darcs: Distributed version management in haskell. ACM SIGPLAN Workshop on Haskell (2005). 
+
+\bibitem{Bove-2005} Bove, A. and Capretta V.: Modelling general recursion in type theory. Mathematical Structures in Computer Science, 15(4):671–708 (2005).
+
+\bibitem{David-2013} Christiansen, D.: Dependent type providers. In: Proceedings of the 9th ACM SIGPLAN Workshop on Generic Programming, WGP ’13. New York, USA (2005).
+
+\bibitem{Altenkirch-2014} Altenkirch, T.: Containers in homotopy type theory. Talk at Mathematical Structures of Computation, Lyon (2014).
+
+\bibitem{Abbott-2005} Abbott M., Altenkirch, T. and Ghani, N.: Containers: constructing strictly positive types. Theoretic Computer Science (2005).
+
+\bibitem{Mimram-2013} Mimram, S. and Giusto D. C.: A categorical theory of patches. Electronic Notes in Theoretic Computer Science, 298:283–307 (2013).
+
+\bibitem{Stutterheim-2013} Stutterheim, J., Swierstra, W. and Swierstra, D.: Forty hours of declarative programming: Teaching Prolog at the Junior College Utrecht.  Electronic Proceedings in Theoretical Computer Science, volume 106, pages 50–62, 2013.
+
+\bibitem{Walt-2013} van der Walt, P. and Swierstra, W.: Engineering proof by reflection in Agda. In: In Ralf Hinze, (ed) Implementation and Application of Functional Languages. Lecture Notes in Computer Science, pages 157–173. Springer Berlin Heidelberg, 2013.
+
+\bibitem{Walt-2012} van der Walt, P.: Reflection in Agda. Master’s thesis, Department of Computer Science, Utrecht University, Utrecht, Netherlands (2012).
+
+%\bibitem{Jason-2009} Dagit, J.: Type-correct changes—a safe approach to version control implementation. MS Thesis (2009).
+
+\bibitem{Paventhan-2018} Vivekanandan, P.: A Homotopical Approach to Cryptography. Workshop on Foundations of Computer Security (FCS'18), University of Oxford, UK (2018).
+
+\bibitem{davidphd} Christiansen, D.: Practical Reflection and Metaprogramming for Dependent Types. IT University of Copenhagen (2016).
+
+\bibitem{Ebner2017} Ebner, G., Ullrich, S., Roesch, J., Avigad, J., and de Moura, L.: A Metaprogramming Framework for Formal Verification. Proceedings of the ACM on Programming Languages. ICFP New York, NY, USA (2017).
+
+\bibitem{compilemacro} Flatt, M., Culpepper, R., Darais, D., Findler R. B.: Macros that Work Together: Compile-time bindings, partial expansion, and definition contexts. Journal of Functional Programming (2012).
+
+\bibitem{cubicalHIT} Coquand, T., Huber, S., and Mörtberg, A.: On Higher Inductive Types in Cubical Type Theory. arXiv:1802.01170 (2018).
+
+\bibitem{Angiuli-2017} Angiuli, C., Harper, R., and Wilson, T.: Computational Higher-dimensional Type Theory. Proceedings of the 44th ACM SIGPLAN Symposium on Principles of Programming Languages (POPL'17), Paris, France (2017).
+
+\bibitem{cohen} Cohen, C., Coquand, T., Huber, S., and M{\"o}rtberg, A.: Cubical Type Theory: a constructive interpretation of the univalence axiom. 21st International Conference on Types for Proofs and Programs (2015).
+
+\bibitem{norell:thesis} Norell, U.: Towards a practical programming language based on dependent type theory. Chalmers University of Technology, Sweden (2007).
+
+\bibitem{Cockx2014} Cockx, J., Devriese, D., and Piessens, F.: Pattern Matching Without K. Proceedings of the 19th ACM SIGPLAN International Conference on Functional Programming (ICFP'14), Gothenburg, Sweden (2014).
+
+\bibitem{Cockx16} Cockx, J. and Abel, A.: Sprinkles of Extensionality for Your Vanilla Type Theory. 22nd International Conference on Types for Proofs and Programs (TYPES 2016).
+
+\bibitem{Dybjer1994} Dybjer, P.: Inductive families. Formal Aspects of Computing (1994). \url{https://doi.org/10.1007/BF01211308}
+
+\bibitem{Basold-2017} Basold, H., Geuvers, H. and van der Weide, N.: Higher Inductive Types in Programming. Journal of Universal Computer Science, vol. 23, no. 1 (2017).
+
+\end{thebibliography}
+
+\end{document}
+
